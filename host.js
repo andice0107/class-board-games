@@ -126,10 +126,13 @@
       return;
     }
     if (d.t === 'leave') { if (T.g.res) dissolve(T, p); return; }
+    // 平台規則：只有對手全部是電腦時才能悔棋（避免同學對戰時一直悔棋）
+    if (d.t === 'req' && d.k === 'undo' && !othersAllBots(T, seat)) { net.send({ t: 'note', to: p.pid, text: '和同學對戰時不能悔棋喔！' }); return; }
     // 其他動作交給遊戲模組
     var changed = GAME.act(T.g, seat, d, function (toSeat, text) { var id = T.seats[toSeat]; if (id) net.send({ t: 'note', to: id, text: text }); });
     if (changed) touch(T); else send(p);
   }
+  function othersAllBots(T, seat) { return T.seats.every(function (id, i) { return i === seat || BG.isBot(id); }); }
   function presence(p) {
     var T = tblOf(p); if (T) T.seats.forEach(function (id) { if (id !== p.pid) bump(S.players[id]); });
     render();

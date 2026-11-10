@@ -147,7 +147,7 @@
     }
     if (!tb.res) {
       var tools = el('div', 'xq-tools');
-      tools.appendChild(ctx.button('xq-btn', '↩️ 悔棋', function () { ctx.send('req', { k: 'undo' }); })).disabled = !(v.n >= (my === 'r' ? 1 : 2)) || !!v.req || !!P;
+      if (ctx.canUndo) tools.appendChild(ctx.button('xq-btn', '↩️ 悔棋', function () { ctx.send('req', { k: 'undo' }); })).disabled = !(v.n >= (my === 'r' ? 1 : 2)) || !!v.req || !!P;
       tools.appendChild(ctx.button('xq-btn', '🤝 和棋', function () { ctx.send('req', { k: 'draw' }); })).disabled = !!v.req;
       tools.appendChild(ctx.button('xq-btn', '🏳️ 認輸', function () { if (confirm('確定要認輸嗎？')) ctx.send('resign'); }));
       tools.appendChild(ctx.emoteButton('xq-btn'));

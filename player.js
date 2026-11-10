@@ -100,7 +100,8 @@
     }
   };
   function ctx() {
-    return { tb: S.tb, send: send, toast: toast, snd: function (k) { snd.play(k); }, rerender: render,
+    var vsBots = S.tb.seats.every(function (x, i) { return i === S.tb.seat || x.bot; });
+    return { tb: S.tb, canUndo: vsBots, send: send, toast: toast, snd: function (k) { snd.play(k); }, rerender: render,
       button: btn, emoteButton: function (cls) { return btn(cls, '💬 說話', function () { showEmo = !showEmo; render(); }); } };
   }
   function dice() { var w = el('div', 'wait-dice'); ['♠', '帥', '●', '★'].forEach(function (t) { w.appendChild(el('span', '', t)); }); return w; }
