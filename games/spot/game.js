@@ -8,7 +8,7 @@
   var SEATC = ['#e63946', '#1d7dd8', '#f4a300', '#2a9d5c', '#8e44ad', '#e76f51'];
   var THEMES = {
     'spot-match': { name: '圖案', text: false, syms: ['🐶', '🐱', '🐭', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐢', '🐙', '🦋', '🐝', '🍎', '🍌', '🍇', '🍉', '🍓', '🚗', '✈️', '🚀', '⚽', '🎈', '⭐'] },
-    'spot-zhuyin': { name: '注音', text: true, syms: 'ㄅㄆㄇㄈㄉㄊㄋㄌㄍㄎㄏㄐㄑㄒㄓㄔㄕㄖㄗㄘㄙㄚㄛㄜㄝㄞㄟㄠㄡㄢㄣ'.split('') },
+    'spot-zhuyin': { name: '注音', text: true, apart: [0, 5, 10], syms: 'ㄇㄅㄆㄉㄊㄈㄋㄌㄍㄎㄩㄏㄐㄑㄒㄓㄔㄕㄖㄗㄘㄙㄚㄛㄜㄞㄟㄠㄡㄢㄣ'.split('') }, // ㄇㄈㄩ（第 0、5、10 號）容易搞混，不放在同一張牌
     'spot-hanzi': { name: '國字', text: true, syms: '人入大太天夫日目白自木本未末土士王玉主生牛午千干口田由甲申山出'.split('') }
   };
   var TCOL = ['#e63946', '#1d7dd8', '#2a9d5c', '#8e44ad', '#f08c00', '#d6336c', '#0b7285', '#5c3d2e'];
@@ -46,6 +46,8 @@
   }
 
   function make(gid, theme) {
+    /* 這個版本要用的牌：有 apart 的話，拿掉同時有其中兩個以上符號的牌（它們剛好都在同一張，拿掉後任兩張牌仍只有一個相同） */
+    var IDS = DECK.map(function (_, i) { return i; }).filter(function (i) { return !theme.apart || DECK[i].filter(function (x) { return theme.apart.indexOf(x) >= 0; }).length < 2; });
     var REASONS = { most: '拿到最多張牌', tie: '拿到的牌一樣多，平手', resign: '其他人都認輸了', left: '其他人都離開了', teacher: '老師判和' };
     function alive(g) { var a = []; for (var s = 0; s < g.np; s++) if (g.out.indexOf(s) < 0) a.push(s); return a; }
     function finish(g) {
@@ -61,7 +63,7 @@
       seatColor: function (i) { return SEATC[i % SEATC.length]; },
       init: function (n) {
         n = Math.max(2, Math.min(6, n || 4));
-        var d = shuffle(DECK.map(function (_, i) { return i; }));
+        var d = shuffle(IDS.slice());
         var g = { np: n, top: [], won: [], frz: [], out: [], pile: d, center: null, last: null, lockAt: 0, cnt: 0, res: null };
         for (var s = 0; s < n; s++) { g.top.push(d.pop()); g.won.push(0); g.frz.push(0); }
         g.center = g.pile.pop();
@@ -189,7 +191,7 @@
     };
 
     /* ---------- 說明 ---------- */
-    var A = 0, B = 1; // 示範牌
+    var A = IDS[0], B = IDS[1]; // 示範牌
     var demo = '<figure class="g-fig sp-demo">' + cardHTML(theme, A, { hi: common(A, B) }) + cardHTML(theme, B, { hi: common(A, B) }) +
       '<figcaption>這兩張牌只有「' + theme.syms[common(A, B)] + '」一樣（大小和方向可能不同）</figcaption></figure>';
     var thing = theme.text ? '字' : '圖案';
@@ -206,8 +208,8 @@
         { h: '計分方式', html: '<table class="g-tbl"><tr><th>結果</th><th>得分</th></tr><tr><td>🏆 拿最多張</td><td>3 分</td></tr><tr><td>🤝 平手</td><td>1 分</td></tr><tr><td>💪 其他</td><td>0 分</td></tr></table><p>分數會自動加進老師大螢幕上的積分榜（和電腦玩的不列入總分）。</p>' }
       ],
       teacher: [
-        { h: '主持流程', html: '<ol><li>在首頁點「眼明手快（' + theme.name + '）」開房間，投影 QR code。</li><li>選「每桌人數」（2～6 人），學生掃碼輸入學號，系統自動分桌。</li><li>一副牌 31 張，一局大約 2～4 分鐘。</li><li>老師端每一桌會顯示中間的牌和每個人拿到幾張。</li></ol>' },
-        { h: '版本與教學重點', html: '<ul><li><b>圖案版</b>：動物、水果、交通工具，暖身用，人人都能玩。</li><li><b>注音版</b>：31 個注音符號，ㄅㄆ、ㄉㄊ、ㄋㄌ、ㄓㄗ、ㄢㄣ 等長得像的都在裡面，可以練習<b>字形辨識</b>。</li><li><b>國字版</b>：人入、大太天夫、日目白自、木本未末、土士王玉、千干、田由甲申 等形近字，練習<b>看清楚筆畫</b>。</li><li>點錯暫停 2 秒、不扣分：鼓勵學生「看清楚再點」，而不是亂猜。</li><li>可以在學生找到後，請他說出那個注音或國字的讀音，或用國字造詞。</li></ul>' },
+        { h: '主持流程', html: '<ol><li>在首頁點「眼明手快（' + theme.name + '）」開房間，投影 QR code。</li><li>選「每桌人數」（2～6 人），學生掃碼輸入學號，系統自動分桌。</li><li>一副牌 ' + IDS.length + ' 張，一局大約 2～4 分鐘。</li><li>老師端每一桌會顯示中間的牌和每個人拿到幾張。</li></ol>' },
+        { h: '版本與教學重點', html: '<ul><li><b>圖案版</b>：動物、水果、交通工具，暖身用，人人都能玩。</li><li><b>注音版</b>：31 個注音符號，ㄅㄆ、ㄉㄊ、ㄋㄌ、ㄓㄗ、ㄢㄣ 等長得像的都在裡面，可以練習<b>字形辨識</b>。容易搞混的 <b>ㄇ、ㄈ、ㄩ</b> 不會出現在同一張牌上（一張牌最多只有其中一個）。</li><li><b>國字版</b>：人入、大太天夫、日目白自、木本未末、土士王玉、千干、田由甲申 等形近字，練習<b>看清楚筆畫</b>。</li><li>點錯暫停 2 秒、不扣分：鼓勵學生「看清楚再點」，而不是亂猜。</li><li>可以在學生找到後，請他說出那個注音或國字的讀音，或用國字造詞。</li></ul>' },
         { h: '電腦對手', html: '<table class="g-tbl"><tr><th>強度</th><th>電腦大約多久找到</th></tr><tr><td>🐣 入門</td><td>約 10 秒</td></tr><tr><td>🙂 簡單</td><td>約 7 秒</td></tr><tr><td>🤔 普通</td><td>約 5 秒</td></tr><tr><td>🔥 困難</td><td>約 3 秒</td></tr></table><p>左側「電腦出牌速度」也會影響電腦反應：選「🐌 最慢」電腦會再慢 3 倍多，適合剛開始練習的學生。</p>' }
       ]
     };

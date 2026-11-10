@@ -1,6 +1,6 @@
 /* 遊戲清單：每個遊戲是 games/<id>/ 裡獨立的模組，用 BG.register 加進來 */
 window.BG = window.BG || {};
-BG.VER = '202611101557';
+BG.VER = '202611101559';
 BG.games = BG.games || {};
 BG.register = function (id, mod) { mod.id = id; BG.games[id] = mod; };
 BG.catalog = [
