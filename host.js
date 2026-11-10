@@ -104,6 +104,7 @@
         }
       }
       if (!p) {
+        if (S.locked && !SOLO) return net.send({ t: 'full', to: d.pid, text: '這個房間已經鎖住了，不能再加入。如果你是這班的學生，請告訴老師。' });
         if (Object.keys(S.players).length >= MAXP) return net.send({ t: 'full', to: d.pid, text: '這個房間已經滿了（最多 ' + MAXP + ' 人）。' });
         p = S.players[d.pid] = { pid: d.pid, name: SOLO ? '我' : funName(), sid: sid, joined: Date.now(), lastSeen: 0, ver: 1, table: null, lastOpp: [] };
         if (!SOLO) BGSfx.play('join');
@@ -302,6 +303,8 @@
   }
   $('h-ov').addEventListener('click', function (e) { if (e.target === this) closeOv(); });
   $('h-auto').addEventListener('change', function () { S.auto = this.checked; save(); pair(); });
+  $('h-lock').checked = !!S.locked;
+  $('h-lock').addEventListener('change', function () { S.locked = this.checked; save(); render(); });
   $('h-bot').checked = S.allowBot !== false;
   $('h-bot').addEventListener('change', function () { S.allowBot = this.checked; save(); S.queue.forEach(function (id) { bump(S.players[id]); }); });
   $('h-pairnow').addEventListener('click', function () { pairNow(true); });
