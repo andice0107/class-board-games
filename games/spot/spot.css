@@ -1,5 +1,5 @@
 /* 眼明手快：紫色放大鏡風格的遊戲桌 */
-.sp-table { min-height: 100%; padding: 10px 10px 16px; background: radial-gradient(circle at 20% 10%, #b07cff55, transparent 40%), radial-gradient(circle at 85% 90%, #3ad0c855, transparent 45%), linear-gradient(160deg, #4b2a8a, #2b1858 70%); border-radius: 18px; color: #fff; display: flex; flex-direction: column; gap: 8px; }
+.sp-table { width: 100%; box-sizing: border-box; min-height: 100%; padding: 10px 10px 16px; background: radial-gradient(circle at 20% 10%, #b07cff55, transparent 40%), radial-gradient(circle at 85% 90%, #3ad0c855, transparent 45%), linear-gradient(160deg, #4b2a8a, #2b1858 70%); border-radius: 18px; color: #fff; display: flex; flex-direction: column; gap: 8px; }
 .sp-bar { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 .sp-chip { display: inline-flex; align-items: center; gap: 5px; background: #ffffff1f; border-radius: 999px; padding: 4px 10px 4px 6px; font-size: 14px; }
 .sp-chip i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 2px #fff8; }

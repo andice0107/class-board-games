@@ -146,7 +146,7 @@
       var bc = el('div', 'panel p-card bot-card');
       bc.appendChild(el('h2', '', SOLO ? '🤖 選擇電腦強度' : '🤖 先和電腦下一盤'));
       if (!SOLO) bc.appendChild(el('p', '', '不想等？選一個電腦的強度就能馬上開桌。和電腦下的棋局不列入積分榜。'));
-      var nb = S.botSeats[0];
+      var nb = GAME && GAME.seatDefault ? Math.max(S.botSeats[0], Math.min(S.botSeats[1], GAME.seatDefault - 1)) : S.botSeats[0]; // 預設用正式人數（例如麻將 4 人）
       if (S.botSeats[1] > S.botSeats[0]) {
         var nr = el('div', 'row c'); nr.appendChild(el('span', '', '這一桌幾個人（含你自己）：'));
         for (var k = S.botSeats[0]; k <= S.botSeats[1]; k++) (function (k) { var b = btn('btn small' + (k === (waiting.n || nb) ? ' on' : ''), (k + 1) + ' 人', function () { waiting.n = k; render(); }); nr.appendChild(b); })(k);

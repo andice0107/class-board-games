@@ -1,0 +1,21 @@
+/* 圍棋：日式榧木棋墩風格 */
+.go-table { width: 100%; box-sizing: border-box; padding: 10px; border-radius: 18px; background: linear-gradient(160deg, #e8dcc2, #c9b48a); color: #3b2a12; display: flex; flex-direction: column; gap: 8px; }
+.go-svg { width: 100%; height: auto; display: block; border-radius: 10px; box-shadow: 0 6px 16px #0004; }
+.go-board { max-width: 600px; width: 100%; margin: 0 auto; }
+.go-drop { animation: go-drop .25s ease-out; transform-origin: center; transform-box: fill-box; }
+@keyframes go-drop { from { transform: scale(1.35); opacity: .3; } }
+.go-status { text-align: center; font-weight: 700; padding: 6px 10px; border-radius: 12px; background: #ffffff66; }
+.go-status.me { background: #3b2a12; color: #f5ead7; }
+.go-who { display: flex; align-items: center; gap: 7px; padding: 6px 10px; border-radius: 12px; background: #ffffff55; border: 2px solid transparent; }
+.go-who.turn { border-color: #3b2a12; }
+.go-who .n { font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.go-who .tag { font-size: 12px; background: #3b2a1222; border-radius: 999px; padding: 2px 8px; white-space: nowrap; } .go-who .tag.now { background: #3b2a12; color: #f5ead7; }
+.go-who .dot { width: 8px; height: 8px; border-radius: 50%; background: #888; } .go-who .dot.on { background: #22a35a; }
+.go-stone { width: 20px; height: 20px; border-radius: 50%; flex: none; box-shadow: 1px 2px 3px #0005; }
+.go-stone.b { background: radial-gradient(circle at 35% 30%, #666, #000 70%); } .go-stone.w { background: radial-gradient(circle at 35% 30%, #fff, #c9c4b6 80%); }
+.go-confirm, .go-tools { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.go-btn { border: 1px solid #3b2a1255; background: #fffaf0; color: #3b2a12; border-radius: 999px; padding: 8px 14px; font-size: 15px; cursor: pointer; }
+.go-btn.go { background: #3b2a12; color: #f5ead7; font-weight: 700; } .go-btn:disabled { opacity: .45; }
+.go-mark, .go-req { background: #fffaf0; border-radius: 14px; padding: 10px; text-align: center; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.go-mark p, .go-req p { margin: 0; } .go-mark .row, .go-req .row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.go-fig .go-svg { max-width: 200px; margin: 0 auto; }

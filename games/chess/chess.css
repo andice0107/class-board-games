@@ -1,5 +1,5 @@
 /* 西洋棋：深色胡桃木棋桌 */
-.ch-table { padding: 10px; border-radius: 18px; background: linear-gradient(160deg, #3b2a1f, #22170f); color: #f5ead7; display: flex; flex-direction: column; gap: 8px; }
+.ch-table { width: 100%; box-sizing: border-box; padding: 10px; border-radius: 18px; background: linear-gradient(160deg, #3b2a1f, #22170f); color: #f5ead7; display: flex; flex-direction: column; gap: 8px; }
 .ch-svg { width: 100%; height: auto; display: block; }
 .ch-pc { font-family: 'DejaVu Sans', 'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols 2', serif; paint-order: stroke; }
 .ch-board { max-width: 560px; width: 100%; margin: 0 auto; }

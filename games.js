@@ -1,12 +1,13 @@
 /* 遊戲清單：每個遊戲是 games/<id>/ 裡獨立的模組，用 BG.register 加進來 */
 window.BG = window.BG || {};
-BG.VER = '202611101559';
+BG.VER = '202611101614';
 BG.games = BG.games || {};
 BG.register = function (id, mod) { mod.id = id; BG.games[id] = mod; };
 BG.catalog = [
   { id: 'xiangqi', cat: '棋類', files: ['games/xiangqi/xiangqi.css', 'games/xiangqi/rules.js', 'games/xiangqi/ai.js', 'games/xiangqi/game.js', 'games/xiangqi/guide.js'], title: '中國象棋', icon: '帥', color: '#c0392b', players: '2 人對戰', desc: '楚河漢界，完整規則自動判定輸贏', ready: true },
   { id: 'gomoku', cat: '棋類', files: ['games/gomoku/gomoku.css', 'games/gomoku/rules.js', 'games/gomoku/game.js', 'games/gomoku/guide.js'], title: '五子棋', icon: '五', color: '#4f7a4a', players: '2 人對戰', desc: '橫直斜連成五顆就贏，一分鐘學會', ready: true },
-  { id: 'go', cat: '棋類', title: '圍棋', icon: '●', color: '#3d3d3d', players: '2 人對戰', desc: '規劃中', ready: false },
+  { id: 'go', cat: '棋類', files: ['games/go/go.css', 'games/go/rules.js', 'games/go/game.js', 'games/go/guide.js'], title: '圍棋（9路）', icon: '●', color: '#3d3d3d', players: '2 人對戰', desc: '小棋盤，適合初學，一盤約 10～15 分鐘', ready: true },
+  { id: 'go13', cat: '棋類', files: ['games/go/go.css', 'games/go/rules.js', 'games/go/game.js', 'games/go/guide.js'], title: '圍棋（13路）', icon: '◐', color: '#55473a', players: '2 人對戰', desc: '中棋盤，學會 9 路後再挑戰', ready: true },
   { id: 'chess', cat: '棋類', files: ['games/chess/chess.css', 'games/chess/rules.js', 'games/chess/game.js', 'games/chess/guide.js'], title: '西洋棋', icon: '♚', color: '#5b4636', players: '2 人對戰', desc: '國際標準規則：入堡、吃過路兵、升變全部自動判定', ready: true },
   { id: 'poker', cat: '牌類', title: '撲克牌', icon: '♠', color: '#1f6b47', players: '10 種玩法', desc: '大老二、撿紅點、抽鬼牌、排7、十點半、99、吹牛、射龍門、21點、比大小', ready: true, sub: [
     { id: 'big2', title: '大老二', players: '2–4 人', desc: '2 最大、梅花 3 先出，先出完牌就贏', ready: true, files: ['games/poker/poker.css', 'games/poker/cards.js', 'games/poker/big2.js'] },

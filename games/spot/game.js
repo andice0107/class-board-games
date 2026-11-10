@@ -8,7 +8,7 @@
   var SEATC = ['#e63946', '#1d7dd8', '#f4a300', '#2a9d5c', '#8e44ad', '#e76f51'];
   var THEMES = {
     'spot-match': { name: '圖案', text: false, syms: ['🐶', '🐱', '🐭', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐢', '🐙', '🦋', '🐝', '🍎', '🍌', '🍇', '🍉', '🍓', '🚗', '✈️', '🚀', '⚽', '🎈', '⭐'] },
-    'spot-zhuyin': { name: '注音', text: true, apart: [0, 5, 10], syms: 'ㄇㄅㄆㄉㄊㄈㄋㄌㄍㄎㄩㄏㄐㄑㄒㄓㄔㄕㄖㄗㄘㄙㄚㄛㄜㄞㄟㄠㄡㄢㄣ'.split('') }, // ㄇㄈㄩ（第 0、5、10 號）容易搞混，不放在同一張牌
+    'spot-zhuyin': { name: '注音', text: true, apart: [0, 5, 10], fake: { 0: 'ㄝ', 5: 'ㄦ', 10: 'ㄨ' }, syms: 'ㄇㄅㄆㄉㄊㄈㄋㄌㄍㄎㄩㄏㄐㄑㄒㄓㄔㄕㄖㄗㄘㄙㄚㄛㄜㄞㄟㄠㄡㄢㄣ'.split('') }, // ㄇㄈㄩ（第 0、5、10 號）容易搞混，不放在同一張牌
     'spot-hanzi': { name: '國字', text: true, syms: '人入大太天夫日目白自木本未末土士王玉主生牛午千干口田由甲申山出'.split('') }
   };
   var TCOL = ['#e63946', '#1d7dd8', '#2a9d5c', '#8e44ad', '#f08c00', '#d6336c', '#0b7285', '#5c3d2e'];
@@ -29,6 +29,12 @@
   function el(t, c, x) { var e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; }
 
   /* 畫一張圓牌：中間 1 個、外圈 5 個，大小和角度依牌號固定（大家看到的一樣） */
+  /* 容易搞混的符號（theme.fake）：只有兩張牌都有它（也就是答案）時才顯示本來的樣子，
+     否則換成不會撞到的替身符號，畫面上就不會出現「一邊 ㄇ、一邊 ㄈ」這種混淆 */
+  function face(theme, s, vs) {
+    if (theme.fake && theme.fake[s] && (vs == null || DECK[vs].indexOf(s) < 0)) return theme.fake[s];
+    return theme.syms[s];
+  }
   function cardHTML(theme, id, o) {
     o = o || {};
     var r = rnd(id * 7 + 3), syms = DECK[id].slice(), order = [];
@@ -40,7 +46,7 @@
       if (k > 0) { var a = (spin + (k - 1) * 72) * Math.PI / 180; cx = 50 + Math.cos(a) * 31; cy = 50 + Math.sin(a) * 31; }
       var size = (k === 0 ? 1.05 : 1) * (0.78 + r() * 0.42), rot = theme.text ? (r() * 40 - 20) : (r() * 90 - 45);
       var col = theme.text ? 'color:' + TCOL[(s + id) % TCOL.length] + ';' : '';
-      h += '<button type="button" class="sp-sym' + (o.hi === s ? ' hi' : '') + (theme.text ? ' txt' : '') + '" data-s="' + s + '" style="left:' + cx + '%;top:' + cy + '%;' + col + '--z:' + size.toFixed(2) + ';--r:' + rot.toFixed(0) + 'deg">' + theme.syms[s] + '</button>';
+      h += '<button type="button" class="sp-sym' + (o.hi === s ? ' hi' : '') + (theme.text ? ' txt' : '') + '" data-s="' + s + '" style="left:' + cx + '%;top:' + cy + '%;' + col + '--z:' + size.toFixed(2) + ';--r:' + rot.toFixed(0) + 'deg">' + face(theme, s, o.hi === s ? id : o.vs) + '</button>';
     });
     return h + '</div>';
   }
@@ -157,14 +163,14 @@
       var cbox = el('div', 'sp-slot');
       cbox.appendChild(el('div', 'sp-lbl', '中間的牌・還剩 ' + (v.left + (v.center != null ? 1 : 0)) + ' 張'));
       var cw = el('div', 'sp-wrap pile');
-      cw.innerHTML = v.center != null ? cardHTML(theme, v.center, { cls: 'center' }) : '<div class="sp-card empty">🏁</div>';
+      cw.innerHTML = v.center != null ? cardHTML(theme, v.center, { cls: 'center', vs: seat >= 0 ? v.top[seat] : null }) : '<div class="sp-card empty">🏁</div>';
       cbox.appendChild(cw); area.appendChild(cbox);
       if (seat >= 0) {
         var mbox = el('div', 'sp-slot');
         mbox.appendChild(el('div', 'sp-lbl', '我的牌'));
         var mw = el('div', 'sp-wrap');
         var hi = locked && v.last && v.last.w === seat ? v.last.s : null;
-        mw.innerHTML = cardHTML(theme, v.top[seat], { cls: 'mine', hi: hi });
+        mw.innerHTML = cardHTML(theme, v.top[seat], { cls: 'mine', hi: hi, vs: v.center });
         mw.firstChild.style.borderColor = SEATC[seat];
         mbox.appendChild(mw); area.appendChild(mbox);
       }
@@ -192,7 +198,7 @@
 
     /* ---------- 說明 ---------- */
     var A = IDS[0], B = IDS[1]; // 示範牌
-    var demo = '<figure class="g-fig sp-demo">' + cardHTML(theme, A, { hi: common(A, B) }) + cardHTML(theme, B, { hi: common(A, B) }) +
+    var demo = '<figure class="g-fig sp-demo">' + cardHTML(theme, A, { hi: common(A, B), vs: B }) + cardHTML(theme, B, { hi: common(A, B), vs: A }) +
       '<figcaption>這兩張牌只有「' + theme.syms[common(A, B)] + '」一樣（大小和方向可能不同）</figcaption></figure>';
     var thing = theme.text ? '字' : '圖案';
     mod.guide = {
@@ -209,12 +215,12 @@
       ],
       teacher: [
         { h: '主持流程', html: '<ol><li>在首頁點「眼明手快（' + theme.name + '）」開房間，投影 QR code。</li><li>選「每桌人數」（2～6 人），學生掃碼輸入學號，系統自動分桌。</li><li>一副牌 ' + IDS.length + ' 張，一局大約 2～4 分鐘。</li><li>老師端每一桌會顯示中間的牌和每個人拿到幾張。</li></ol>' },
-        { h: '版本與教學重點', html: '<ul><li><b>圖案版</b>：動物、水果、交通工具，暖身用，人人都能玩。</li><li><b>注音版</b>：31 個注音符號，ㄅㄆ、ㄉㄊ、ㄋㄌ、ㄓㄗ、ㄢㄣ 等長得像的都在裡面，可以練習<b>字形辨識</b>。容易搞混的 <b>ㄇ、ㄈ、ㄩ</b> 不會出現在同一張牌上（一張牌最多只有其中一個）。</li><li><b>國字版</b>：人入、大太天夫、日目白自、木本未末、土士王玉、千干、田由甲申 等形近字，練習<b>看清楚筆畫</b>。</li><li>點錯暫停 2 秒、不扣分：鼓勵學生「看清楚再點」，而不是亂猜。</li><li>可以在學生找到後，請他說出那個注音或國字的讀音，或用國字造詞。</li></ul>' },
+        { h: '版本與教學重點', html: '<ul><li><b>圖案版</b>：動物、水果、交通工具，暖身用，人人都能玩。</li><li><b>注音版</b>：31 個注音符號，ㄅㄆ、ㄉㄊ、ㄋㄌ、ㄓㄗ、ㄢㄣ 等長得像的都在裡面，可以練習<b>字形辨識</b>。容易搞混的 <b>ㄇ、ㄈ、ㄩ</b>：畫面上只要出現，一定是兩張牌上同一個符號（就是答案），不會一邊 ㄇ 一邊 ㄈ。</li><li><b>國字版</b>：人入、大太天夫、日目白自、木本未末、土士王玉、千干、田由甲申 等形近字，練習<b>看清楚筆畫</b>。</li><li>點錯暫停 2 秒、不扣分：鼓勵學生「看清楚再點」，而不是亂猜。</li><li>可以在學生找到後，請他說出那個注音或國字的讀音，或用國字造詞。</li></ul>' },
         { h: '電腦對手', html: '<table class="g-tbl"><tr><th>強度</th><th>電腦大約多久找到</th></tr><tr><td>🐣 入門</td><td>約 10 秒</td></tr><tr><td>🙂 簡單</td><td>約 7 秒</td></tr><tr><td>🤔 普通</td><td>約 5 秒</td></tr><tr><td>🔥 困難</td><td>約 3 秒</td></tr></table><p>左側「電腦出牌速度」也會影響電腦反應：選「🐌 最慢」電腦會再慢 3 倍多，適合剛開始練習的學生。</p>' }
       ]
     };
     BG.register(gid, mod);
   }
   Object.keys(THEMES).forEach(function (k) { make(k, THEMES[k]); });
-  window.SPOT = { DECK: DECK, common: common, THEMES: THEMES };
+  window.SPOT = { DECK: DECK, common: common, THEMES: THEMES, face: face };
 })();

@@ -205,7 +205,7 @@
       if (lg.k === 'discard') fx.snd('move'); else if (lg.k !== 'flower') fx.snd('cap');
     }
     L.logKey = key;
-    if (prev && v.turn === tb.seat && prev.turn !== tb.seat) fx.snd('turn');
+    if (prev && prev.view && v.turn === tb.seat && prev.view.turn !== tb.seat) fx.snd('turn');
     if (prev === null || (prev && prev.round !== tb.round)) fx.toast(tb.round > 1 ? '第 ' + tb.round + ' 局開始！' : '開始打牌囉！東家是莊家，先打一張');
   };
   mod.render = function (box, ctx) {
