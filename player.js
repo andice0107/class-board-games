@@ -156,10 +156,16 @@
         var sr = el('div', 'row c'); sr.appendChild(el('span', '', '電腦出牌速度：'));
         [['vslow', '🐌 最慢'], ['slow', '🐢 慢'], ['normal', '普通'], ['fast', '🐇 快'], ['vfast', '⚡ 最快']].forEach(function (o) { sr.appendChild(btn('btn small' + ((waiting.speed || 'normal') === o[0] ? ' on' : ''), o[1], function () { waiting.speed = o[0]; render(); })); });
         bc.appendChild(sr);
+        (GAME && GAME.opts || []).forEach(function (d) {
+          waiting.opts = waiting.opts || {}; if (waiting.opts[d.k] == null) waiting.opts[d.k] = d.list[0][0];
+          var orow = el('div', 'row c'); orow.appendChild(el('span', '', d.label));
+          d.list.forEach(function (o) { orow.appendChild(btn('btn small' + (waiting.opts[d.k] === o[0] ? ' on' : ''), o[1], function () { waiting.opts[d.k] = o[0]; render(); })); });
+          bc.appendChild(orow);
+        });
       }
       var lv = el('div', 'levels');
       BG.levels.forEach(function (L) {
-        var b = btn('lv', '', function () { send('bot', { level: L.n, n: nb, speed: waiting.speed || 'normal' }); toast('正在幫你開桌…'); });
+        var b = btn('lv', '', function () { send('bot', { level: L.n, n: nb, speed: waiting.speed || 'normal', opts: waiting.opts }); toast('正在幫你開桌…'); });
         b.innerHTML = '<span class="ic">' + L.icon + '</span><b>' + L.name + '</b><small>' + ((GAME && GAME.levelDesc && GAME.levelDesc[L.n - 1]) || L.desc) + '</small>';
         lv.appendChild(b);
       });
@@ -168,11 +174,11 @@
     }
   }
   function result() {
-    var tb = S.tb, r = tb.res, win = r.w === tb.seat, draw = r.w < 0;
+    var tb = S.tb, r = tb.res, win = r.l != null ? r.l !== tb.seat : r.w === tb.seat, draw = r.l == null && r.w < 0;
     var c = el('div', 'panel result');
     var b = el('div', 'badge', draw ? '🤝' : (win ? '🏆' : '💪')); b.style.background = draw ? '#bfeee9' : (win ? '#ffe7a3' : '#d8e9ff'); c.appendChild(b);
     c.appendChild(el('h2', '', draw ? '平手！' : (win ? '你贏了！' : '這局輸了')));
-    c.appendChild(el('p', '', (GAME.reasons[r.why] || '') + (win || draw ? '' : '・下一局再加油！')));
+    c.appendChild(el('p', '', r.l != null ? (win ? '別人' + (GAME.reasons[r.why] || '') + '你安全過關！' : '你' + (GAME.reasons[r.why] || '') + '下一局再加油！') : (GAME.reasons[r.why] || '') + (win || draw ? '' : '・下一局再加油！')));
     if (r.note) c.appendChild(el('p', 'res-note', r.note));
     if (r.lose != null && r.lose >= 0) c.appendChild(el('p', 'res-note', r.lose === tb.seat ? '🤡 鬼牌最後在你手上！' : '🤡 鬼牌最後在 ' + tb.seats[r.lose].name + ' 手上'));
     if (S.stat) c.appendChild(el('p', '', '我的積分：' + S.pts + ' 分（' + S.stat.w + ' 勝 ' + S.stat.d + ' 和 ' + S.stat.l + ' 負）'));
