@@ -352,7 +352,7 @@
     var sw = el('div', 'switch seatsel'); sw.appendChild(el('span', '', d.label));
     d.list.forEach(function (o) { var b = btn('btn small' + (gopts()[d.k] === o[0] ? ' on' : ''), o[1], function () { S.gopts = S.gopts || {}; S.gopts[d.k] = o[0]; save(); [].forEach.call(sw.querySelectorAll('button'), function (x) { x.classList.toggle('on', x === b); }); }); sw.appendChild(b); });
     if (d.note) sw.appendChild(el('small', 'empty', d.note));
-    $('h-auto').parentNode.parentNode.insertBefore(sw, $('h-auto').parentNode);
+    sw.classList.add('gopt'); $('h-qr').parentNode.insertBefore(sw, $('h-qr'));   // 開局選項放在 QR code 上面，一眼就看得到
   });
   $('h-new').addEventListener('click', function () {
     if (!confirm('開新房間會換一個新的代碼，目前所有棋局都會結束。確定嗎？')) return;

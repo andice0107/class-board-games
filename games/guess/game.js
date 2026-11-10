@@ -1,12 +1,13 @@
-/* 終極密碼：系統隨機出一個 0～100 的祕密數字（蓋著）。
+/* 終極密碼：範圍 1～100（1 和 100 不能猜），系統隨機出一個 2～99 的祕密數字（蓋著）。
+   範圍的兩端一定是已經猜過的數字（或 1、100），只能猜兩端「中間」的數字；範圍剩一個數字時，下一個人直接被判猜中。
    大家輪流猜一個數字（送出前要再確認一次），系統自動告訴大家密碼在哪兩個數字之間。
    猜中密碼的人「爆炸」（輸）——老師也可以改成「猜中的人贏」。
    老師端每一桌都可以按 👁 偷看密碼，再按一下蓋起來。 */
 (function () {
   'use strict';
   var SEATC = ['#e63946', '#1d7dd8', '#f4a300', '#2a9d5c', '#8e44ad', '#e76f51'];
-  var MAX = 100;
-  var REASONS = { boom: '猜中密碼，爆炸了！', hit: '猜中了密碼', resign: '其他人都認輸了', left: '其他人都離開了', teacher: '老師結束這局' };
+  var MIN = 1, MAX = 100;
+  var REASONS = { boom: '猜中密碼，爆炸了！', hit: '猜中了密碼', forced: '範圍只剩密碼一個數字，輪到的人直接被判猜中', resign: '其他人都認輸了', left: '其他人都離開了', teacher: '老師結束這局' };
   function el(t, c, x) { var e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; }
   function alive(g) { var a = []; for (var s = 0; s < g.np; s++) if (g.out.indexOf(s) < 0) a.push(s); return a; }
   function nxt(g, s) { for (var k = 1; k <= g.np; k++) { var n = (s + k) % g.np; if (g.out.indexOf(n) < 0) return n; } return s; }
@@ -19,7 +20,7 @@
     seatColor: function (i) { return SEATC[i]; },
     init: function (n, o) {
       n = Math.max(2, Math.min(6, n || 4));
-      return { np: n, mode: o && o.mode === 'win' ? 'win' : 'lose', secret: Math.floor(Math.random() * (MAX + 1)), lo: 0, hi: MAX, turn: Math.floor(Math.random() * n), hist: [], out: [], cnt: 0, res: null };
+      return { np: n, mode: o && o.mode === 'win' ? 'win' : 'lose', secret: MIN + 1 + Math.floor(Math.random() * (MAX - MIN - 1)), lo: MIN, hi: MAX, turn: Math.floor(Math.random() * n), hist: [], out: [], cnt: 0, res: null };
     },
     turnSeat: function (g) { return g.turn; },
     forfeit: function (g, seat) { knock(g, seat, 'left'); },
@@ -32,26 +33,30 @@
       if (d.t === 'resign') { notify(seat, '你已經認輸，可以繼續觀看'); knock(g, seat, 'resign'); g.cnt++; return true; }
       if (d.t !== 'guess' || g.turn !== seat || d.n !== g.cnt) return false;
       var x = +d.x;
-      if (!(x === Math.floor(x)) || x < g.lo || x > g.hi) { notify(seat, '要猜 ' + g.lo + ' 到 ' + g.hi + ' 之間的數字喔'); return false; }
+      if (!(x === Math.floor(x)) || x <= g.lo || x >= g.hi) { notify(seat, '要猜 ' + (g.lo + 1) + ' 到 ' + (g.hi - 1) + ' 的數字喔'); return false; }
       var h = { s: seat, x: x };
       if (x === g.secret) {
-        h.r = 'hit'; g.hist.push(h); g.lo = g.hi = x; g.cnt++;
+        h.r = 'hit'; g.hist.push(h); g.cnt++;
         g.res = g.mode === 'win' ? { w: seat, why: 'hit' } : { w: -1, l: seat, why: 'boom' };
         return true;
       }
-      if (x < g.secret) { g.lo = x + 1; h.r = 'up'; } else { g.hi = x - 1; h.r = 'down'; }
+      if (x < g.secret) { g.lo = x; h.r = 'up'; } else { g.hi = x; h.r = 'down'; }
       h.a = g.lo; h.b = g.hi; g.hist.push(h); g.turn = nxt(g, seat); g.cnt++;
+      if (g.hi - g.lo === 2) {   // 只剩密碼一個數字：下一個人直接被判猜中
+        var f = g.turn; g.hist.push({ s: f, x: g.secret, r: 'hit', forced: true });
+        g.res = g.mode === 'win' ? { w: f, why: 'forced' } : { w: -1, l: f, why: 'forced' };
+      }
       return true;
     },
     botTurn: function (g, seat, lv) {
       if (g.res || g.turn !== seat) return null;
-      var lo = g.lo, hi = g.hi, x, w = hi - lo;
+      var lo = g.lo + 1, hi = g.hi - 1, x, w = hi - lo;
       function rnd(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
       if (lv <= 1 || Math.random() < (lv === 2 ? .5 : .1)) x = rnd(lo, hi);
       else if (g.mode === 'win') x = Math.round((lo + hi) / 2) + (lv === 4 ? 0 : rnd(-2, 2));
       else {
         // 猜中會輸：每次被猜中的機會都一樣，聰明的作法是讓範圍縮小得剛剛好，下一個人比較危險
-        x = w <= 2 ? rnd(lo, hi) : Math.round(lo + w * (Math.random() < .5 ? .3 : .7)) + rnd(-2, 2);
+        x = w <= 2 ? rnd(lo, hi) : lv >= 3 && w <= 4 ? (Math.random() < .5 ? lo + 1 : hi - 1) : Math.round(lo + w * (Math.random() < .5 ? .3 : .7)) + rnd(-2, 2);
       }
       return { t: 'guess', x: Math.max(lo, Math.min(hi, x)), n: g.cnt };
     },
@@ -83,8 +88,8 @@
     if (L.round !== tb.round) { L.round = tb.round; L.val = ''; L.ask = false; L.sent = -1; L.key = -1; }
     if (prev && v.cnt !== L.key && v.hist.length) {
       var h = v.hist[v.hist.length - 1];
-      if (h.r === 'hit') { fx.snd(v.mode === 'win' ? 'win' : 'lose'); }
-      else { fx.snd('move'); if (h.s !== tb.seat) fx.toast(who(tb, h.s) + ' 猜 ' + h.x + '：密碼' + (h.r === 'up' ? '比較大' : '比較小') + '，現在是 ' + v.lo + '～' + v.hi); }
+      if (h.r === 'hit') { fx.snd(v.mode === 'win' ? 'win' : 'lose'); if (h.forced) fx.toast('範圍只剩 ' + h.x + ' 一個數字，' + who(tb, h.s) + ' 直接被判猜中！'); }
+      else { fx.snd('move'); if (h.s !== tb.seat) fx.toast(who(tb, h.s) + ' 猜 ' + h.x + '：密碼' + (h.r === 'up' ? '比較大' : '比較小') + '，範圍 ' + v.lo + '～' + v.hi); }
       if (v.turn === tb.seat && !tb.res) setTimeout(function () { fx.snd('turn'); }, 400);
     }
     L.key = v.cnt;
@@ -102,17 +107,17 @@
     wrap.appendChild(bar);
     wrap.appendChild(el('div', 'ug-mode', v.mode === 'win' ? '🏆 這局：猜中密碼的人贏' : '💥 這局：猜中密碼的人輸'));
     var bomb = el('div', 'ug-bomb' + (tb.res && v.secret != null ? ' open' : ''));
-    bomb.innerHTML = tb.res && v.secret != null ? '<small>密碼是</small><b>' + v.secret + '</b>' : '<small>密碼在</small><div class="ug-range"><b>' + v.lo + '</b><span>～</span><b>' + v.hi + '</b></div><small>之間</small>';
+    bomb.innerHTML = tb.res && v.secret != null ? '<small>密碼是</small><b>' + v.secret + '</b>' : '<small>密碼在</small><div class="ug-range"><b>' + v.lo + '</b><span>～</span><b>' + v.hi + '</b></div><small>之間（' + v.lo + ' 和 ' + v.hi + ' 不能猜）</small>';
     wrap.appendChild(bomb);
     // 數線
     var line = el('div', 'ug-line'), fill = el('div', 'ug-fill');
-    fill.style.left = (v.lo / MAX * 100) + '%'; fill.style.width = Math.max(1, (v.hi - v.lo) / MAX * 100) + '%';
-    line.appendChild(fill); line.appendChild(el('span', 'a', '0')); line.appendChild(el('span', 'b', String(MAX)));
+    fill.style.left = ((v.lo - MIN) / (MAX - MIN) * 100) + '%'; fill.style.width = Math.max(1, (v.hi - v.lo) / (MAX - MIN) * 100) + '%';
+    line.appendChild(fill); line.appendChild(el('span', 'a', String(MIN))); line.appendChild(el('span', 'b', String(MAX)));
     wrap.appendChild(line);
     var st = el('div', 'ug-status');
     if (tb.res) st.textContent = '這局結束了';
     else if (out) st.textContent = '你已經認輸，正在觀看';
-    else if (myTurn) { st.textContent = '輪到你了！猜一個 ' + v.lo + '～' + v.hi + ' 的數字'; st.className = 'ug-status me'; }
+    else if (myTurn) { st.textContent = '輪到你了！猜 ' + (v.lo + 1) + '～' + (v.hi - 1) + ' 其中一個數字'; st.className = 'ug-status me'; }
     else st.textContent = '輪到 ' + who(tb, v.turn) + ' 猜…';
     wrap.appendChild(st);
     if (myTurn) {
@@ -127,7 +132,7 @@
       });
       var go = ctx.button('ug-key ok', '送出', function () {
         var x = +L.val;
-        if (L.val === '' || x < v.lo || x > v.hi) { ctx.toast('要猜 ' + v.lo + ' 到 ' + v.hi + ' 之間的數字喔'); ctx.snd('error'); return; }
+        if (L.val === '' || x <= v.lo || x >= v.hi) { ctx.toast('要猜 ' + (v.lo + 1) + ' 到 ' + (v.hi - 1) + ' 的數字喔（' + v.lo + ' 和 ' + v.hi + ' 不能猜）'); ctx.snd('error'); return; }
         L.ask = true; ctx.rerender();
       });
       go.disabled = L.val === ''; keys.appendChild(go);
@@ -151,8 +156,8 @@
         var r = el('div', 'ug-h ' + h.r), d = el('i'); d.style.background = SEATC[h.s]; r.appendChild(d);
         r.appendChild(el('span', 'n', who(tb, h.s)));
         r.appendChild(el('b', '', h.x));
-        r.appendChild(el('span', 't', h.r === 'hit' ? (v.mode === 'win' ? '🎯 猜中了！' : '💥 爆炸！') : h.r === 'up' ? '⬆️ 密碼較大' : '⬇️ 密碼較小'));
-        if (h.r !== 'hit' && h.a != null) r.appendChild(el('span', 'rg', '→ ' + h.a + '～' + h.b + ' 之間'));
+        r.appendChild(el('span', 't', h.r === 'hit' ? (h.forced ? '只剩這個數字，' : '') + (v.mode === 'win' ? '🎯 猜中了！' : '💥 爆炸！') : h.r === 'up' ? '⬆️ 密碼較大' : '⬇️ 密碼較小'));
+        if (h.r !== 'hit' && h.a != null) r.appendChild(el('span', 'rg', '→ 範圍 ' + h.a + '～' + h.b));
         hs.appendChild(r);
       });
       wrap.appendChild(hs);
@@ -167,13 +172,13 @@
   };
   mod.guide = {
     student: [
-      { h: '怎麼玩', html: '<ol><li>系統偷偷想好一個 <b>0～100</b> 的祕密數字（密碼），大家都看不到。</li><li>大家<b>輪流</b>猜一個數字：用數字鍵輸入，按「送出」，再按「確定送出」。</li><li>沒猜中的話，系統會告訴大家密碼在哪兩個數字之間，範圍會越來越小。<br>例如密碼是 37，有人猜 50 → 範圍變成 <b>0～49</b>；又有人猜 20 → 範圍變成 <b>21～49</b>。</li><li>只能猜範圍裡面的數字。</li></ol>' },
+      { h: '怎麼玩', html: '<ol><li>範圍一開始是 <b>1～100</b>，系統偷偷想好中間的一個祕密數字（密碼），大家都看不到。<b>1 和 100 不能猜。</b></li><li>大家<b>輪流</b>猜一個數字：用數字鍵輸入，按「送出」，再按「確定送出」。</li><li>沒猜中的話，系統會告訴大家密碼在哪兩個數字之間，範圍會越來越小。<br>例如密碼是 57，有人猜 50 → 範圍變成 <b>50～100</b>；下一個人猜 60 → 範圍變成 <b>50～60</b>。</li><li>範圍兩邊的數字（已經猜過的）不能再猜，只能猜兩個數字<b>中間</b>的數字。</li><li>如果範圍變成像 <b>56～58</b>，中間只剩密碼 57，下一個人<b>直接被判猜中</b>。</li></ol>' },
       { h: '怎麼贏', html: '<ul><li><b>💥 猜中的人輸</b>（預設）：猜中密碼的人爆炸，其他人都算贏。範圍越小越危險！</li><li><b>🏆 猜中的人贏</b>：誰先猜中密碼誰就贏。</li></ul><p>這一局是哪一種，畫面上方會寫出來。</p><table class="g-tbl"><tr><th>結果</th><th>得分</th></tr><tr><td>🏆 贏</td><td>3 分</td></tr><tr><td>💪 輸</td><td>0 分</td></tr></table><p>和電腦玩的不列入總分。</p>' },
       { h: '小技巧', html: '<ul><li>「猜中的人贏」：每次猜範圍正中間的數字，最快找到密碼。</li><li>「猜中的人輸」：不要讓範圍剩太小時輪到自己！想想看猜哪個數字，下一個人會比較危險。</li></ul>' }
     ],
     teacher: [
-      { h: '主持流程', html: '<ol><li>首頁「益智」→「終極密碼」，選每桌人數（2～6 人），再選「猜中密碼的人：💥 輸／🏆 贏」（預設是輸）。</li><li>學生掃碼加入、開桌後，系統自動幫每一桌出一個 0～100 的密碼。</li><li>密碼一律<b>蓋著</b>，避免大螢幕被學生看到。老師要看時，點那一桌的「🔒 密碼 ？？」就會打開，再點一下就蓋回去。只會在老師這台裝置上打開。</li><li>學生猜完，系統自動顯示範圍，老師不用喊。</li></ol>' },
-      { h: '教學重點', html: '<ul><li>練習<b>數的大小比較</b>和 0～100 的數線概念。</li><li>「猜中的人贏」可以帶出「每次猜一半」的二分法策略。</li><li>學生送出前會再問一次「確定要猜 ○○ 嗎？」，避免手滑按錯。</li></ul>' },
+      { h: '主持流程', html: '<ol><li>首頁「益智」→「終極密碼」，選每桌人數（2～6 人），再選「猜中密碼的人：💥 輸／🏆 贏」（預設是輸）。</li><li>學生掃碼加入、開桌後，系統自動幫每一桌出一個 2～99 的密碼（範圍 1～100，1 和 100 不能猜）。</li><li>密碼一律<b>蓋著</b>，避免大螢幕被學生看到。老師要看時，點那一桌的「🔒 密碼 ？？」就會打開，再點一下就蓋回去。只會在老師這台裝置上打開。</li><li>學生猜完，系統自動顯示範圍，老師不用喊。</li></ol>' },
+      { h: '教學重點', html: '<ul><li>練習<b>數的大小比較</b>和 1～100 的數線概念：範圍的兩端都是猜過的數字，密碼一定夾在中間。</li><li>「猜中的人贏」可以帶出「每次猜一半」的二分法策略。</li><li>學生送出前會再問一次「確定要猜 ○○ 嗎？」，避免手滑按錯。</li></ul>' },
       { h: '電腦對手', html: '<table class="g-tbl"><tr><th>強度</th><th>電腦怎麼猜</th></tr><tr><td>🐣 入門</td><td>隨便亂猜</td></tr><tr><td>🙂 簡單</td><td>一半時間亂猜</td></tr><tr><td>🤔 普通</td><td>大多會用策略</td></tr><tr><td>🔥 困難</td><td>幾乎都用最好的策略</td></tr></table>' }
     ]
   };

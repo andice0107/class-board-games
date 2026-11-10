@@ -227,3 +227,4 @@ input:focus { border-color: var(--sky); background: #fff; }
 .fit-land > [class*="-board"] { grid-column: 1; grid-row: 1 / span 12; align-self: center; width: calc(var(--vh, 1vh) * 100 - 120px) !important; max-width: none !important; min-width: 0 !important; margin: 0 !important; }
 .fit-land > .xq-board { width: calc((var(--vh, 1vh) * 100 - 120px) * .9) !important; }
 .fit-land > [class*="-status"] { white-space: normal; }
+.switch.gopt { background: #fff4d6; border: 2px solid #f4a300; border-radius: 14px; padding: 8px; margin: 4px 0 8px; font-weight: 800; }
