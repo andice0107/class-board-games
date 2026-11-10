@@ -1,6 +1,6 @@
 /* 遊戲清單：每個遊戲是 games/<id>/ 裡獨立的模組，用 BG.register 加進來 */
 window.BG = window.BG || {};
-BG.VER = '202611101917';
+BG.VER = '202611101949';
 BG.games = BG.games || {};
 BG.register = function (id, mod) { mod.id = id; BG.games[id] = mod; };
 BG.catalog = [
@@ -9,14 +9,14 @@ BG.catalog = [
   { id: 'go', cat: '棋類', files: ['games/go/go.css', 'games/go/rules.js', 'games/go/game.js', 'games/go/guide.js'], title: '圍棋（9路）', icon: '●', color: '#3d3d3d', players: '2 人對戰', desc: '小棋盤，適合初學，一盤約 10～15 分鐘', ready: true },
   { id: 'go13', cat: '棋類', files: ['games/go/go.css', 'games/go/rules.js', 'games/go/game.js', 'games/go/guide.js'], title: '圍棋（13路）', icon: '◐', color: '#55473a', players: '2 人對戰', desc: '中棋盤，學會 9 路後再挑戰', ready: true },
   { id: 'chess', cat: '棋類', files: ['games/chess/chess.css', 'games/chess/rules.js', 'games/chess/game.js', 'games/chess/guide.js'], title: '西洋棋', icon: '♚', color: '#5b4636', players: '2 人對戰', desc: '國際標準規則：入堡、吃過路兵、升變全部自動判定', ready: true },
-  { id: 'poker', cat: '牌類', title: '撲克牌', icon: '♠', color: '#1f6b47', players: '10 種玩法', desc: '大老二、撿紅點、抽鬼牌、排7、十點半、99、吹牛、射龍門、21點、比大小', ready: true, sub: [
+  { id: 'poker', cat: '牌類', title: '撲克牌', icon: '♠', color: '#1f6b47', players: '10 種玩法', desc: '大老二、撿紅點、抽鬼牌、排7、十點半、99、撲克牌吹牛、射龍門、21點、比大小', ready: true, sub: [
     { id: 'big2', title: '大老二', players: '2–4 人', desc: '2 最大、梅花 3 先出，先出完牌就贏', ready: true, files: ['games/poker/poker.css', 'games/poker/cards.js', 'games/poker/big2.js'] },
     { id: 'pick-red', title: '撿紅點', players: '2–4 人', desc: '湊成 10 點把紅色牌撿回來', ready: true, files: ['games/poker/poker.css', 'games/poker/cards.js', 'games/poker/pick-red.js'] },
     { id: 'old-maid', title: '抽鬼牌', players: '2–6 人', desc: '互相抽牌、丟掉對子，別留到鬼牌', ready: true, files: ['games/poker/poker.css', 'games/poker/cards.js', 'games/poker/old-maid.js'] },
     { id: 'sevens', title: '排7', players: '2–4 人', desc: '從 7 開始往上往下接龍，蓋牌點數最少的人贏', ready: true, files: ['games/poker/poker.css', 'games/poker/cards.js', 'games/poker/sevens.js'] },
     { id: 'ten-half', title: '十點半', players: '1–6 人', desc: '補牌湊近十點半，超過就爆；J、Q、K 算半點', ready: true, files: ['games/poker/poker.css', 'games/poker/cards.js', 'games/poker/blackjack.js', 'games/poker/ten-half.js'] },
     { id: 'ninety-nine', title: '99', players: '2–6 人', desc: '輪流加點數，誰超過 99 誰輸', ready: true, files: ['games/poker/poker.css', 'games/poker/cards.js', 'games/poker/ninety-nine.js'] },
-    { id: 'cheat', title: '吹牛', players: '2–6 人', desc: '蓋牌出牌可以說謊，被抓到就收牌', ready: true, files: ['games/poker/poker.css', 'games/poker/cards.js', 'games/poker/cheat.js'] },
+    { id: 'cheat', title: '撲克牌吹牛', players: '2–6 人', desc: '蓋牌出牌可以說謊，被抓到就收牌', ready: true, files: ['games/poker/poker.css', 'games/poker/cards.js', 'games/poker/cheat.js'] },
     { id: 'dragon-gate', title: '射龍門', players: '2–6 人', desc: '抽到兩根門柱中間就贏', ready: true, files: ['games/poker/poker.css', 'games/poker/cards.js', 'games/poker/dragon-gate.js'] },
     { id: 'blackjack', title: '21點', players: '1–6 人', desc: '和電腦莊家比誰最接近 21 點', ready: true, files: ['games/poker/poker.css', 'games/poker/cards.js', 'games/poker/blackjack.js'] },
     { id: 'high-card', title: '比大小', players: '2–6 人', desc: '抽一張比點數和花色，5 回合定勝負', ready: true, files: ['games/poker/poker.css', 'games/poker/cards.js', 'games/poker/high-card.js'] }
@@ -28,7 +28,8 @@ BG.catalog = [
   { id: 'spot-hanzi', cat: '牌類', files: ['games/spot/spot.css', 'games/spot/game.js'], title: '眼明手快（國字）', icon: '田', color: '#5b2a86', players: '2–6 人', desc: '找出一樣的國字，練習分辨大太天夫、日目白自等形近字', ready: true },
   { id: 'seven-eat-nine', cat: '牌類', files: ['games/seven/seven.css', 'games/seven/game.js'], title: '7吃9', icon: '7', color: '#d35400', players: '2–6 人', desc: '沒有輪流的加減法搶牌：中間的數字加減後，最快出牌的人贏', ready: true },
   { id: 'mudpig', cat: '牌類', files: ['games/mudpig/mudpig.css', 'games/mudpig/game.js'], title: '泥巴豬農場', icon: '🐷', color: '#8d6e63', players: '2–6 人', desc: '讓自己的小豬全部滾進泥巴！蓋豬舍防下雨，用農夫和閃電搗蛋', ready: true },
-  { id: 'guess', cat: '益智', files: ['games/guess/guess.css', 'games/guess/game.js'], title: '終極密碼', icon: '?', color: '#0f766e', players: '2–6 人', desc: '猜 0～100 的祕密數字，範圍越縮越小，猜中的人爆炸（也可以設成猜中的人贏）', ready: true },
+  { id: 'guess', cat: '益智', files: ['games/guess/guess.css', 'games/guess/game.js'], title: '終極密碼', icon: '?', color: '#0f766e', players: '2–6 人', desc: '猜 1～100 之間的祕密數字，範圍越縮越小，猜中的人爆炸（也可以設成猜中的人贏）', ready: true },
+  { id: 'dice-bluff', cat: '益智', files: ['games/dice/dice.css', 'games/dice/game.js'], title: '骰子吹牛', icon: '🎲', color: '#b45309', players: '2–6 人', desc: '每人 5 顆骰子，喊「全桌至少幾個幾」，不相信就開！1 點萬用、可以喊齋', ready: true },
   { id: 'mahjong', cat: '麻將', files: ['games/mahjong/mahjong.css', 'games/mahjong/rules.js', 'games/mahjong/game.js', 'games/mahjong/guide.js'], title: '台灣麻將', icon: '中', color: '#1b7f5a', players: '2–4 人', desc: '台灣 16 張：吃碰槓胡、花牌、算台數', ready: true },
   { id: 'chinese-checkers', cat: '棋類', files: ['games/checkers/checkers.css', 'games/checkers/rules.js', 'games/checkers/game.js', 'games/checkers/guide.js'], title: '三色跳棋', icon: '✦', color: '#2a9d8f', players: '2–3 人', desc: '跳過彈珠連跳，先把對面的角填滿就贏', ready: true }
 ];
