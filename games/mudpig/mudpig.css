@@ -1,0 +1,75 @@
+/* 泥巴豬農場：草地農場桌 */
+.mp-table { width: 100%; box-sizing: border-box; min-height: 100%; padding: 10px 10px 14px; background: radial-gradient(circle at 85% 6%, #fff6c955, transparent 40%), linear-gradient(170deg, #9ccc65, #689f38 70%, #558b2f); border-radius: 18px; color: #33280f; display: flex; flex-direction: column; gap: 9px; }
+.mp-status { text-align: center; font-weight: 800; font-size: 17px; padding: 6px 10px; border-radius: 12px; background: #fffdf2d9; }
+.mp-status.me { background: #ffd54f; color: #5a3a00; animation: mpPulse 1.4s ease-in-out infinite; }
+@keyframes mpPulse { 50% { box-shadow: 0 0 0 4px #fff8; } }
+.mp-opps { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 7px; }
+.mp-opps.pc2 { grid-template-columns: repeat(auto-fit, minmax(108px, 1fr)); }
+.mp-opps.n1 { grid-template-columns: 1fr; }
+.mp-opp .mp-pig { flex: 1 1 0; min-width: 0; max-width: 56px; }
+.mp-opp .mp-name { font-size: 14px; } .mp-opp .mp-name small { font-size: 12px; padding: 1px 6px; }
+.mp-opp, .mp-me { background: #fffdf2cc; border-radius: 14px; padding: 6px 8px 8px; border: 3px solid transparent; transition: border-color .2s, opacity .2s; }
+.mp-opp.turn, .mp-me.turn { border-color: #ffb300; box-shadow: 0 0 0 3px #fff6; }
+.mp-opp.out { opacity: .45; }
+.mp-name { display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 15px; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-name i { flex: none; width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 2px #fff; }
+.mp-name span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.mp-name small u { text-decoration: none; }
+.mp-name small { flex: none; margin-left: auto; font-size: 13px; font-weight: 800; background: #8d6e63; color: #fff; border-radius: 999px; padding: 1px 8px; }
+.mp-pigs { display: flex; justify-content: center; gap: 6px; }
+.mp-pig { position: relative; width: 52px; border-radius: 10px; background: #fff; box-shadow: 0 2px 0 #0002; transition: transform .15s; -webkit-tap-highlight-color: transparent; }
+.mp-pigs.big .mp-pig { width: min(calc((var(--vw, 1vw) * 100 - 70px) / 4), 104px); }
+.mp-pig img { display: block; width: 100%; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 10px; }
+.mp-pig.dirty { box-shadow: 0 0 0 3px #795548; }
+.mp-pig.barn { box-shadow: 0 0 0 3px #c62828; padding-top: 0; }
+.mp-pig.dirty.barn { box-shadow: 0 0 0 3px #c62828, 0 0 0 6px #795548; }
+.mp-roof { position: absolute; left: 0; right: 0; top: 0; display: flex; align-items: center; justify-content: center; gap: 2px; flex-wrap: wrap; background: #c62828ee; color: #fff; font-size: 12px; font-weight: 800; border-radius: 10px 10px 4px 4px; padding: 1px 2px; line-height: 1.3; }
+.mp-pig.sm .mp-roof { font-size: 10px; }
+.mp-roof b { font-size: 11px; }
+.mp-pig.tg { cursor: pointer; animation: mpGlow 1s ease-in-out infinite; z-index: 1; }
+.mp-pig.tg:active { transform: scale(.94); }
+@keyframes mpGlow { 0%, 100% { box-shadow: 0 0 0 3px #ffeb3b, 0 0 12px 4px #fff59d; transform: translateY(0); } 50% { box-shadow: 0 0 0 5px #ffeb3b, 0 0 20px 8px #fff59d; transform: translateY(-4px); } }
+.mp-mid { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.mp-deck, .mp-top { position: relative; width: 62px; flex: none; }
+.mp-deck img, .mp-top img { display: block; width: 100%; border-radius: 8px; box-shadow: 0 3px 6px #0004; }
+.mp-deck b { position: absolute; right: -6px; bottom: -6px; background: #5d4037; color: #fff; border-radius: 999px; font-size: 12px; padding: 1px 7px; }
+.mp-top span { position: absolute; left: 0; right: 0; bottom: 3px; text-align: center; font-size: 12px; font-weight: 800; color: #fff; text-shadow: 0 1px 2px #000; }
+.mp-log { flex: 1; min-width: 0; max-width: 360px; background: #fffdf2e6; border-radius: 12px; padding: 8px 10px; font-size: 15px; font-weight: 700; line-height: 1.4; }
+.mp-me { background: #fffdf2; }
+.mp-hand { display: flex; justify-content: center; gap: 7px; margin-top: 9px; }
+.mp-card { width: min(calc((var(--vw, 1vw) * 100 - 64px) / 3), 150px); padding: 4px 4px 6px; border: 0; border-radius: 12px; background: #fff; box-shadow: 0 3px 0 #a1887f, 0 4px 8px #0002; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; color: #3e2723; transition: transform .15s, box-shadow .15s; -webkit-tap-highlight-color: transparent; font-family: inherit; }
+.mp-card img { display: block; width: 100%; aspect-ratio: 4 / 5; object-fit: cover; object-position: center 40%; border-radius: 9px; }
+.mp-card b { font-size: 17px; }
+.mp-card small { font-size: 12px; line-height: 1.35; text-align: center; color: #5d4037; }
+.mp-card.sel { transform: translateY(-8px); box-shadow: 0 0 0 4px #ffb300, 0 8px 14px #0003; }
+.mp-card.dim { opacity: .5; }
+.mp-tools { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; }
+.mp-btn { border-radius: 12px; padding: 8px 13px; font-size: 15px; font-weight: 800; background: #fff8e1; color: #5d4037; box-shadow: 0 3px 0 #a1887f; }
+.mp-btn.go { background: #4fc3f7; color: #fff; box-shadow: 0 3px 0 #0277bd; }
+.mp-host { display: flex; flex-direction: column; gap: 3px; font-size: 15px; }
+.mp-hrow { display: flex; align-items: center; gap: 4px; } .mp-hrow i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 2px; } .mp-hrow.out { opacity: .4; }
+.mp-gfig img { display: block; width: 100%; max-width: 160px; margin: 0 auto; border-radius: 10px; }
+
+/* 橫式（平板橫放、電腦）：左邊看別人、右邊是自己的小豬和手牌 */
+@media (min-aspect-ratio: 6/5) and (min-width: 640px) {
+  .mp-table { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); grid-template-rows: auto auto 1fr auto; grid-template-areas: "st st" "op me" "md me" "md tl"; align-items: start; column-gap: 10px; }
+  .mp-status { grid-area: st; } .mp-opps { grid-area: op; } .mp-mid { grid-area: md; align-self: start; flex-wrap: wrap; } .mp-me { grid-area: me; } .mp-tools { grid-area: tl; }
+  .mp-opps.n1, .mp-opps.n2 { grid-template-columns: 1fr; }
+  .mp-opp .mp-pig { max-width: 64px; }
+  .mp-deck, .mp-top { width: 72px; }
+  .mp-pigs.big .mp-pig { width: min(120px, calc(var(--vh, 1vh) * 17)); }
+  .mp-card { width: min(160px, calc(var(--vh, 1vh) * 20)); }
+}
+/* 直式畫面高度不夠時（例如手機 6 人局），牌圖和小豬跟著高度縮一點，避免要捲動 */
+@media not all and (min-aspect-ratio: 6/5) {
+  .mp-card img { max-height: calc(var(--vh, 1vh) * 12); }
+  .mp-pigs.big .mp-pig { width: min(calc((var(--vw, 1vw) * 100 - 70px) / 4), 104px, calc(var(--vh, 1vh) * 12)); }
+}
+@media (max-width: 500px) {
+  .mp-opps.n4 .mp-name small u, .mp-opps.n5 .mp-name small u { display: none; }
+  .mp-opp .mp-name { gap: 4px; } .mp-opp .mp-name small { padding: 1px 5px; }
+  .mp-table { gap: 7px; padding: 8px 8px 10px; }
+  .mp-deck, .mp-top { width: 50px; }
+  .mp-log { font-size: 14px; padding: 6px 8px; }
+  .mp-hand { margin-top: 7px; }
+}
