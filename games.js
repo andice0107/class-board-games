@@ -11,6 +11,7 @@ BG.catalog = [
   { id: 'rummikub', cat: '牌類', title: '拉密', icon: '7', color: '#e07a1f', players: '2–4 人', desc: '規劃中', ready: false },
   { id: 'spot-match', cat: '牌類', title: '眼明手快', icon: '👀', color: '#8e44ad', players: '2–8 人', desc: '兩張牌找出唯一相同的圖案（規劃中）', ready: false },
   { id: 'mahjong', cat: '麻將', title: '中國麻將', icon: '中', color: '#1b7f5a', players: '4 人', desc: '規劃中', ready: false },
+  { id: 'gomoku', cat: '棋類', title: '五子棋', icon: '⚫', color: '#a0522d', players: '2 人對戰', desc: '規劃中', ready: false },
   { id: 'chinese-checkers', cat: '棋類', title: '三色跳棋', icon: '✦', color: '#2a9d8f', players: '2–3 人', desc: '規劃中', ready: false }
 ];
 BG.meta = function (id) { for (var i = 0; i < BG.catalog.length; i++) if (BG.catalog[i].id === id) return BG.catalog[i]; return null; };
