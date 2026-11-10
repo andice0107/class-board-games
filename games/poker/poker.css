@@ -150,3 +150,15 @@
 .ch2-ranks { flex-wrap: wrap; gap: 5px; } .ch2-ranks span { color: #fff4e0; font-weight: 800; }
 .pk-btn.small { padding: 5px 8px; font-size: 14px; min-width: 34px; }
 .pk-btn.ch2-call { background: #ff6b6b; color: #fff; box-shadow: 0 3px 0 #a33; }
+.ch2-order { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px; font-size: 13px; color: #fff4e0; }
+.ch2-order .lbl { font-weight: 900; margin-right: 4px; opacity: .85; }
+.ch2-order .who { display: inline-flex; align-items: center; gap: 4px; background: #0003; border-radius: 999px; padding: 2px 8px; }
+.ch2-order .who i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.ch2-order .who.now { background: #f4d27a; color: #1b1b22; font-weight: 900; box-shadow: 0 0 0 2px #fff; }
+.ch2-order .who.out { opacity: .4; text-decoration: line-through; }
+.ch2-order .ar { opacity: .8; font-weight: 900; }
+.ch2-log { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 8px; background: #0003; border-radius: 10px; padding: 5px 8px; color: #fff4e0; font-size: 13px; max-width: 100%; }
+.ch2-log b { width: 100%; text-align: center; font-size: 12px; opacity: .85; }
+.ch2-log span { display: inline-flex; align-items: center; gap: 4px; font-weight: 800; }
+.ch2-log span.pass { opacity: .6; font-weight: 600; }
+.ch2-log i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }

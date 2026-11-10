@@ -11,7 +11,7 @@
   function alive(g) { var a = []; for (var s = 0; s < g.np; s++) if (g.out.indexOf(s) < 0) a.push(s); return a; }
   function nxt(g, s) { for (var k = 1; k <= g.np; k++) { var n = (s + k) % g.np; if (g.out.indexOf(n) < 0) return n; } return s; }
   function sortH(h) { return h.sort(function (a, b) { return ORD.indexOf(a[0]) - ORD.indexOf(b[0]) || a.localeCompare(b); }); }
-  function newRound(g, s) { g.rank = null; g.turn = s; g.lastPlay = null; g.passes = 0; }
+  function newRound(g, s) { g.rlog = []; g.rank = null; g.turn = s; g.lastPlay = null; g.passes = 0; }
   function checkWin(g, actor) { // 出完牌的人，下一家沒抓 → 贏
     if (g.pendingWin != null && g.pendingWin !== actor) { g.res = { w: g.pendingWin, why: 'empty' }; return true; }
     return false;
@@ -24,7 +24,7 @@
     seatColor: function (i) { return SEATC[i]; },
     init: function (n) {
       n = Math.max(2, Math.min(6, n || 4));
-      var d = PK.deck(0), g = { np: n, hands: [], pile: [], rank: null, turn: 0, lastPlay: null, passes: 0, reveal: null, pendingWin: null, dead: 0, out: [], log: null, cnt: 0, res: null };
+      var d = PK.deck(0), g = { np: n, hands: [], pile: [], rank: null, turn: 0, lastPlay: null, passes: 0, reveal: null, pendingWin: null, rlog: [], dead: 0, out: [], log: null, cnt: 0, res: null };
       for (var s = 0; s < n; s++) g.hands.push([]);
       d.forEach(function (c, i) { g.hands[i % n].push(c); });
       g.hands.forEach(sortH);
@@ -35,7 +35,7 @@
     teacherDraw: function (g) { g.res = { w: -1, why: 'teacher' }; },
     view: function (g, seat) {
       return { np: g.np, turn: g.turn, rank: g.rank, hand: seat >= 0 ? g.hands[seat] : null, counts: g.hands.map(function (h) { return h.length; }), pile: g.pile.length,
-        lastPlay: g.lastPlay ? { s: g.lastPlay.s, n: g.lastPlay.cards.length } : null, reveal: g.reveal, log: g.log, out: g.out, cnt: g.cnt, pendingWin: g.pendingWin };
+        lastPlay: g.lastPlay ? { s: g.lastPlay.s, n: g.lastPlay.cards.length } : null, reveal: g.reveal, log: g.log, rlog: g.rlog || [], out: g.out, cnt: g.cnt, pendingWin: g.pendingWin };
     },
     act: function (g, seat, d, notify) {
       if (g.res || g.out.indexOf(seat) >= 0) return false;
@@ -48,7 +48,7 @@
         if (checkWin(g, seat)) { g.cnt++; return true; }
         cs.forEach(function (c) { h.splice(h.indexOf(c), 1); g.pile.push(c); });
         g.rank = rk; g.lastPlay = { s: seat, cards: cs.slice() }; g.passes = 0; g.reveal = null;
-        g.log = { k: 'play', s: seat, n: cs.length, rank: rk };
+        g.log = { k: 'play', s: seat, n: cs.length, rank: rk }; (g.rlog = g.rlog || []).push({ s: seat, n: cs.length });
         if (!h.length) g.pendingWin = seat;
         g.turn = nxt(g, seat); g.cnt++;
         return true;
@@ -56,7 +56,7 @@
       if (d.t === 'pass') {
         if (!g.rank) return false;
         if (checkWin(g, seat)) { g.cnt++; return true; }
-        g.passes++; g.log = { k: 'pass', s: seat }; g.reveal = null;
+        g.passes++; g.log = { k: 'pass', s: seat }; g.reveal = null; (g.rlog = g.rlog || []).push({ s: seat, p: 1 });
         var n = nxt(g, seat);
         if (g.lastPlay && n === g.lastPlay.s) { g.dead += g.pile.length; g.pile = []; g.log = { k: 'clear', s: n }; newRound(g, n); }
         else g.turn = n;
@@ -141,12 +141,20 @@
     else st.textContent = '輪到 ' + who(tb, v.turn);
     wrap.appendChild(st);
     wrap.appendChild(PKUI.opps(tb, { np: v.np, counts: v.counts, out: v.out, turn: v.turn }, seat, function (i) { return v.pendingWin === i ? '出完了！' : ''; }, short));
+    var ord = el('div', 'ch2-order'); ord.appendChild(el('span', 'lbl', '出牌順序'));
+    for (var q = 0; q < v.np; q++) { var si = (seat + q) % v.np; if (q) ord.appendChild(el('span', 'ar', '→'));
+      var tg = el('span', 'who' + (si === v.turn && !tb.res ? ' now' : '') + (v.out.indexOf(si) >= 0 ? ' out' : '')); var dd = el('i'); dd.style.background = SEATC[si]; tg.appendChild(dd); tg.appendChild(document.createTextNode(si === seat ? '我' : short(tb, si))); ord.appendChild(tg); }
+    ord.appendChild(el('span', 'ar', '↩'));
+    wrap.appendChild(ord);
     var felt = el('div', 'pk-felt ch2-felt');
     var pile = el('div', 'ch2-pile');
     for (var k = 0; k < Math.min(v.pile, 8); k++) { var b = el('span'); b.innerHTML = PK.svg(null, { back: true }); b.style.transform = 'rotate(' + ((k * 37) % 30 - 15) + 'deg)'; pile.appendChild(b); }
     felt.appendChild(pile);
     felt.appendChild(el('div', 'ch2-claim', v.rank ? '這一輪喊：「' + PK.label(v.rank) + '」・桌上 ' + v.pile + ' 張' : '新的一輪'));
     if (v.lastPlay && v.rank) felt.appendChild(el('div', 'ch2-last', who(tb, v.lastPlay.s) + '：「' + v.lastPlay.n + ' 張 ' + PK.label(v.rank) + '」'));
+    if (v.rlog.length && v.rank) { var lg = el('div', 'ch2-log'); lg.appendChild(el('b', '', '這一輪喊的牌'));
+      v.rlog.forEach(function (x) { var r = el('span', x.p ? 'pass' : ''); var dd = el('i'); dd.style.background = SEATC[x.s]; r.appendChild(dd); r.appendChild(document.createTextNode(who(tb, x.s) + '：' + (x.p ? '不出' : x.n + ' 張 ' + PK.label(v.rank)))); lg.appendChild(r); });
+      felt.appendChild(lg); }
     if (v.reveal) { var rv = el('div', 'ch2-reveal ' + (v.reveal.lied ? 'lie' : 'true')); rv.innerHTML = '<small>' + who(tb, v.reveal.by) + ' 抓 ' + who(tb, v.reveal.s) + '（喊 ' + PK.label(v.reveal.rank) + '）</small><span>' + v.reveal.cards.map(function (c) { return PK.mini(c); }).join('') + '</span><small>' + (v.reveal.lied ? '😝 吹牛被抓到！' : '😇 沒說謊') + '　' + who(tb, v.reveal.taker) + ' 收 ' + v.reveal.got + ' 張</small>'; felt.appendChild(rv); }
     wrap.appendChild(felt);
     var me = PKUI.hand(v.hand, { title: tb.seats[seat].name === '我' ? '我' : tb.seats[seat].name + '・我', color: SEATC[seat], turn: myTurn, sel: L.sel,
@@ -176,7 +184,7 @@
   BG.register('cheat', mod);
   mod.guide = {
     student: [
-      { h: '怎麼玩', html: '<ol><li>牌全部發完。</li><li>一輪開始的人選 1～4 張牌<b>蓋著</b>出，並喊一個點數，例如「兩張 7」。</li><li>接下來的人都要跟著喊<b>同一個點數</b>，蓋著出 1～4 張。<b>可以說謊！</b>手上沒有 7 也可以假裝。</li><li>不想出就按「不出」。大家都不出、輪回最後出牌的人時，桌上的牌清掉，他重新開始一輪。</li><li>覺得上一家在吹牛，就按「<b>🔍 抓！</b>」。</li></ol>' },
+      { h: '怎麼玩', html: '<ol><li>牌全部發完。</li><li>一輪開始的人選 1～4 張牌<b>蓋著</b>出，並喊一個點數，例如「兩張 7」。</li><li>接下來的人都要跟著喊<b>同一個點數</b>，蓋著出 1～4 張。<b>可以說謊！</b>手上沒有 7 也可以假裝。</li><li>不想出就按「不出」。大家都不出、輪回最後出牌的人時，桌上的牌清掉，他重新開始一輪。</li><li>輪到你的時候，覺得<b>上一家</b>（剛剛出牌的人）在吹牛，就按「<b>🔍 抓！</b>」。只能抓上一家，不能抓更早出的人。</li><li>畫面上方的「出牌順序」箭頭會告訴你誰在你前面、誰在你後面；桌上會列出這一輪每個人喊了「幾張幾」。</li></ol>' },
       { h: '抓吹牛', html: '<ul><li>抓的時候翻開上一家剛出的牌。</li><li><b>真的在吹牛</b>（有一張不是喊的點數）→ 吹牛的人把桌上<b>全部的牌</b>收回去。</li><li><b>沒說謊</b> → 抓的人自己把桌上的牌收回去。</li><li>收牌的人的下一家開始新的一輪。</li><li>小技巧：一個點數只有 4 張。你手上有 3 張 7，別人卻喊「兩張 7」，一定是吹牛！</li></ul>' },
       { h: '怎麼贏', html: '<p>第一個把手牌出完的人，只要下一家沒有抓到他吹牛，就贏了（積分榜 +3 分）。和電腦玩的不列入總分。</p>' }
     ],
