@@ -1,6 +1,6 @@
 /* 遊戲清單：每個遊戲是 games/<id>/ 裡獨立的模組，用 BG.register 加進來 */
 window.BG = window.BG || {};
-BG.VER = '202611101518';
+BG.VER = '202611101520';
 BG.games = BG.games || {};
 BG.register = function (id, mod) { mod.id = id; BG.games[id] = mod; };
 BG.catalog = [
@@ -145,3 +145,24 @@ BG.zoom = function (key, content) {
   requestAnimationFrame(apply);
   return wrap;
 };
+
+/* 有新版本時提醒重新整理（避免一直開著的分頁停在舊版） */
+(function () {
+  if (!window.fetch || location.protocol === 'file:') return;
+  var shown = false;
+  function check() {
+    if (shown) return;
+    fetch('version.txt?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : ''; }).then(function (t) {
+      t = (t || '').trim();
+      if (!/^\d{12}$/.test(t) || t <= BG.VER || shown) return;
+      shown = true;
+      var b = document.createElement('div');
+      b.style.cssText = 'position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:9999;background:#1f6feb;color:#fff;padding:10px 16px;border-radius:999px;box-shadow:0 4px 16px rgba(0,0,0,.3);font-size:16px;cursor:pointer;max-width:calc(100% - 32px);text-align:center';
+      b.textContent = '🔄 有新版本，點這裡更新（房間和分數會保留）';
+      b.onclick = function () { location.reload(); };
+      document.body.appendChild(b);
+    }).catch(function () {});
+  }
+  setTimeout(check, 5000); setInterval(check, 120000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) check(); });
+})();
