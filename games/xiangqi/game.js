@@ -83,7 +83,7 @@
       var mine = XQ.side(v.board[v.last[1]]) === COL[tb.seat];
       var capd = prev && prev.view && prev.view.board[v.last[1]] !== '.';
       if (v.check && !tb.res) { fx.snd('check'); stamp('將'); }
-      else if (!mine) { if (capd) { fx.snd('cap'); splash(); } else fx.snd('move'); }
+      else if (!mine) { if (capd) { fx.snd('cap'); splash(); } else fx.snd('move'); setTimeout(function () { fx.snd('turn'); }, 350); }
       L.anim = !mine;
     } else if (L.lastN >= 0 && v.n < L.lastN) fx.toast('已經悔棋');
     L.lastN = v.n;
@@ -99,7 +99,7 @@
     var info = tb.seats[i], turn = !tb.res && v.turn === COL[i];
     var w = el('div', 'xq-who' + (turn ? ' turn' : '')); w.setAttribute('data-seat', i);
     w.appendChild(el('span', 'xq-stone ' + COL[i], i === 0 ? '帥' : '將'));
-    w.appendChild(el('span', 'n', info.name + (isMe ? '（我）' : '')));
+    w.appendChild(el('span', 'n', info.name + (isMe && info.name !== '我' ? '・我' : '')));
     if (!isMe && !info.bot) { w.appendChild(el('span', 'dot ' + (info.on ? 'on' : 'off'))); if (!info.on) w.appendChild(el('span', 'tag', info.gone ? '已離開' : '離線')); }
     w.appendChild(el('span', 'tag' + (turn ? ' now' : ''), turn ? '落子中' : mod.seatName(i)));
     return w;
@@ -130,7 +130,7 @@
         if (v.board[i] !== '.') { ctx.snd('cap'); splash(); } else ctx.snd('move');
         ctx.send('move', { from: L.sel, to: i, n: v.n }); L.sel = -1; L.dots = []; ctx.rerender(); return;
       }
-      if (XQ.side(v.board[i]) === my) { L.sel = L.sel === i ? -1 : i; L.dots = L.sel >= 0 ? XQ.legalFrom(v.board, i) : []; if (L.sel >= 0 && !L.dots.length) ctx.toast('這顆棋現在不能走'); ctx.snd('tap'); }
+      if (XQ.side(v.board[i]) === my) { L.sel = L.sel === i ? -1 : i; L.dots = L.sel >= 0 ? XQ.legalFrom(v.board, i) : []; if (L.sel >= 0 && !L.dots.length) { ctx.toast('這顆棋現在不能走'); ctx.snd('error'); } else ctx.snd('tap'); }
       else { L.sel = -1; L.dots = []; }
       ctx.rerender();
     });

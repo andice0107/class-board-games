@@ -11,6 +11,7 @@
   function el(t, c, x) { var e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; }
   function btn(c, x, fn) { var b = el('button', c, x); b.type = 'button'; b.addEventListener('click', fn); return b; }
   document.title = META.title + '・桌遊對戰教室（老師）';
+  $('h-sfx').appendChild(BGSfx.button('btn small ghost'));
   $('h-game').innerHTML = '<b style="background:' + META.color + '">' + META.icon + '</b>';
   $('h-game').appendChild(document.createTextNode(META.title));
   var S = null, net = null;
@@ -47,12 +48,20 @@
 
   /* ---------- 玩家與棋桌 ---------- */
   function online(p) { return Date.now() - p.lastSeen < ONLINE_MS; }
+  var ADJ = ['快樂', '勇敢', '聰明', '閃亮', '神秘', '冷靜', '熱血', '機智', '可愛', '認真', '飛天', '無敵', '溫柔', '超級', '幸運'],
+    NOUN = ['熊貓', '老虎', '海豚', '貓頭鷹', '狐狸', '企鵝', '獅子', '兔子', '松鼠', '老鷹', '無尾熊', '長頸鹿', '小龍', '鯨魚', '刺蝟', '浣熊', '獨角獸', '柴犬'];
+  function funName() {
+    var taken = {}; Object.keys(S.players).forEach(function (k) { taken[S.players[k].name] = 1; });
+    for (var t = 0; t < 200; t++) { var n = ADJ[Math.floor(Math.random() * ADJ.length)] + NOUN[Math.floor(Math.random() * NOUN.length)]; if (!taken[n]) return n; }
+    return '同學' + (Object.keys(S.players).length + 1);
+  }
+  function dname(q) { return q.sid ? q.name + '（' + q.sid + '）' : q.name; }
   function pub(pid) {
     if (BG.isBot(pid)) { var L = BG.levels[(+pid.split(':')[1] || 1) - 1]; return { name: L.icon + ' 電腦（' + L.name + '）', on: true, bot: true, level: L.n }; }
-    var q = S.players[pid]; return q ? { name: q.name, on: online(q) } : { name: '（已離開）', on: false, gone: true }; }
+    var q = S.players[pid]; return q ? { name: dname(q), on: online(q) } : { name: '（已離開）', on: false, gone: true }; }
   function names(T) { return T.seats.map(pub); }
   function stOf(p) {
-    var s = p.stat || { w: 0, d: 0, l: 0 }, m = { t: 'st', to: p.pid, v: p.ver, name: p.name, gid: GID, qn: S.queue.length, stat: s, pts: pts(s), allowBot: S.allowBot !== false, botSeats: GAME.botSeats || null };
+    var s = p.stat || { w: 0, d: 0, l: 0 }, m = { t: 'st', to: p.pid, v: p.ver, name: p.name, sid: p.sid, gid: GID, qn: S.queue.length, stat: s, pts: pts(s), allowBot: S.allowBot !== false, botSeats: GAME.botSeats || null };
     var T = p.table && S.tables[p.table];
     if (T) { var seat = T.seats.indexOf(p.pid); m.tb = { no: T.no, round: T.round, seat: seat, seats: names(T), view: GAME.view(T.g, seat), res: T.g.res || null, again: T.again }; }
     return m;
@@ -63,6 +72,7 @@
   function score(T) {
     var r = T.g.res; if (!r || T.scored === T.round) return;
     T.scored = T.round;
+    if (!SOLO) BGSfx.play('win');
     var vsBot = T.seats.some(BG.isBot);
     T.seats.forEach(function (id, i) { var p = S.players[id]; if (!p) return; var s = p.stat = p.stat || { w: 0, d: 0, l: 0 };
       if (vsBot) { s.bot = s.bot || { w: 0, d: 0, l: 0 }; s = s.bot; }
@@ -75,13 +85,25 @@
     if (!d || !d.pid) return;
     var p = S.players[d.pid];
     if (d.t === 'hello') {
-      var name = String(d.name || '').trim().slice(0, 10) || '同學';
+      var sid = String(d.sid || '');
+      if (!SOLO && !/^\d{4}$/.test(sid)) return net.send({ t: 'sidtaken', to: d.pid, text: '學號要剛好 4 碼數字。' });
+      if (!p && sid) {
+        var old = null; Object.keys(S.players).forEach(function (k) { if (S.players[k].sid === sid) old = S.players[k]; });
+        if (old && online(old)) return net.send({ t: 'sidtaken', to: d.pid, text: '學號 ' + sid + ' 已經有人在使用了，請確認是不是輸入錯了。' });
+        if (old) { // 同一位學生換裝置或重新進來：接回原本的名字、棋桌和積分
+          var oid = old.pid; delete S.players[oid]; old.pid = d.pid; S.players[d.pid] = p = old;
+          S.queue = S.queue.map(function (x) { return x === oid ? d.pid : x; });
+          Object.keys(S.tables).forEach(function (k) { var T = S.tables[k]; T.seats = T.seats.map(function (x) { return x === oid ? d.pid : x; }); });
+          Object.keys(S.players).forEach(function (k) { var q = S.players[k]; if (q.lastOpp) q.lastOpp = q.lastOpp.map(function (x) { return x === oid ? d.pid : x; }); });
+        }
+      }
       if (!p) {
         if (Object.keys(S.players).length >= MAXP) return net.send({ t: 'full', to: d.pid, text: '這個房間已經滿了（最多 ' + MAXP + ' 人）。' });
-        p = S.players[d.pid] = { pid: d.pid, name: name, joined: Date.now(), lastSeen: 0, ver: 1, table: null, lastOpp: [] };
+        p = S.players[d.pid] = { pid: d.pid, name: SOLO ? '我' : funName(), sid: sid, joined: Date.now(), lastSeen: 0, ver: 1, table: null, lastOpp: [] };
+        if (!SOLO) BGSfx.play('join');
         S.queue.push(p.pid);
       }
-      p.name = name; p.lastSeen = Date.now(); p._on = true;
+      p.lastSeen = Date.now(); p._on = true;
       send(p); pair(); render(); save();
       return;
     }
@@ -187,7 +209,7 @@
   }
   function kick(pid) {
     var p = S.players[pid]; if (!p) return;
-    if (!confirm('要請「' + p.name + '」離開房間嗎？')) return;
+    if (!confirm('要請「' + dname(p) + '」離開房間嗎？')) return;
     var T = tblOf(p);
     delete S.players[pid];
     S.queue = S.queue.filter(function (id) { return id !== pid; });
@@ -232,7 +254,7 @@
     if (!S.queue.length) w.appendChild(el('span', 'empty', '目前沒有人在等'));
     S.queue.forEach(function (id) {
       var p = S.players[id]; if (!p) return;
-      var c = el('span', 'chip'); c.appendChild(el('span', 'dot ' + (online(p) ? 'on' : 'off'))); c.appendChild(el('span', '', p.name));
+      var c = el('span', 'chip'); c.appendChild(el('span', 'dot ' + (online(p) ? 'on' : 'off'))); c.appendChild(el('span', '', dname(p)));
       c.appendChild(btn('x', '×', function () { kick(id); })); w.appendChild(c);
     });
     var box = $('h-tables'); box.innerHTML = '';
@@ -282,7 +304,7 @@
   $('h-lbov').addEventListener('click', function (e) { if (e.target === this || e.target.id === 'lb-close') this.classList.add('hidden'); });
   function drawLb() {
     if ($('h-lbov').classList.contains('hidden')) return;
-    var rows = Object.keys(S.players).map(function (k) { var p = S.players[k], s = p.stat || { w: 0, d: 0, l: 0 }; return { n: p.name, w: s.w, d: s.d, l: s.l, pts: pts(s), b: s.bot }; });
+    var rows = Object.keys(S.players).map(function (k) { var p = S.players[k], s = p.stat || { w: 0, d: 0, l: 0 }; return { n: dname(p), w: s.w, d: s.d, l: s.l, pts: pts(s), b: s.bot }; });
     rows.sort(function (a, b) { return b.pts - a.pts || b.w - a.w || a.l - b.l; });
     var h = '<div class="row" style="justify-content:space-between"><h2 style="margin:0">🏆 積分榜・' + META.title + '</h2><button class="btn small" id="lb-close" type="button">✕ 關閉</button></div>' +
       '<p class="empty">同學對戰：贏 3 分・和 1 分・輸 0 分。和電腦下的棋局另外記錄，不列入總分。</p><table class="lb"><tr><th>名次</th><th>名字</th><th>勝</th><th>和</th><th>負</th><th>總分</th><th>對電腦（勝/和/負）</th></tr>';

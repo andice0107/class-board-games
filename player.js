@@ -7,27 +7,8 @@
   function btn(c, x, fn) { var b = el('button', c, x); b.type = 'button'; b.addEventListener('click', function (e) { snd.unlock(); fn(e); }); return b; }
   function hashArg(k) { var m = location.hash.match(new RegExp('[#&]' + k + '=([^&]+)')); return m ? decodeURIComponent(m[1]) : null; }
 
-  /* ---------- 音效 ---------- */
-  var snd = (function () {
-    var ctx = null;
-    function unlock() { if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (ctx && ctx.state === 'suspended') ctx.resume(); }
-    function tone(f, dur, type, vol, at) {
-      if (!ctx) return; var t = ctx.currentTime + (at || 0), o = ctx.createOscillator(), g = ctx.createGain();
-      o.type = type || 'sine'; o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * .6, t + dur);
-      g.gain.setValueAtTime(vol || .3, t); g.gain.exponentialRampToValueAtTime(.001, t + dur); o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t + dur);
-    }
-    var S = {
-      tap: function () { tone(900, .05, 'sine', .15); },
-      move: function () { tone(520, .09, 'triangle', .35); tone(260, .12, 'sine', .25); },
-      cap: function () { tone(420, .08, 'square', .18); tone(180, .2, 'triangle', .35, .03); },
-      check: function () { tone(880, .15, 'triangle', .3); tone(660, .2, 'triangle', .3, .15); },
-      win: function () { [523, 659, 784, 1047].forEach(function (f, i) { tone(f, .3, 'triangle', .25, i * .12); }); },
-      lose: function () { [392, 330, 262].forEach(function (f, i) { tone(f, .35, 'sine', .25, i * .18); }); },
-      pop: function () { tone(740, .08, 'sine', .25); }
-    };
-    return { unlock: unlock, play: function (k) { if (S[k]) S[k](); } };
-  })();
-  document.addEventListener('pointerdown', function () { snd.unlock(); }, { passive: true });
+  /* 音效：sfx.js */
+  var snd = { unlock: function () { BGSfx.unlock(); }, play: function (k) { BGSfx.play(k); } };
 
   /* ---------- 連線 ---------- */
   var code = (hashArg('r') || '').toUpperCase(), broker = hashArg('b'), KEY = 'bg-player-' + code;
@@ -44,7 +25,7 @@
     clearTimeout(connect.t);
     connect.t = setTimeout(function () { if (!joined && code === cc) { if (net) net.close(); net = null; err = '找不到房間「' + cc + '」，請確認老師大螢幕上的代碼，或重新掃描 QR code。'; render(); } }, 14000);
   }
-  function hello() { if (net) net.send({ t: 'hello', pid: me.pid, name: me.name }); }
+  function hello() { if (net) net.send({ t: 'hello', pid: me.pid, sid: me.sid || '' }); }
   function send(t, extra) { if (!net) return; var d = { t: t, pid: me.pid }; for (var k in extra) d[k] = extra[k]; net.send(d); }
   setInterval(function () { if (!net) return; if (!joined) hello(); else send('ping', { v: S ? S.v : -1 }); }, 4000);
 
@@ -59,15 +40,20 @@
       var prev = S && S.tb ? S.tb : null;
       if (!d.tb || !prev || prev.round !== d.tb.round) bubbles = {};
       if (d.tb && GAME) {
+        if (!prev || prev.round !== d.tb.round) snd.play('start');
         GAME.onUpdate(prev, d.tb, fx);
         if (d.tb.res && !(prev && prev.res && prev.round === d.tb.round)) {
           var w = d.tb.res.w; if (w === d.tb.seat) { snd.play('win'); confetti(); } else if (w >= 0) snd.play('lose');
         }
       }
       S = d; me.name = d.name; save(); render();
+    } else if (d.t === 'sidtaken') {
+      if (joined) return;
+      if (net) net.close(); net = null; S = null; clearTimeout(connect.t);
+      me = { pid: null, sid: me.sid, name: '' }; save(); err = d.text; render();
     } else if (d.t === 'full' || d.t === 'kick') {
       joined = false; if (net) net.close(); net = null; S = null;
-      if (d.t === 'kick') { me = { pid: null, name: me.name }; save(); }
+      if (d.t === 'kick') { me = { pid: null, sid: me.sid, name: '' }; save(); }
       err = d.text; render();
     } else if (d.t === 'gone') hello();
     else if (d.t === 'emo') { bubble(d.from, EMO[d.i] || ''); snd.play('pop'); }
@@ -78,6 +64,7 @@
   function topBar() {
     var t = el('div', 'p-top');
     t.innerHTML = '<div class="brand"><div class="logo"><i></i><i></i><i></i><i></i></div><h1>桌遊對戰教室</h1></div><span class="sp"></span>';
+    t.appendChild(BGSfx.button('btn small ghost'));
     if (joined && S && GAME && GAME.guide) t.appendChild(btn('btn small ghost', '📖 規則', function () { BG.showGuide((BG.meta(S.gid) || {}).title + '・玩法說明', GAME.guide.student); }));
     if (code && !SOLO) t.appendChild(el('span', 'pill', '房間 ' + code));
     return t;
@@ -90,7 +77,7 @@
     if (!joined) {
       var c = el('div', 'panel p-card');
       c.appendChild(dice());
-      if (err) { c.appendChild(el('p', 'err', err)); c.appendChild(btn('btn-sun', '重新連線', function () { err = ''; connect(); })); c.appendChild(el('p')); c.appendChild(btn('btn small', '換一個名字', function () { me.pid = null; save(); err = ''; render(); })); }
+      if (err) { c.appendChild(el('p', 'err', err)); c.appendChild(btn('btn-sun', '重新連線', function () { err = ''; connect(); })); c.appendChild(el('p')); c.appendChild(btn('btn small', '重新輸入學號', function () { me.pid = null; save(); err = ''; render(); })); }
       else c.appendChild(el('p', '', '正在進入房間…'));
       app.appendChild(c); return;
     }
@@ -129,17 +116,19 @@
   function nameForm() {
     var c = el('div', 'panel p-card');
     c.appendChild(dice());
-    c.appendChild(el('h2', '', '歡迎加入！'));
+    c.appendChild(el('h2', '', '輸入你的學號'));
     if (err) c.appendChild(el('p', 'err', err));
-    c.appendChild(el('p', '', '寫上你的名字或座號，就可以入座等候對手'));
-    var i = el('input'); i.maxLength = 10; i.placeholder = '你的名字'; i.value = me.name || ''; c.appendChild(i);
+    c.appendChild(el('p', '', '請輸入 4 碼學號：年級＋班級＋座號。例如 4 年 5 班 6 號是 4506，6 年 2 班 17 號是 6217。名字會由系統幫你取一個！'));
+    var i = el('input'); i.type = 'text'; i.inputMode = 'numeric'; i.pattern = '[0-9]*'; i.maxLength = 4; i.placeholder = '4 碼學號'; i.autocomplete = 'off'; i.value = me.sid || '';
+    i.addEventListener('input', function () { i.value = i.value.replace(/\D/g, '').slice(0, 4); });
+    c.appendChild(i);
     function go() {
-      var v = i.value.trim(); if (!v) return toast('請先寫名字');
-      me = { pid: 'p' + Math.random().toString(36).slice(2, 10), name: v.slice(0, 10) }; save(); err = ''; connect();
+      var v = i.value.trim(); if (!/^\d{4}$/.test(v)) { toast('學號要剛好 4 碼數字，例如 4506'); i.focus(); return; }
+      me = { pid: 'p' + Math.random().toString(36).slice(2, 10), sid: v, name: '' }; save(); err = ''; connect();
     }
     i.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
-    c.appendChild(btn('btn-sun', '入座 ▶', go));
-    app.appendChild(c);
+    c.appendChild(btn('btn-sun', '加入 ▶', go));
+    app.appendChild(c); i.focus();
   }
   function waiting() {
     var m = BG.meta(S.gid) || {}, c = el('div', 'panel p-card');
@@ -148,7 +137,7 @@
     var gb = el('div', 'gbadge'); gb.innerHTML = '<b style="background:' + m.color + '">' + m.icon + '</b>'; gb.appendChild(document.createTextNode(m.title || '')); c.appendChild(gb);
     c.appendChild(dice());
     c.appendChild(el('h2', '', '等待配對中'));
-    c.appendChild(el('p', '', me.name + '，你已經入座了！系統正在幫你找對手，請稍等一下。' + (S.qn > 1 ? '（目前有 ' + S.qn + ' 人在等）' : '')));
+    c.appendChild(el('p', '', '你在這裡的名字是「' + S.name + '」' + (S.sid ? '（' + S.sid + '）' : '') + '。系統正在幫你找對手，請稍等一下。' + (S.qn > 1 ? '（目前有 ' + S.qn + ' 人在等）' : '')));
     if (GAME && GAME.guide) c.appendChild(btn('btn', '📖 等待時先看玩法說明', function () { BG.showGuide(m.title + '・玩法說明', GAME.guide.student); }));
     }
     app.appendChild(c);
@@ -229,7 +218,7 @@
   var SOLO = (location.search.match(/[?&]solo=([\w-]+)/) || [])[1];
   if (SOLO) {
     // 一個人練習：在背景開一個只屬於自己的房間，對手是電腦
-    code = ''; me = { pid: 'solo' + Math.random().toString(36).slice(2, 8), name: '我' };
+    code = ''; me = { pid: 'solo' + Math.random().toString(36).slice(2, 8), name: '我', sid: '' };
     window.addEventListener('message', function (e) { if (e.origin === location.origin && e.data && e.data.bgSolo && !code) { code = e.data.bgSolo; connect(); } });
     var fr = document.createElement('iframe'); fr.src = 'host.html?g=' + SOLO + '&local=1&solo=1'; fr.style.cssText = 'position:absolute;width:1px;height:1px;opacity:0;border:0;pointer-events:none'; fr.setAttribute('aria-hidden', 'true');
     document.body.appendChild(fr);

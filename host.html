@@ -13,6 +13,7 @@
   <span class="pill" id="h-count">0 位學生</span>
   <span class="sp"></span>
   <span class="pill" id="h-net">🟡 連線中…</span>
+  <span id="h-sfx"></span>
   <button class="btn small ghost" id="h-lb" type="button">🏆 積分榜</button>
   <button class="btn small ghost" id="h-help" type="button">📖 教師說明</button>
   <button class="btn small ghost" id="h-new" type="button">🆕 開新房間</button>
@@ -31,7 +32,7 @@
   </aside>
   <section>
     <div class="tables" id="h-tables"></div>
-    <div class="notable" id="h-notable"><div class="big">🎲</div><br>學生掃描左邊的 QR code、寫上名字後，<br>系統會自動配對開桌，每一桌的狀況都會即時出現在這裡。</div>
+    <div class="notable" id="h-notable"><div class="big">🎲</div><br>學生掃描左邊的 QR code、輸入 4 碼學號後，<br>系統會自動配對開桌，每一桌的狀況都會即時出現在這裡。</div>
   </section>
 </div>
 <div class="overlay hidden" id="h-ov"><div class="panel" id="h-ovbox"></div></div>
@@ -40,6 +41,7 @@
 <script src="vendor/mqtt.min.js"></script>
 <script src="vendor/qrcode.js"></script>
 <script src="net.js"></script>
+<script src="sfx.js"></script>
 <script src="games.js"></script>
 <script src="host.js"></script>
 </body>
