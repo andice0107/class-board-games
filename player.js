@@ -154,7 +154,7 @@
       }
       if (SOLO) {
         var sr = el('div', 'row c'); sr.appendChild(el('span', '', '電腦出牌速度：'));
-        [['slow', '🐢 慢'], ['normal', '普通'], ['fast', '🐇 快']].forEach(function (o) { sr.appendChild(btn('btn small' + ((waiting.speed || 'normal') === o[0] ? ' on' : ''), o[1], function () { waiting.speed = o[0]; render(); })); });
+        [['vslow', '🐌 最慢'], ['slow', '🐢 慢'], ['normal', '普通'], ['fast', '🐇 快'], ['vfast', '⚡ 最快']].forEach(function (o) { sr.appendChild(btn('btn small' + ((waiting.speed || 'normal') === o[0] ? ' on' : ''), o[1], function () { waiting.speed = o[0]; render(); })); });
         bc.appendChild(sr);
       }
       var lv = el('div', 'levels');

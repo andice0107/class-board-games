@@ -192,7 +192,7 @@
     newRound(T, false);
     S.queue.forEach(function (id) { bump(S.players[id]); });
   }
-  var SPEEDS = { slow: 2, normal: 1, fast: .5 };
+  var SPEEDS = { vslow: 3.5, slow: 2, normal: 1, fast: .6, vfast: .35 };
   function speedOf(T) { return SPEEDS[T.speed || S.speed || 'normal'] || 1; }
   var botTimers = {};
   function runBots(T) {
@@ -308,8 +308,8 @@
   $('h-ov').addEventListener('click', function (e) { if (e.target === this) closeOv(); });
   $('h-auto').addEventListener('change', function () { S.auto = this.checked; save(); pair(); });
   (function () {
-    var sw = el('div', 'switch seatsel'); sw.appendChild(el('span', '', '電腦出牌速度：'));
-    [['slow', '🐢 慢'], ['normal', '普通'], ['fast', '🐇 快']].forEach(function (o) { var b = btn('btn small' + ((S.speed || 'normal') === o[0] ? ' on' : ''), o[1], function () { S.speed = o[0]; save(); [].forEach.call(sw.querySelectorAll('button'), function (x) { x.classList.toggle('on', x === b); }); }); sw.appendChild(b); });
+    var sw = el('div', 'switch seatsel speedsel'); sw.appendChild(el('span', '', '電腦出牌速度：'));
+    [['vslow', '🐌 最慢'], ['slow', '🐢 慢'], ['normal', '普通'], ['fast', '🐇 快'], ['vfast', '⚡ 最快']].forEach(function (o) { var b = btn('btn small' + ((S.speed || 'normal') === o[0] ? ' on' : ''), o[1], function () { S.speed = o[0]; save(); [].forEach.call(sw.querySelectorAll('button'), function (x) { x.classList.toggle('on', x === b); }); }); sw.appendChild(b); });
     $('h-lock').parentNode.parentNode.insertBefore(sw, $('h-lock').parentNode);
   })();
   $('h-lock').checked = !!S.locked;
