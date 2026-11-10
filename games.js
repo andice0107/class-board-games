@@ -1,6 +1,6 @@
 /* 遊戲清單：每個遊戲是 games/<id>/ 裡獨立的模組，用 BG.register 加進來 */
 window.BG = window.BG || {};
-BG.VER = '202611101622';
+BG.VER = '202611101624';
 BG.games = BG.games || {};
 BG.register = function (id, mod) { mod.id = id; BG.games[id] = mod; };
 BG.catalog = [
@@ -11,7 +11,7 @@ BG.catalog = [
   { id: 'chess', cat: '棋類', files: ['games/chess/chess.css', 'games/chess/rules.js', 'games/chess/game.js', 'games/chess/guide.js'], title: '西洋棋', icon: '♚', color: '#5b4636', players: '2 人對戰', desc: '國際標準規則：入堡、吃過路兵、升變全部自動判定', ready: true },
   { id: 'poker', cat: '牌類', title: '撲克牌', icon: '♠', color: '#1f6b47', players: '10 種玩法', desc: '大老二、撿紅點、抽鬼牌、排7、十點半、99、吹牛、射龍門、21點、比大小', ready: true, sub: [
     { id: 'big2', title: '大老二', players: '2–4 人', desc: '2 最大、梅花 3 先出，先出完牌就贏', ready: true, files: ['games/poker/poker.css', 'games/poker/cards.js', 'games/poker/big2.js'] },
-    { id: 'pick-red', title: '撿紅點', players: '2–4 人', desc: '湊成 10 點把紅色牌撿回來', ready: false },
+    { id: 'pick-red', title: '撿紅點', players: '2–4 人', desc: '湊成 10 點把紅色牌撿回來', ready: true, files: ['games/poker/poker.css', 'games/poker/cards.js', 'games/poker/pick-red.js'] },
     { id: 'old-maid', title: '抽鬼牌', players: '2–6 人', desc: '互相抽牌、丟掉對子，別留到鬼牌', ready: true, files: ['games/poker/poker.css', 'games/poker/cards.js', 'games/poker/old-maid.js'] },
     { id: 'sevens', title: '排7', players: '2–4 人', desc: '從 7 開始往上往下接龍，蓋牌點數最少的人贏', ready: true, files: ['games/poker/poker.css', 'games/poker/cards.js', 'games/poker/sevens.js'] },
     { id: 'ten-half', title: '十點半', players: '1–6 人', desc: '補牌湊近十點半，超過就爆；J、Q、K 算半點', ready: true, files: ['games/poker/poker.css', 'games/poker/cards.js', 'games/poker/blackjack.js', 'games/poker/ten-half.js'] },
