@@ -30,6 +30,7 @@
     seats: 4, seatOptions: [2, 3, 4, 5, 6], seatDefault: 4, botSeats: [1, 5],
     reasons: REASONS,
     levelDesc: ['全憑運氣', '全憑運氣', '全憑運氣', '全憑運氣'],
+    botDelay: 1600,
     seatName: function (i) { return '第 ' + (i + 1) + ' 位'; },
     seatColor: function (i) { return SEATC[i]; },
     init: function (n) {
@@ -126,6 +127,17 @@
     wrap.appendChild(st);
     wrap.appendChild(PKUI.opps(tb, v, seat, function (i) { if (tb.res && v.loser === i) return '🤡 鬼牌'; if (!v.counts[i] && v.out.indexOf(i) < 0) return '出完'; return v.target === i && !tb.res ? '被抽' : ''; }, short));
     var felt = el('div', 'pk-felt');
+    var la = v.last;
+    if (la && la.k === 'draw') {
+      var box2 = el('div', 'om-last');
+      var who = la.seat === seat ? '你' : short(tb, la.seat), whom = la.from === seat ? '你' : short(tb, la.from);
+      box2.appendChild(el('div', 'om-last-t', who + ' 從 ' + whom + ' 抽了一張' + (la.pair ? '，配對成功！' : la.c && la.c[0] === 'X' ? '……是鬼牌！' : '')));
+      var cr = el('div', 'om-last-c');
+      (la.pair ? la.pair : [la.c || null]).forEach(function (c) { var sp = el('span'); sp.innerHTML = PK.svg(c, { back: !c }); cr.appendChild(sp); });
+      if (la.pair) cr.appendChild(el('b', 'om-ok', '✔ 丟掉一對'));
+      box2.appendChild(cr);
+      felt.appendChild(box2);
+    }
     if (myTurn && v.target >= 0) {
       var n = v.counts[v.target], fan = el('div', 'om-fan');
       for (var k = 0; k < n; k++) (function (k) {

@@ -121,7 +121,7 @@
     if (!wasOn) { p._on = true; presence(p); }
     var T = tblOf(p), seat = T ? T.seats.indexOf(p.pid) : -1;
     if (d.t === 'ping') { if (d.v !== p.ver) send(p); return; }
-    if (d.t === 'bot') { if (!T && S.allowBot !== false) botTable(p, d.level, d.n); return; }
+    if (d.t === 'bot') { if (!T && S.allowBot !== false) { botTable(p, d.level, d.n); var NT = tblOf(p); if (NT && SOLO && SPEEDS[d.speed]) NT.speed = d.speed; } return; }
     if (!T) return;
     if (d.t === 'emo') {
       T.seats.forEach(function (id) { if (id !== p.pid) net.send({ t: 'emo', to: id, from: seat, i: d.i | 0 }); });
@@ -192,6 +192,8 @@
     newRound(T, false);
     S.queue.forEach(function (id) { bump(S.players[id]); });
   }
+  var SPEEDS = { slow: 2, normal: 1, fast: .5 };
+  function speedOf(T) { return SPEEDS[T.speed || S.speed || 'normal'] || 1; }
   var botTimers = {};
   function runBots(T) {
     if (botTimers[T.id] || !T.g || T.g.res || !GAME.botTurn) return;
@@ -206,7 +208,7 @@
           if (S.tables[T.id] !== T || T.g.res) return;
           var a = GAME.botTurn(T.g, seat, lv);
           if (a && GAME.act(T.g, seat, a, function () {})) touch(T);
-        }, peek.t === 'resp' ? 900 : 500 + Math.random() * 700);
+        }, (peek.t === 'resp' ? 900 : (GAME.botDelay || 500) + Math.random() * 700) * speedOf(T));
       })(i, lv);
       if (botTimers[T.id]) return;
     }
@@ -305,6 +307,11 @@
   }
   $('h-ov').addEventListener('click', function (e) { if (e.target === this) closeOv(); });
   $('h-auto').addEventListener('change', function () { S.auto = this.checked; save(); pair(); });
+  (function () {
+    var sw = el('div', 'switch seatsel'); sw.appendChild(el('span', '', '電腦出牌速度：'));
+    [['slow', '🐢 慢'], ['normal', '普通'], ['fast', '🐇 快']].forEach(function (o) { var b = btn('btn small' + ((S.speed || 'normal') === o[0] ? ' on' : ''), o[1], function () { S.speed = o[0]; save(); [].forEach.call(sw.querySelectorAll('button'), function (x) { x.classList.toggle('on', x === b); }); }); sw.appendChild(b); });
+    $('h-lock').parentNode.parentNode.insertBefore(sw, $('h-lock').parentNode);
+  })();
   $('h-lock').checked = !!S.locked;
   $('h-lock').addEventListener('change', function () { S.locked = this.checked; save(); render(); });
   $('h-bot').checked = S.allowBot !== false;

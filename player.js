@@ -152,9 +152,14 @@
         for (var k = S.botSeats[0]; k <= S.botSeats[1]; k++) (function (k) { var b = btn('btn small' + (k === (waiting.n || nb) ? ' on' : ''), (k + 1) + ' 人', function () { waiting.n = k; render(); }); nr.appendChild(b); })(k);
         bc.appendChild(nr); nb = waiting.n || nb;
       }
+      if (SOLO) {
+        var sr = el('div', 'row c'); sr.appendChild(el('span', '', '電腦出牌速度：'));
+        [['slow', '🐢 慢'], ['normal', '普通'], ['fast', '🐇 快']].forEach(function (o) { sr.appendChild(btn('btn small' + ((waiting.speed || 'normal') === o[0] ? ' on' : ''), o[1], function () { waiting.speed = o[0]; render(); })); });
+        bc.appendChild(sr);
+      }
       var lv = el('div', 'levels');
       BG.levels.forEach(function (L) {
-        var b = btn('lv', '', function () { send('bot', { level: L.n, n: nb }); toast('正在幫你開桌…'); });
+        var b = btn('lv', '', function () { send('bot', { level: L.n, n: nb, speed: waiting.speed || 'normal' }); toast('正在幫你開桌…'); });
         b.innerHTML = '<span class="ic">' + L.icon + '</span><b>' + L.name + '</b><small>' + ((GAME && GAME.levelDesc && GAME.levelDesc[L.n - 1]) || L.desc) + '</small>';
         lv.appendChild(b);
       });
