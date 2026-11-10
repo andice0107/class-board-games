@@ -30,9 +30,12 @@
 @keyframes ugPop { from { transform: scale(.7); opacity: 0; } }
 .ug-btn { border-radius: 12px; padding: 9px 14px; font-size: 16px; font-weight: 800; background: #ecfeff; color: #0f766e; box-shadow: 0 3px 0 #67a9a3; }
 .ug-btn.go { background: #fde047; color: #083b3a; box-shadow: 0 3px 0 #b49b16; }
-.ug-hist { display: flex; flex-direction: column; gap: 4px; max-height: 190px; overflow: auto; background: #00000026; border-radius: 12px; padding: 6px; }
+.ug-hist { display: flex; flex-direction: column; gap: 4px; flex: none; min-height: 96px; max-height: 210px; overflow: auto; background: #00000026; border-radius: 12px; padding: 6px; }
 .ug-h { display: flex; align-items: center; gap: 6px; font-size: 14px; padding: 2px 4px; }
 .ug-h i { width: 10px; height: 10px; border-radius: 50%; } .ug-h .n { min-width: 64px; } .ug-h b { font-size: 18px; min-width: 34px; text-align: right; color: #fde047; } .ug-h .t { opacity: .9; }
+.ug-h .rg { margin-left: auto; padding-left: 6px; font-size: 14px; font-weight: 800; color: #a7f3d0; white-space: nowrap; }
+.ug-h { flex-wrap: wrap; } .ug-h .t { white-space: nowrap; }
+@media (max-width: 420px) { .ug-h .n { min-width: 52px; } .ug-h { gap: 4px; } .ug-h .rg { font-size: 13px; } }
 .ug-h.hit { background: #fb718555; border-radius: 8px; }
 .ug-tools { display: flex; justify-content: center; gap: 8px; }
 /* 老師端 */

@@ -25,7 +25,7 @@
     forfeit: function (g, seat) { knock(g, seat, 'left'); },
     teacherDraw: function (g) { g.res = { w: -1, why: 'teacher' }; },
     view: function (g) {
-      return { np: g.np, mode: g.mode, lo: g.lo, hi: g.hi, turn: g.turn, hist: g.hist.slice(-12), out: g.out, cnt: g.cnt, secret: g.res ? g.secret : null };
+      return { np: g.np, mode: g.mode, lo: g.lo, hi: g.hi, turn: g.turn, hist: g.hist.slice(-30), out: g.out, cnt: g.cnt, secret: g.res ? g.secret : null };
     },
     act: function (g, seat, d, notify) {
       if (g.res || g.out.indexOf(seat) >= 0) return false;
@@ -40,7 +40,7 @@
         return true;
       }
       if (x < g.secret) { g.lo = x + 1; h.r = 'up'; } else { g.hi = x - 1; h.r = 'down'; }
-      g.hist.push(h); g.turn = nxt(g, seat); g.cnt++;
+      h.a = g.lo; h.b = g.hi; g.hist.push(h); g.turn = nxt(g, seat); g.cnt++;
       return true;
     },
     botTurn: function (g, seat, lv) {
@@ -151,7 +151,8 @@
         var r = el('div', 'ug-h ' + h.r), d = el('i'); d.style.background = SEATC[h.s]; r.appendChild(d);
         r.appendChild(el('span', 'n', who(tb, h.s)));
         r.appendChild(el('b', '', h.x));
-        r.appendChild(el('span', 't', h.r === 'hit' ? (v.mode === 'win' ? '🎯 猜中了！' : '💥 爆炸！') : h.r === 'up' ? '⬆️ 密碼比較大' : '⬇️ 密碼比較小'));
+        r.appendChild(el('span', 't', h.r === 'hit' ? (v.mode === 'win' ? '🎯 猜中了！' : '💥 爆炸！') : h.r === 'up' ? '⬆️ 密碼較大' : '⬇️ 密碼較小'));
+        if (h.r !== 'hit' && h.a != null) r.appendChild(el('span', 'rg', '→ ' + h.a + '～' + h.b + ' 之間'));
         hs.appendChild(r);
       });
       wrap.appendChild(hs);

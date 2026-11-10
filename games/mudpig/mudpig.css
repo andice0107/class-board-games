@@ -35,6 +35,11 @@
 .mp-deck b { position: absolute; right: -6px; bottom: -6px; background: #5d4037; color: #fff; border-radius: 999px; font-size: 12px; padding: 1px 7px; }
 .mp-top span { position: absolute; left: 0; right: 0; bottom: 3px; text-align: center; font-size: 12px; font-weight: 800; color: #fff; text-shadow: 0 1px 2px #000; }
 .mp-log { flex: 1; min-width: 0; max-width: 360px; background: #fffdf2e6; border-radius: 12px; padding: 8px 10px; font-size: 15px; font-weight: 700; line-height: 1.4; }
+.mp-li { display: flex; align-items: baseline; gap: 5px; font-size: 13px; font-weight: 600; opacity: .7; line-height: 1.35; }
+.mp-li + .mp-li { margin-top: 2px; }
+.mp-li i { flex: none; width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.mp-li.new { font-size: 15px; font-weight: 800; opacity: 1; }
+.mp-li.hit { color: #c62828; opacity: 1; }
 .mp-me { background: #fffdf2; }
 .mp-hand { display: flex; justify-content: center; gap: 7px; margin-top: 9px; }
 .mp-card { width: min(calc((var(--vw, 1vw) * 100 - 64px) / 3), 150px); padding: 4px 4px 6px; border: 0; border-radius: 12px; background: #fff; box-shadow: 0 3px 0 #a1887f, 0 4px 8px #0002; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; color: #3e2723; transition: transform .15s, box-shadow .15s; -webkit-tap-highlight-color: transparent; font-family: inherit; }
@@ -69,7 +74,9 @@
   .mp-opps.n4 .mp-name small u, .mp-opps.n5 .mp-name small u { display: none; }
   .mp-opp .mp-name { gap: 4px; } .mp-opp .mp-name small { padding: 1px 5px; }
   .mp-table { gap: 7px; padding: 8px 8px 10px; }
-  .mp-deck, .mp-top { width: 50px; }
-  .mp-log { font-size: 14px; padding: 6px 8px; }
+  .mp-deck { width: 44px; } .mp-top { display: none; } .mp-mid { gap: 8px; } .mp-log { max-width: none; }
+  .mp-log { padding: 5px 8px; } .mp-li { font-size: 12px; } .mp-li.new { font-size: 14px; }
   .mp-hand { margin-top: 7px; }
 }
+.mp-no { position: absolute; left: 3px; bottom: 3px; min-width: 16px; height: 16px; border-radius: 50%; background: #3e2723cc; color: #fff; font-style: normal; font-size: 11px; font-weight: 800; line-height: 16px; text-align: center; }
+.mp-pigs.big .mp-no { min-width: 20px; height: 20px; line-height: 20px; font-size: 13px; }

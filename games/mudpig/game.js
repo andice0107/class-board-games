@@ -43,6 +43,7 @@
     }
     return r;
   }
+  function pushLog(g) { if (!g.logs) g.logs = []; g.logs.push(g.log); if (g.logs.length > 6) g.logs.shift(); }
   function dirtyCount(g, s) { return g.pigs[s].filter(function (p) { return p.d; }).length; }
   var mod = {
     seats: 4, seatOptions: [2, 3, 4, 5, 6], seatDefault: 4, botSeats: [1, 5], botDelay: 1300, ver: 1,
@@ -53,7 +54,7 @@
     init: function (n) {
       n = Math.max(2, Math.min(6, n || 4));
       var deck = []; ORDER.forEach(function (k) { for (var i = 0; i < CARDS[k].k; i++) deck.push(k); });
-      var g = { np: n, deck: shuffle(deck), disc: [], hands: [], pigs: [], turn: Math.floor(Math.random() * n), log: null, out: [], cnt: 0, res: null };
+      var g = { np: n, deck: shuffle(deck), disc: [], hands: [], pigs: [], turn: Math.floor(Math.random() * n), log: null, logs: [], out: [], cnt: 0, res: null };
       for (var s = 0; s < n; s++) {
         g.hands.push([]); g.pigs.push([]);
         for (var p = 0; p < pigsFor(n); p++) g.pigs[s].push({ d: false, barn: false, rod: false, lock: false });
@@ -65,7 +66,7 @@
     forfeit: function (g, seat) { knock(g, seat, 'left'); },
     teacherDraw: function (g) { g.res = { w: -1, why: 'teacher' }; },
     view: function (g, seat) {
-      return { np: g.np, turn: g.turn, pigs: g.pigs, hand: seat >= 0 ? g.hands[seat] : null, deck: g.deck.length, top: g.disc[g.disc.length - 1] || null, log: g.log, out: g.out, cnt: g.cnt };
+      return { np: g.np, turn: g.turn, pigs: g.pigs, hand: seat >= 0 ? g.hands[seat] : null, deck: g.deck.length, top: g.disc[g.disc.length - 1] || null, log: g.log, logs: g.logs, out: g.out, cnt: g.cnt };
     },
     act: function (g, seat, d, notify) {
       if (g.res || g.out.indexOf(seat) >= 0) return false;
@@ -74,7 +75,7 @@
       var h = g.hands[seat];
       if (d.t === 'swap') {
         g.disc = g.disc.concat(h); g.hands[seat] = []; for (var k = 0; k < 3; k++) g.hands[seat].push(draw(g));
-        g.log = { k: 'swap', s: seat }; g.turn = nxt(g, seat); g.cnt++; return true;
+        g.log = { k: 'swap', s: seat }; pushLog(g); g.turn = nxt(g, seat); g.cnt++; return true;
       }
       if (d.t !== 'play') return false;
       var i = d.i | 0, c = h[i]; if (!c) return false;
@@ -89,7 +90,7 @@
       else if (c === 'farmer') pig.d = false;
       else if (c === 'rain') g.pigs.forEach(function (ps, s) { if (g.out.indexOf(s) < 0) ps.forEach(function (p) { if (p.d && !p.barn) { p.d = false; washed++; } }); });
       h.splice(i, 1); g.disc.push(c); h.push(draw(g));
-      g.log = { k: c, s: seat, t: t, washed: washed };
+      g.log = { k: c, s: seat, t: t, washed: washed }; pushLog(g);
       if (dirtyCount(g, seat) === g.pigs[seat].length) { g.res = { w: seat, why: 'dirty' }; g.cnt++; return true; }
       g.turn = nxt(g, seat); g.cnt++;
       return true;
@@ -145,22 +146,22 @@
   function who(tb, i) { return i === tb.seat ? '你' : short(tb, i); }
   function logText(tb, lg) {
     if (!lg) return '';
-    var a = who(tb, lg.s), t = lg.t && lg.t.s != null ? (lg.t.s === lg.s ? '自己的' : who(tb, lg.t.s) + '的') : '';
+    var a = who(tb, lg.s), t = lg.t && lg.t.s != null ? (lg.t.s === lg.s ? '自己的' : who(tb, lg.t.s) + '的') + '第 ' + (lg.t.p + 1) + ' 隻' : '', tb2 = t ? t + '豬的' : '';
     switch (lg.k) {
       case 'swap': return a + ' 換了一手新牌';
       case 'mud': return a + ' 把' + t + '小豬丟進泥巴 🟤';
       case 'rain': return a + ' 讓天空下雨 🌧️ 洗乾淨 ' + lg.washed + ' 隻小豬';
       case 'barn': return a + ' 幫' + t + '小豬蓋了豬舍 🏠';
-      case 'bolt': return a + ' 用閃電打壞' + t + '豬舍 ⚡';
-      case 'rod': return a + ' 在' + t + '豬舍裝上避雷針';
+      case 'bolt': return a + ' 用閃電打壞' + tb2 + '豬舍 ⚡';
+      case 'rod': return a + ' 在' + tb2 + '豬舍裝上避雷針';
       case 'farmer': return a + ' 叫農夫把' + t + '小豬洗乾淨 🧽';
-      case 'lock': return a + ' 把' + t + '豬舍鎖起來 🔒';
+      case 'lock': return a + ' 把' + tb2 + '豬舍鎖起來 🔒';
     }
     return '';
   }
-  function pigEl(p, small) {
+  function pigEl(p, small, no) {
     var w = el('div', 'mp-pig' + (p.d ? ' dirty' : '') + (p.barn ? ' barn' : '') + (small ? ' sm' : ''));
-    var im = el('img'); im.src = IMG(p.d ? 'pig-dirty' : 'pig-clean'); im.alt = p.d ? '髒小豬' : '乾淨小豬'; im.draggable = false; w.appendChild(im);
+    var im = el('img'); im.src = IMG(p.d ? 'pig-dirty' : 'pig-clean'); im.alt = p.d ? '髒小豬' : '乾淨小豬'; im.draggable = false; w.appendChild(im); if (no) w.appendChild(el('em', 'mp-no', no));
     if (p.barn) { var roof = el('div', 'mp-roof'); roof.innerHTML = '<span>豬舍</span>' + (p.rod ? '<b title="避雷針">⚡🛡️</b>' : '') + (p.lock ? '<b title="鎖門">🔒</b>' : ''); w.appendChild(roof); }
     return w;
   }
@@ -199,7 +200,7 @@
       var sm = el('small'); sm.innerHTML = dirtyCount(g, s) + '/' + v.pigs[s].length + '<u> 髒</u>'; nm.appendChild(sm); row.appendChild(nm);
       var pr = el('div', 'mp-pigs');
       v.pigs[s].forEach(function (p, i) {
-        var pe = pigEl(p, true);
+        var pe = pigEl(p, true, i + 1);
         if (isT(s, i)) { pe.classList.add('tg'); pe.addEventListener('click', (function (s, i) { return function () { ctx.snd('tap'); send('play', { i: L.sel, s: s, p: i }); }; })(s, i)); }
         pr.appendChild(pe);
       });
@@ -210,7 +211,14 @@
     var mid = el('div', 'mp-mid');
     var dk = el('div', 'mp-deck'); dk.innerHTML = '<img src="' + IMG('back') + '" alt="牌堆"><b>' + v.deck + '</b>'; mid.appendChild(dk);
     if (v.top) { var tp = el('div', 'mp-top'); tp.innerHTML = '<img src="' + IMG(v.top) + '" alt=""><span>' + CARDS[v.top].n + '</span>'; mid.appendChild(tp); }
-    mid.appendChild(el('div', 'mp-log', logText(tb, v.log) || '大家好！先讓小豬變髒吧'));
+    var lgBox = el('div', 'mp-log'), lgs = (v.logs || (v.log ? [v.log] : [])).slice(-4).reverse();
+    if (!lgs.length) lgBox.appendChild(el('div', 'mp-li', '大家好！先讓小豬變髒吧'));
+    lgs.forEach(function (lg, i) {
+      var hitMe = lg.t && lg.t.s === seat && lg.s !== seat, li = el('div', 'mp-li' + (i === 0 ? ' new' : '') + (hitMe ? ' hit' : ''));
+      var d = el('i'); d.style.background = SEATC[lg.s]; li.appendChild(d); li.appendChild(document.createTextNode(logText(tb, lg)));
+      lgBox.appendChild(li);
+    });
+    mid.appendChild(lgBox);
     wrap.appendChild(mid);
     // 我的小豬
     var me = el('div', 'mp-me' + (myTurn ? ' turn' : ''));
@@ -219,7 +227,7 @@
     mn.appendChild(el('small', '', dirtyCount(g, seat) + '/' + v.pigs[seat].length + ' 髒')); me.appendChild(mn);
     var mp = el('div', 'mp-pigs big');
     v.pigs[seat].forEach(function (p, i) {
-      var pe = pigEl(p, false);
+      var pe = pigEl(p, false, i + 1);
       if (isT(seat, i)) { pe.classList.add('tg'); pe.addEventListener('click', function () { ctx.snd('tap'); send('play', { i: L.sel, s: seat, p: i }); }); }
       mp.appendChild(pe);
     });
