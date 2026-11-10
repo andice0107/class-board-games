@@ -102,7 +102,7 @@
     } else felt.appendChild(el('div', 'pk-empty', '比大小'));
     wrap.appendChild(felt);
     var mine = el('div', 'pk-me' + (!v.mine && !tb.res && !out ? ' turn' : ''));
-    var t = el('div', 'pk-me-top'), dot = el('i'); dot.style.background = SEATC[seat]; t.appendChild(dot); t.appendChild(el('span', 'n', tb.seats[seat].name + '・我')); t.appendChild(el('span', 'pk-cnt', '贏 ' + v.wins[seat] + ' 次')); mine.appendChild(t);
+    var t = el('div', 'pk-me-top'), dot = el('i'); dot.style.background = SEATC[seat]; t.appendChild(dot); t.appendChild(el('span', 'n', (tb.seats[seat].name === '我' ? '我' : tb.seats[seat].name + '・我'))); t.appendChild(el('span', 'pk-cnt', '贏 ' + v.wins[seat] + ' 次')); mine.appendChild(t);
     var area = el('div', 'hc-area');
     var pile = el('button', 'hc-pile' + (!v.mine && !L.pending && !tb.res && !out ? ' can' : '')); pile.type = 'button'; pile.innerHTML = PK.svg(null, { back: true }) + '<span>抽牌</span>';
     pile.addEventListener('click', function () { if (v.mine || L.pending || tb.res || out) return; L.pending = true; ctx.snd('tap'); ctx.send('draw', {}); ctx.rerender(); });

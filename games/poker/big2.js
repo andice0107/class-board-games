@@ -228,7 +228,7 @@ window.B2 = (function () {
     var hand = L.bySuit ? B2.sortSuit(v.hand.slice()) : v.hand.slice();
     var cls = B2.classify(L.sel), ok = myTurn && cls && (!v.must || L.sel.indexOf(v.must) >= 0) && (!v.table || B2.beats(cls, v.table.cls));
     wrap.appendChild(PKUI.hand(hand, {
-      title: tb.seats[seat].name + '・我', color: SEATC[seat], count: v.hand.length, turn: v.turn === seat && !tb.res,
+      title: (tb.seats[seat].name === '我' ? '我' : tb.seats[seat].name + '・我'), color: SEATC[seat], count: v.hand.length, turn: v.turn === seat && !tb.res,
       sel: L.sel, info: L.sel.length ? (cls ? B2.KIND[cls.k] + (ok ? '' : (myTurn && v.table ? '（壓不過）' : '')) : '不是合法牌型') : '',
       onTap: function (c) { if (out || tb.res) return; var i = L.sel.indexOf(c); if (i >= 0) L.sel.splice(i, 1); else L.sel.push(c); ctx.snd('tap'); ctx.rerender(); }
     }));

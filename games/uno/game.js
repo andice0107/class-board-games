@@ -193,7 +193,7 @@
     }
     // 自己
     var meBox = el('div', 'un-me' + (v.turn === seat && !tb.res ? ' turn' : ''));
-    var mt = el('div', 'un-me-top'); var md = el('i'); md.style.background = SEATC[seat]; mt.appendChild(md); mt.appendChild(el('span', 'n', tb.seats[seat].name + '・我'));
+    var mt = el('div', 'un-me-top'); var md = el('i'); md.style.background = SEATC[seat]; mt.appendChild(md); mt.appendChild(el('span', 'n', (tb.seats[seat].name === '我' ? '我' : tb.seats[seat].name + '・我')));
     mt.appendChild(el('span', 'un-cnt', v.hand.length + ' 張'));
     if (v.said[seat] && v.hand.length <= 2) mt.appendChild(el('span', 'un-shout', '已喊最後一張'));
     meBox.appendChild(mt);

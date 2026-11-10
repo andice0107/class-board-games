@@ -157,7 +157,7 @@
     }
     wrap.appendChild(felt);
     var hand = v.hand;
-    wrap.appendChild(PKUI.hand(hand, { title: tb.seats[seat].name + '・我', color: SEATC[seat], count: hand.length, turn: myTurn, sel: L.flash && hand.indexOf(L.flash) >= 0 ? [L.flash] : [], info: hand.indexOf('X1') >= 0 ? '🤡 鬼牌在你手上' : '' }));
+    wrap.appendChild(PKUI.hand(hand, { title: (tb.seats[seat].name === '我' ? '我' : tb.seats[seat].name + '・我'), color: SEATC[seat], count: hand.length, turn: myTurn, sel: L.flash && hand.indexOf(L.flash) >= 0 ? [L.flash] : [], info: hand.indexOf('X1') >= 0 ? '🤡 鬼牌在你手上' : '' }));
     L.flash = null;
     if (!tb.res && !out) {
       var tools = el('div', 'pk-tools');

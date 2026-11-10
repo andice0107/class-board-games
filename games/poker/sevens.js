@@ -158,7 +158,7 @@
     }
     var info = v.myCover.length ? '我的蓋牌 ' + v.myCover.length + ' 張・' + v.myCover.reduce(function (a, c) { return a + rv(c); }, 0) + ' 點' : '';
     wrap.appendChild(PKUI.hand(v.hand, {
-      title: tb.seats[seat].name + '・我', color: SEATC[seat], count: v.hand.length, turn: v.turn === seat && !tb.res, sel: L.sel ? [L.sel] : [], info: info,
+      title: (tb.seats[seat].name === '我' ? '我' : tb.seats[seat].name + '・我'), color: SEATC[seat], count: v.hand.length, turn: v.turn === seat && !tb.res, sel: L.sel ? [L.sel] : [], info: info,
       dim: function (c) { return myTurn && !mustCover && L2.indexOf(c) < 0; },
       onTap: function (c) {
         if (!myTurn) return;

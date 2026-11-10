@@ -179,7 +179,7 @@
     if (tb.res && v.reveal) { var pr = el('div', 'pk-pen'); v.reveal.forEach(function (x, i) { pr.appendChild(el('span', '', (i === seat ? '你' : short(tb, i)) + '：手上剩 ' + x + ' 點')); }); wrap.appendChild(pr); }
     // 手牌
     var me = el('div', 'rk-me' + (myTurn ? ' turn' : ''));
-    var top = el('div', 'pk-me-top'), dot = el('i'); dot.style.background = SEATC[seat]; top.appendChild(dot); top.appendChild(el('span', 'n', tb.seats[seat].name + '・我')); top.appendChild(el('span', 'pk-cnt', rack.length + ' 張・牌堆 ' + v.pool));
+    var top = el('div', 'pk-me-top'), dot = el('i'); dot.style.background = SEATC[seat]; top.appendChild(dot); top.appendChild(el('span', 'n', (tb.seats[seat].name === '我' ? '我' : tb.seats[seat].name + '・我'))); top.appendChild(el('span', 'pk-cnt', rack.length + ' 張・牌堆 ' + v.pool));
     me.appendChild(top);
     var rr = el('div', 'rk-rack'), shown = L.sortNum ? RK.sortNum(rack.slice()) : RK.sortRack(rack.slice());
     shown.forEach(function (id) { var x = el('span'); x.innerHTML = RK.tile(id, { sel: myTurn && W.sel.indexOf(id) >= 0 }); rr.appendChild(x.firstChild); });

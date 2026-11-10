@@ -8,7 +8,7 @@ window.BANKER = function (CFG) {
   function draw(g) { if (!g.deck.length) g.deck = PK.deck(0); return g.deck.pop(); }
   function fmt(v) { return CFG.fmt ? CFG.fmt(v) : String(v); }
   function startPlay(g) {
-    g.phase = 'play'; g.dealer = [draw(g), draw(g)];
+    g.phase = 'play'; g.dealer = []; for (var dk = 0; dk < (CFG.dealerStart || 2); dk++) g.dealer.push(draw(g));
     for (var s = 0; s < g.np; s++) { g.hands[s] = []; g.stood[s] = false; if (g.out.indexOf(s) < 0) { for (var k = 0; k < CFG.startCards; k++) g.hands[s].push(draw(g)); var v = CFG.value(g.hands[s]); if (v.bust || v.natural || v.auto) g.stood[s] = true; } }
     maybeDealer(g);
   }
@@ -57,7 +57,7 @@ window.BANKER = function (CFG) {
     view: function (g, seat) {
       var hideHole = g.phase === 'play';
       return { np: g.np, round: g.round, rounds: ROUNDS, phase: g.phase, chips: g.chips, bets: g.bets, stood: g.stood, ready: g.ready, out: g.out, cnt: g.cnt,
-        dealer: hideHole ? [g.dealer[0], null] : g.dealer, hands: g.hands.map(function (h, s) { return s === seat || g.phase === 'show' ? h : h.map(function () { return null; }); }),
+        dealer: hideHole ? g.dealer.map(function (c, i) { return i === 0 && !CFG.hideAll ? c : null; }) : g.dealer, hands: g.hands.map(function (h, s) { return s === seat || g.phase === 'show' ? h : h.map(function () { return null; }); }),
         counts: g.hands.map(function (h) { return h.length; }), result: g.result, turn: -1 };
     },
     act: function (g, seat, d, notify) {
@@ -82,7 +82,7 @@ window.BANKER = function (CFG) {
     },
     botTurn: function (g, seat, level) { if (g.res || g.out.indexOf(seat) >= 0) return null; return botAct(g, seat, level); },
     hostView: function (g) {
-      var h = '<div class="pk-host"><div class="pk-host-tb">' + (g.dealer.length ? g.dealer.map(function (c, i) { return '<span>' + PK.svg(g.phase === 'play' && i === 1 ? null : c, { back: g.phase === 'play' && i === 1 }) + '</span>'; }).join('') : '<em>下注中</em>') + '</div><div class="pk-host-seats">';
+      var h = '<div class="pk-host"><div class="pk-host-tb">' + (g.dealer.length ? g.dealer.map(function (c, i) { return '<span>' + PK.svg(g.phase === 'play' && (i > 0 || CFG.hideAll) ? null : c, { back: g.phase === 'play' && (i > 0 || CFG.hideAll) }) + '</span>'; }).join('') : '<em>下注中</em>') + '</div><div class="pk-host-seats">';
       for (var s = 0; s < g.np; s++) h += '<span class="pk-hs' + (g.out.indexOf(s) >= 0 ? ' out' : '') + '"><i style="background:' + SEATC[s] + '"></i>' + (g.out.indexOf(s) >= 0 ? '認輸' : '🪙 ' + g.chips[s]) + '</span>';
       return h + '</div></div>';
     },
@@ -141,7 +141,7 @@ window.BANKER = function (CFG) {
     wrap.appendChild(felt);
     // 自己
     var me = el('div', 'pk-me' + ((v.phase === 'bet' && !v.bets[seat]) || (v.phase === 'play' && !v.stood[seat]) ? ' turn' : ''));
-    var t = el('div', 'pk-me-top'), dot = el('i'); dot.style.background = SEATC[seat]; t.appendChild(dot); t.appendChild(el('span', 'n', tb.seats[seat].name + '・我'));
+    var t = el('div', 'pk-me-top'), dot = el('i'); dot.style.background = SEATC[seat]; t.appendChild(dot); t.appendChild(el('span', 'n', (tb.seats[seat].name === '我' ? '我' : tb.seats[seat].name + '・我')));
     if (mv) t.appendChild(el('span', 'pk-info', mv.bust ? '爆了！' : fmt(mv.v) + ' 點' + (mv.tag ? '・' + mv.tag : '')));
     t.appendChild(el('span', 'pk-cnt', '🪙 ' + v.chips[seat] + (v.bets[seat] ? '（押 ' + v.bets[seat] + '）' : '')));
     me.appendChild(t);
