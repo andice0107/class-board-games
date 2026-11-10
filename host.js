@@ -34,6 +34,11 @@
     render(); save();
     setTimeout(function () { Object.keys(S.tables).forEach(function (k) { runBots(S.tables[k]); }); }, 500);
   }
+  function copyText(x) {
+    try { if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(x).catch(fallback); return; } } catch (e) {}
+    fallback();
+    function fallback() { var ta = document.createElement('textarea'); ta.value = x; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, x.length); try { document.execCommand('copy'); } catch (e) {} ta.remove(); }
+  }
   function joinUrl() {
     var base = location.href.replace(/[#?].*$/, '').replace(/[^/]*$/, '');
     return base + 'play.html' + (BGNet.LOCAL ? '?local=1' : '') + '#r=' + S.code + '&b=' + (S.broker || 0) + '&g=' + GID;
@@ -42,7 +47,7 @@
     var q = qrcode(0, 'M'); q.addData(joinUrl()); q.make();
     $('h-qr').innerHTML = q.createSvgTag({ cellSize: 6, margin: 1, scalable: true });
     $('h-url').textContent = joinUrl();
-    $('h-hint').innerHTML = '不能掃碼的同學：打開 <b>' + location.host + location.pathname.replace(/[^/]*$/, '') + 'play.html</b>，輸入上面這組代碼';
+    $('h-copy').onclick = function () { copyText(joinUrl()); var t = $('h-copy-t'); t.textContent = '✅ 已複製，可以貼給學生了'; $('h-copy').classList.add('done'); clearTimeout(t._t); t._t = setTimeout(function () { t.textContent = '📋 點一下複製網址'; $('h-copy').classList.remove('done'); }, 2500); };
   }
   var saveT = null;
   function save() { if (saveT) return; saveT = setTimeout(function () { saveT = null; S.at = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }, 400); }
@@ -144,7 +149,7 @@
 
   /* ---------- 配對 ---------- */
   function pair() { if (S.auto) pairNow(); }
-  function seatN() { return GAME.seatOptions ? (S.seatN || GAME.seatOptions[GAME.seatOptions.length - 1]) : GAME.seats; }
+  function seatN() { return GAME.seatOptions ? (S.seatN || GAME.seatDefault || GAME.seatOptions[GAME.seatOptions.length - 1]) : GAME.seats; }
   function pairNow(manual) {
     var N = seatN(), ready = S.queue.filter(function (id) { var p = S.players[id]; return p && online(p); });
     // 老師按「立刻配對」時，不夠一整桌的人也先開小一點的桌（最少 2 人），盡量不留一個人
