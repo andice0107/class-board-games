@@ -68,7 +68,8 @@
   mod.onUpdate = function (prev, tb, fx) {
     var v = tb.view;
     if (L.round !== tb.round) { L.round = tb.round; L.shownKey = ''; L.pending = false; }
-    if (v.mine) L.pending = false;
+    if (v.mine || L.vr !== v.round) L.pending = false; // 自己最後一個抽時，牌會立刻翻開、進入下一回合
+    L.vr = v.round;
     var key = v.shown ? v.shown.round + ':' + v.shown.w : '';
     if (key && key !== L.shownKey) {
       if (L.shownKey !== '' || prev) { if (v.shown.w === tb.seat) { fx.toast('這回合你最大！+1'); fx.snd('win'); } else { fx.toast(short(tb, v.shown.w) + ' 最大'); fx.snd('cap'); } }
