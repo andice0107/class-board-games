@@ -42,6 +42,7 @@
     var q = qrcode(0, 'M'); q.addData(joinUrl()); q.make();
     $('h-qr').innerHTML = q.createSvgTag({ cellSize: 6, margin: 1, scalable: true });
     $('h-url').textContent = joinUrl();
+    $('h-hint').innerHTML = '不能掃碼的同學：打開 <b>' + location.host + location.pathname.replace(/[^/]*$/, '') + 'play.html</b>，輸入上面這組代碼';
   }
   var saveT = null;
   function save() { if (saveT) return; saveT = setTimeout(function () { saveT = null; S.at = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }, 400); }

@@ -200,3 +200,6 @@ input:focus { border-color: var(--sky); background: #fff; }
 .p-top button, .p-top .pill { white-space: nowrap; flex: none; }
 @media (max-width: 360px) { .p-top .brand h1 { display: none; } }
 .gm-status, .xq-status { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.join .code-hint { font-size: 13px; color: var(--muted); text-align: center; margin: 6px 0 2px; line-height: 1.5; word-break: break-all; }
+.join .code-hint b { color: var(--ink, #2d2a4a); }
+.join .url { display: none; }
