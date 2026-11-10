@@ -57,7 +57,12 @@ window.PK = (function () {
     if (o.dim) h += '<rect x=".6" y=".6" width="58.8" height="88.8" rx="6" fill="#000" opacity=".28"/>';
     return h + '</svg>';
   }
-  return { RANKS: RANKS, SUITS: SUITS, SYM: SYM, SNAME: SNAME, label: label, red: red, deck: deck, shuffle: shuffle, name: name, svg: svg };
+  /* 小尺寸用的簡化牌面：只有點數和花色 */
+  function mini(c) {
+    var col = red(c) ? '#c8102e' : '#1b1b22', lab = label(c[0]);
+    return '<svg class="pk-card mini" viewBox="0 0 40 60"><rect x=".5" y=".5" width="39" height="59" rx="4" fill="#fffdf6" stroke="#8a8a8a" stroke-width=".8"/><text x="20" y="28" font-size="' + (lab.length > 1 ? 19 : 23) + '" font-weight="900" text-anchor="middle" fill="' + col + '" font-family="Georgia,serif" letter-spacing="-1.5">' + lab + '</text><text x="20" y="51" font-size="18" text-anchor="middle" fill="' + col + '">' + SYM[c[1]] + '</text></svg>';
+  }
+  return { RANKS: RANKS, SUITS: SUITS, SYM: SYM, SNAME: SNAME, label: label, red: red, deck: deck, shuffle: shuffle, name: name, svg: svg, mini: mini };
 })();
 
 /* 撲克牌共用畫面：對手列、自己的手牌 */
