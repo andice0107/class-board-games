@@ -148,8 +148,8 @@
       if (!SOLO) bc.appendChild(el('p', '', '不想等？選一個電腦的強度就能馬上開桌。和電腦下的棋局不列入積分榜。'));
       var nb = S.botSeats[0];
       if (S.botSeats[1] > S.botSeats[0]) {
-        var nr = el('div', 'row c'); nr.appendChild(el('span', '', '電腦玩家人數：'));
-        for (var k = S.botSeats[0]; k <= S.botSeats[1]; k++) (function (k) { var b = btn('btn small' + (k === (waiting.n || nb) ? ' on' : ''), k + ' 位', function () { waiting.n = k; render(); }); nr.appendChild(b); })(k);
+        var nr = el('div', 'row c'); nr.appendChild(el('span', '', '這一桌幾個人（含你自己）：'));
+        for (var k = S.botSeats[0]; k <= S.botSeats[1]; k++) (function (k) { var b = btn('btn small' + (k === (waiting.n || nb) ? ' on' : ''), (k + 1) + ' 人', function () { waiting.n = k; render(); }); nr.appendChild(b); })(k);
         bc.appendChild(nr); nb = waiting.n || nb;
       }
       var lv = el('div', 'levels');

@@ -24,6 +24,8 @@
     if (net) net.close();
     S = state; S.at = Date.now();
     Object.keys(S.players).forEach(function (k) { S.players[k].lastSeen = 0; S.players[k]._on = false; });
+    // 遊戲規則改版後，舊的棋局資料不相容：重新開一局
+    Object.keys(S.tables).forEach(function (k) { var T = S.tables[k]; if ((T.gv || 0) !== (GAME.ver || 0)) { T.g = GAME.init(T.seats.length); T.again = {}; T.round++; T.gv = GAME.ver || 0; } });
     $('h-code').innerHTML = S.code.split('').map(function (c) { return '<span>' + c + '</span>'; }).join('');
     $('h-qr').textContent = '連線中…'; $('h-url').textContent = '';
     $('h-auto').checked = S.auto;
@@ -211,7 +213,7 @@
   }
   function newRound(T, rotate) {
     if (rotate) T.seats.push(T.seats.shift());
-    T.g = GAME.init(T.seats.length); T.again = {}; T.round++;
+    T.g = GAME.init(T.seats.length); T.again = {}; T.round++; T.gv = GAME.ver || 0;
     touch(T);
   }
   function dissolve(T, first) {

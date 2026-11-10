@@ -20,7 +20,7 @@
     if (g.turn === seat) nextTurn(g);
   }
   var mod = {
-    seats: 3, seatOptions: [2, 3], botSeats: [1, 2],
+    ver: 2, seats: 3, seatOptions: [2, 3], botSeats: [1, 2],
     reasons: REASONS,
     levelDesc: ['隨便挑一顆往前走', '大致往前，常走得不划算', '每步都挑跳最遠的', '會先搭橋連跳，很難贏'],
     seatName: function (i) { return NAMES[i] || ''; },

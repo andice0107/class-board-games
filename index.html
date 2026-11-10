@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>桌遊對戰教室</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap">
-<link rel="stylesheet" href="platform.css?v=202611101441">
+<link rel="stylesheet" href="platform.css?v=202611101451">
 </head>
 <body>
 <div class="home">
@@ -17,11 +17,28 @@
   <div id="grid"></div>
   <div class="foot">學生加入網址：<span id="pu"></span><br>學生只輸入 4 碼學號，名字由系統自動取，不會傳送個人資料。</div>
 </div>
-<script src="decor.js?v=202611101441"></script>
-<script src="games.js?v=202611101441"></script>
+<script src="decor.js?v=202611101451"></script>
+<script src="games.js?v=202611101451"></script>
 <script>
 (function () {
-  var root = document.getElementById('grid'), n = 0;
+  var root = document.getElementById('grid'), n = 0, LOC = /[?&]local=1/.test(location.search) ? '&local=1' : '';
+  function subMenu(m) {
+    var ov = document.createElement('div'); ov.className = 'overlay';
+    var box = document.createElement('div'); box.className = 'panel sub-menu'; ov.appendChild(box);
+    var hd = document.createElement('div'); hd.className = 'g-hd'; hd.innerHTML = '<h2></h2>'; hd.firstChild.textContent = m.title + '・選一種玩法';
+    var x = document.createElement('button'); x.type = 'button'; x.className = 'btn small'; x.textContent = '✕ 關閉'; x.onclick = function () { ov.remove(); }; hd.appendChild(x); box.appendChild(hd);
+    var list = document.createElement('div'); list.className = 'sub-list'; box.appendChild(list);
+    m.sub.forEach(function (v) {
+      var it = document.createElement('div'); it.className = 'sub-item' + (v.ready ? '' : ' off');
+      var b = document.createElement('button'); b.type = 'button'; b.disabled = !v.ready;
+      b.innerHTML = '<b></b><small></small><span class="tag"></span>'; b.querySelector('b').textContent = v.title; b.querySelector('small').textContent = v.desc; b.querySelector('.tag').textContent = v.ready ? v.players : '製作中';
+      b.onclick = function () { location.href = 'host.html?g=' + v.id + LOC; }; it.appendChild(b);
+      if (v.ready) { var a = document.createElement('a'); a.className = 'solo-link'; a.href = 'play.html?solo=' + v.id + '&local=1'; a.textContent = '🤖 和電腦練習'; it.appendChild(a); }
+      list.appendChild(it);
+    });
+    ov.addEventListener('click', function (e) { if (e.target === ov) ov.remove(); });
+    document.body.appendChild(ov);
+  }
   BG.cats.forEach(function (cat) {
     var h = document.createElement('h3'); h.className = 'cat-title'; h.textContent = cat; root.appendChild(h);
     var g = document.createElement('div'); g.className = 'game-grid'; root.appendChild(g);
@@ -32,9 +49,9 @@
     b.querySelector('h3').textContent = m.title;
     b.querySelector('p').textContent = m.desc;
     b.querySelector('.tag').textContent = m.ready ? m.players : '規劃中';
-    b.addEventListener('click', function () { location.href = 'host.html?g=' + m.id + (/[?&]local=1/.test(location.search) ? '&local=1' : ''); });
+    b.addEventListener('click', function () { if (m.sub) return subMenu(m); location.href = 'host.html?g=' + m.id + LOC; });
     var cell = document.createElement('div'); cell.className = 'gcell'; cell.appendChild(b);
-    if (m.ready) { var solo = document.createElement('a'); solo.className = 'solo-link'; solo.href = 'play.html?solo=' + m.id + '&local=1'; solo.textContent = '🤖 一個人和電腦練習'; cell.appendChild(solo); }
+    if (m.ready && !m.sub) { var solo = document.createElement('a'); solo.className = 'solo-link'; solo.href = 'play.html?solo=' + m.id + '&local=1'; solo.textContent = '🤖 一個人和電腦練習'; cell.appendChild(solo); }
     g.appendChild(cell);
   });
   });
