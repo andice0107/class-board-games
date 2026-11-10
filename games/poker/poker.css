@@ -138,3 +138,15 @@
 .dg-last.in { box-shadow: 0 0 0 2px #6ee7b7; } .dg-last.post { box-shadow: 0 0 0 2px #ff6b6b; }
 .dg-row { display: flex; gap: 3px; align-items: center; } .dg-row .pk-card { width: 26px; } .dg-row em { font-size: 11px; font-style: normal; padding: 0 4px; }
 .dg-shoot { font-size: 18px; padding: 10px 22px; }
+/* 吹牛 */
+.ch2-felt { flex-direction: column; gap: 6px; min-height: 150px; }
+.ch2-pile { position: relative; width: 60px; height: 76px; }
+.ch2-pile span { position: absolute; left: 6px; top: 4px; width: 46px; }
+.ch2-claim { color: #fff4e0; font-weight: 900; font-size: 16px; }
+.ch2-last { color: #f4d27a; font-size: 13px; font-weight: 800; }
+.ch2-reveal { display: flex; flex-direction: column; align-items: center; gap: 3px; background: #0004; border-radius: 12px; padding: 6px 10px; color: #fff4e0; animation: pkIn .35s cubic-bezier(.2,1.3,.4,1); }
+.ch2-reveal span { display: flex; gap: 4px; } .ch2-reveal span svg { width: 34px; }
+.ch2-reveal.lie { box-shadow: 0 0 0 2px #ff6b6b inset; } .ch2-reveal.true { box-shadow: 0 0 0 2px #7bd88f inset; }
+.ch2-ranks { flex-wrap: wrap; gap: 5px; } .ch2-ranks span { color: #fff4e0; font-weight: 800; }
+.pk-btn.small { padding: 5px 8px; font-size: 14px; min-width: 34px; }
+.pk-btn.ch2-call { background: #ff6b6b; color: #fff; box-shadow: 0 3px 0 #a33; }
