@@ -1,0 +1,34 @@
+/* 拉密：暖木桌、象牙色牌 */
+.rk-table { position: relative; overflow: hidden; width: min(700px, 100%); padding: 12px 10px 14px; border-radius: 22px; display: flex; flex-direction: column; align-items: center; gap: 8px; color: #3b2a1a;
+  background: repeating-linear-gradient(92deg, rgba(255,255,255,.05) 0 3px, transparent 3px 14px), linear-gradient(160deg, #c98f55 0%, #b07440 50%, #93602f 100%); border: 3px solid #5e3b1c; box-shadow: inset 0 0 30px rgba(0,0,0,.3), 0 10px 0 rgba(0,0,0,.25); }
+.rk-status { font-weight: 900; font-size: 18px; min-height: 26px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; color: #fff4e0; text-shadow: 0 1px 0 rgba(0,0,0,.4); }
+.rk-status.me { color: #3b2a1a; background: #fff4e0; padding: 2px 14px; border-radius: 99px; text-shadow: none; box-shadow: 0 3px 0 #5e3b1c; }
+.rk-table .pk-opp { background: rgba(0,0,0,.18); border-color: rgba(255,244,224,.4); color: #fff4e0; }
+.rk-table .pk-opp.turn { border-color: #fff4e0; box-shadow: 0 0 0 2px #fff4e0; }
+.rk-mini { width: 11px; height: 16px; margin: 0 -2px; border-radius: 2px; background: #fff8ec; border: 1px solid #5e3b1c; transform-origin: 50% 120%; }
+.rk-felt { width: 100%; min-height: 120px; max-height: 46vh; overflow-y: auto; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 8px; padding: 10px; border-radius: 16px; background: rgba(40,24,10,.28); box-shadow: inset 0 2px 8px rgba(0,0,0,.35); }
+.rk-set { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 4px; border-radius: 9px; background: rgba(255,255,255,.12); border: 2px solid transparent; position: relative; }
+.rk-set.target { border-color: rgba(255,244,224,.7); border-style: dashed; cursor: pointer; }
+.rk-set.bad { border-color: #ff4d4d; border-style: solid; background: rgba(255,77,77,.15); }
+.rk-why { position: absolute; left: 4px; bottom: -14px; font-size: 10.5px; font-weight: 800; color: #ffd1d1; white-space: nowrap; }
+.rk-set.demo { background: #b07440; padding: 6px; }
+.rk-empty { width: 100%; text-align: center; color: rgba(255,244,224,.6); font-weight: 900; padding: 30px 0; letter-spacing: 3px; }
+.rk-new { padding: 8px 14px; border-radius: 9px; border: 2px dashed #fff4e0; color: #fff4e0; background: rgba(255,255,255,.08); font-weight: 900; font-size: 15px; }
+.rk-tile { width: 30px; height: 42px; border-radius: 5px; background: linear-gradient(#fffdf6, #f1e6cf); box-shadow: 0 2px 0 #c9b48a, 0 3px 4px rgba(0,0,0,.35); display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; user-select: none; transition: transform .12s; cursor: pointer; }
+.rk-tile b { font-size: 19px; font-weight: 900; line-height: 1; font-family: Georgia, serif; }
+.rk-tile i { width: 10px; height: 4px; border-radius: 2px; opacity: .8; }
+.rk-tile .rk-joker { width: 24px; height: 24px; }
+.rk-tile.sel { transform: translateY(-6px); box-shadow: 0 0 0 2.5px #2a9d5c, 0 6px 8px rgba(0,0,0,.35); }
+.rk-tile.mine { background: linear-gradient(#fffbe0, #f6e7a8); }
+.rk-tile.new { animation: rkNew 1.2s ease-out 2; }
+@keyframes rkNew { 50% { box-shadow: 0 0 0 3px #f4d27a, 0 3px 4px rgba(0,0,0,.35); } }
+.rk-sum { font-size: 14px; font-weight: 800; color: #fff4e0; }
+.rk-me { width: 100%; padding: 7px 6px 10px; border-radius: 16px; background: linear-gradient(#6d4422, #4f2f15); border: 2px solid #3b2410; box-shadow: inset 0 2px 0 rgba(255,255,255,.12); color: #fff4e0; }
+.rk-me.turn { box-shadow: 0 0 0 2.5px #fff4e0; }
+.rk-rack { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; min-height: 48px; padding-top: 6px; }
+.rk-rack .rk-tile { width: 34px; height: 48px; } .rk-rack .rk-tile b { font-size: 22px; }
+.rk-host { padding: 8px; border-radius: 12px; background: linear-gradient(160deg, #c98f55, #93602f); display: flex; flex-direction: column; gap: 8px; }
+.rk-host-tb { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; }
+.rk-host-tb .rk-tile { width: 18px; height: 26px; } .rk-host-tb .rk-tile b { font-size: 12px; } .rk-host-tb .rk-tile i { width: 7px; height: 2.5px; } .rk-host-tb .rk-joker { width: 15px; height: 15px; }
+.rk-host-tb em { color: #fff4e0; font-style: normal; font-weight: 800; }
+.big-view .rk-host-tb .rk-tile { width: 32px; height: 46px; } .big-view .rk-host-tb .rk-tile b { font-size: 20px; }

@@ -1,6 +1,6 @@
 /* 遊戲清單：每個遊戲是 games/<id>/ 裡獨立的模組，用 BG.register 加進來 */
 window.BG = window.BG || {};
-BG.VER = '202611101511';
+BG.VER = '202611101518';
 BG.games = BG.games || {};
 BG.register = function (id, mod) { mod.id = id; BG.games[id] = mod; };
 BG.catalog = [
@@ -21,7 +21,7 @@ BG.catalog = [
     { id: 'high-card', title: '比大小', players: '2–6 人', desc: '抽一張比點數和花色，5 回合定勝負', ready: true, files: ['games/poker/poker.css', 'games/poker/cards.js', 'games/poker/high-card.js'] }
   ] },
   { id: 'uno', cat: '牌類', files: ['games/uno/uno.css', 'games/uno/rules.js', 'games/uno/game.js', 'games/uno/guide.js'], title: '彩色接龍', icon: '+4', color: '#e63946', players: '2–6 人', desc: 'UNO 玩法：同色或同數字接下去，先出完牌就贏', ready: true },
-  { id: 'rummikub', cat: '牌類', title: '拉密', icon: '7', color: '#e07a1f', players: '2–4 人', desc: '規劃中', ready: false },
+  { id: 'rummikub', cat: '牌類', files: ['games/poker/poker.css', 'games/poker/cards.js', 'games/rummikub/rummikub.css', 'games/rummikub/rules.js', 'games/rummikub/game.js'], title: '拉密', icon: '7', color: '#b07440', players: '2–4 人', desc: '同色連號或同數字不同色，先把牌放完就贏', ready: true },
   { id: 'spot-match', cat: '牌類', title: '眼明手快', icon: '👀', color: '#8e44ad', players: '2–8 人', desc: '兩張牌找出唯一相同的圖案（規劃中）', ready: false },
   { id: 'seven-eat-nine', cat: '牌類', title: '7吃9', icon: '7', color: '#d35400', players: '待確認', desc: '規劃中（玩法待確認）', ready: false },
   { id: 'mahjong', cat: '麻將', title: '中國麻將', icon: '中', color: '#1b7f5a', players: '4 人', desc: '規劃中', ready: false },
