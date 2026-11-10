@@ -1,6 +1,6 @@
 /* 遊戲清單：每個遊戲是 games/<id>/ 裡獨立的模組，用 BG.register 加進來 */
 window.BG = window.BG || {};
-BG.VER = '202611101638';
+BG.VER = '202611101642';
 BG.games = BG.games || {};
 BG.register = function (id, mod) { mod.id = id; BG.games[id] = mod; };
 BG.catalog = [
@@ -26,7 +26,7 @@ BG.catalog = [
   { id: 'spot-match', cat: '牌類', files: ['games/spot/spot.css', 'games/spot/game.js'], title: '眼明手快（圖案）', icon: '👀', color: '#8e44ad', players: '2–6 人', desc: '兩張牌只有一個圖案一樣，最快點到的人拿牌', ready: true },
   { id: 'spot-zhuyin', cat: '牌類', files: ['games/spot/spot.css', 'games/spot/game.js'], title: '眼明手快（注音）', icon: 'ㄅ', color: '#6a3cbc', players: '2–6 人', desc: '找出一樣的注音符號，練習分辨ㄅㄆ、ㄓㄗ等長得像的符號', ready: true },
   { id: 'spot-hanzi', cat: '牌類', files: ['games/spot/spot.css', 'games/spot/game.js'], title: '眼明手快（國字）', icon: '田', color: '#5b2a86', players: '2–6 人', desc: '找出一樣的國字，練習分辨大太天夫、日目白自等形近字', ready: true },
-  { id: 'seven-eat-nine', cat: '牌類', title: '7吃9', icon: '7', color: '#d35400', players: '待確認', desc: '規劃中（玩法待確認）', ready: false },
+  { id: 'seven-eat-nine', cat: '牌類', files: ['games/seven/seven.css', 'games/seven/game.js'], title: '7吃9', icon: '7', color: '#d35400', players: '2–6 人', desc: '沒有輪流的加減法搶牌：中間的數字加減後，最快出牌的人贏', ready: true },
   { id: 'mahjong', cat: '麻將', files: ['games/mahjong/mahjong.css', 'games/mahjong/rules.js', 'games/mahjong/game.js', 'games/mahjong/guide.js'], title: '台灣麻將', icon: '中', color: '#1b7f5a', players: '2–4 人', desc: '台灣 16 張：吃碰槓胡、花牌、算台數', ready: true },
   { id: 'chinese-checkers', cat: '棋類', files: ['games/checkers/checkers.css', 'games/checkers/rules.js', 'games/checkers/game.js', 'games/checkers/guide.js'], title: '三色跳棋', icon: '✦', color: '#2a9d8f', players: '2–3 人', desc: '跳過彈珠連跳，先把對面的角填滿就贏', ready: true }
 ];
