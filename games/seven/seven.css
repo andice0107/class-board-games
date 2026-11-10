@@ -38,3 +38,4 @@
 .s9-host { display: flex; align-items: center; gap: 8px; } .s9-host .s9-card.mini { width: 46px; }
 .s9-host-seats { display: flex; flex-wrap: wrap; gap: 4px; font-size: 12px; } .s9-host-seats span { display: inline-flex; align-items: center; gap: 3px; } .s9-host-seats i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; } .s9-host-seats .out { opacity: .4; }
 .s9-demo .s9-card { width: 80px; }
+.s9-hint:disabled { opacity: .45; }
