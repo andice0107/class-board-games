@@ -194,9 +194,11 @@
   }
   var SPEEDS = { vslow: 3.5, slow: 2, normal: 1, fast: .6, vfast: .35 };
   function speedOf(T) { return SPEEDS[T.speed || S.speed || 'normal'] || 1; }
-  var botTimers = {};
+  var botTimers = {}, botCnt = {};
   function runBots(T) {
+    if (GAME.botWait && botTimers[T.id] && T.g && botCnt[T.id] !== T.g.cnt) { clearTimeout(botTimers[T.id]); delete botTimers[T.id]; }
     if (botTimers[T.id] || !T.g || T.g.res || !GAME.botTurn) return;
+    if (GAME.botWait) return raceBots(T);
     for (var i = 0; i < T.seats.length; i++) {
       var id = T.seats[i]; if (!BG.isBot(id)) continue;
       var lv = +id.split(':')[1];
@@ -212,6 +214,23 @@
       })(i, lv);
       if (botTimers[T.id]) return;
     }
+  }
+  /* 搶答型遊戲：每個電腦各自有反應時間，最快的那個先出手；桌面一變就重新計時 */
+  function raceBots(T) {
+    var best = null, c0 = botCnt[T.id] = T.g.cnt;
+    T.seats.forEach(function (id, seat) {
+      if (!BG.isBot(id) || !GAME.botTurn(T.g, seat, 1)) return;
+      var w = GAME.botWait(T.g, seat, +id.split(':')[1]) * speedOf(T);
+      if (!best || w < best.w) best = { w: w, seat: seat, lv: +id.split(':')[1] };
+    });
+    if (!best) return;
+    botTimers[T.id] = setTimeout(function () {
+      delete botTimers[T.id];
+      if (S.tables[T.id] !== T || T.g.res) return;
+      if (T.g.cnt !== c0) return runBots(T);
+      var a = GAME.botTurn(T.g, best.seat, best.lv);
+      if (a && GAME.act(T.g, best.seat, a, function () {})) touch(T); else runBots(T);
+    }, best.w);
   }
   function newRound(T, rotate) {
     if (rotate) T.seats.push(T.seats.shift());
