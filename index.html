@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>桌遊對戰教室</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap">
+<link rel="stylesheet" href="platform.css">
+</head>
+<body>
+<div class="home">
+  <div class="brand"><div class="logo"><i></i><i></i><i></i><i></i></div><h1>桌遊對戰教室<small>CLASSROOM GAME TABLE</small></h1></div>
+  <div class="hero">
+    <h2>今天要玩什麼？</h2>
+    <p>老師選一個遊戲開房間，學生用平板或手機掃 QR code 加入，系統自動配對開桌。<br>也可以點遊戲下方的「一個人和電腦練習」，自己和電腦下。</p>
+  </div>
+  <div id="grid"></div>
+  <div class="foot">學生加入網址：<span id="pu"></span><br>透過免費的公開連線伺服器傳訊，學生名字請不要寫個人資料。</div>
+</div>
+<script src="decor.js"></script>
+<script src="games.js"></script>
+<script>
+(function () {
+  var root = document.getElementById('grid'), n = 0;
+  BG.cats.forEach(function (cat) {
+    var h = document.createElement('h3'); h.className = 'cat-title'; h.textContent = cat; root.appendChild(h);
+    var g = document.createElement('div'); g.className = 'game-grid'; root.appendChild(g);
+  BG.catalog.filter(function (m) { return m.cat === cat; }).forEach(function (m) { var i = n++;
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'gtile'; b.disabled = !m.ready; b.style.animationDelay = i * .06 + 's';
+    b.innerHTML = '<div class="art" style="background:' + m.color + '"><span style="color:' + m.color + '">' + m.icon + '</span></div>' +
+      '<div class="info"><h3></h3><p></p></div><span class="tag"></span>';
+    b.querySelector('h3').textContent = m.title;
+    b.querySelector('p').textContent = m.desc;
+    b.querySelector('.tag').textContent = m.ready ? m.players : '規劃中';
+    b.addEventListener('click', function () { location.href = 'host.html?g=' + m.id + (/[?&]local=1/.test(location.search) ? '&local=1' : ''); });
+    var cell = document.createElement('div'); cell.className = 'gcell'; cell.appendChild(b);
+    if (m.ready) { var solo = document.createElement('a'); solo.className = 'solo-link'; solo.href = 'play.html?solo=' + m.id + '&local=1'; solo.textContent = '🤖 一個人和電腦練習'; cell.appendChild(solo); }
+    g.appendChild(cell);
+  });
+  });
+  document.getElementById('pu').textContent = location.href.replace(/[#?].*$/, '').replace(/[^/]*$/, '') + 'play.html';
+})();
+</script>
+</body>
+</html>

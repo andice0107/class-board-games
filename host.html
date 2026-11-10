@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>桌遊對戰教室・老師房間</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@700&family=Noto+Sans+TC:wght@400;700;900&display=swap">
+<link rel="stylesheet" href="platform.css">
+</head>
+<body>
+<header class="h-top">
+  <a class="brand" href="index.html" style="text-decoration:none"><div class="logo"><i></i><i></i><i></i><i></i></div><h1>桌遊對戰教室<small>老師房間</small></h1></a>
+  <span class="pill" id="h-count">0 位學生</span>
+  <span class="sp"></span>
+  <span class="pill" id="h-net">🟡 連線中…</span>
+  <button class="btn small ghost" id="h-lb" type="button">🏆 積分榜</button>
+  <button class="btn small ghost" id="h-help" type="button">📖 教師說明</button>
+  <button class="btn small ghost" id="h-new" type="button">🆕 開新房間</button>
+</header>
+<div class="h-wrap">
+  <aside class="panel join">
+    <div class="gname" id="h-game"></div>
+    <div class="qr" id="h-qr">連線中…</div>
+    <div class="code-wrap" id="h-code"></div>
+    <div class="url" id="h-url"></div>
+    <div class="sec-title">⏳ 等候配對 <span class="pill" id="h-wn">0</span></div>
+    <div class="chips" id="h-wait"></div>
+    <label class="switch"><input type="checkbox" id="h-auto" checked> 自動配對開桌</label>
+    <label class="switch" style="margin-top:6px"><input type="checkbox" id="h-bot" checked> 允許學生和電腦對戰</label>
+    <div class="row c" style="margin-top:10px"><button class="btn small" id="h-pairnow" type="button">🤝 立刻配對等候中的學生</button></div>
+  </aside>
+  <section>
+    <div class="tables" id="h-tables"></div>
+    <div class="notable" id="h-notable"><div class="big">🎲</div><br>學生掃描左邊的 QR code、寫上名字後，<br>系統會自動配對開桌，每一桌的狀況都會即時出現在這裡。</div>
+  </section>
+</div>
+<div class="overlay hidden" id="h-ov"><div class="panel" id="h-ovbox"></div></div>
+<div class="overlay hidden" id="h-lbov"><div class="panel" id="h-lbbox"></div></div>
+<script src="decor.js"></script>
+<script src="vendor/mqtt.min.js"></script>
+<script src="vendor/qrcode.js"></script>
+<script src="net.js"></script>
+<script src="games.js"></script>
+<script src="host.js"></script>
+</body>
+</html>
