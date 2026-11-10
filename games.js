@@ -1,6 +1,6 @@
 /* 遊戲清單：每個遊戲是 games/<id>/ 裡獨立的模組，用 BG.register 加進來 */
 window.BG = window.BG || {};
-BG.VER = '202611101459';
+BG.VER = '202611101502';
 BG.games = BG.games || {};
 BG.register = function (id, mod) { mod.id = id; BG.games[id] = mod; };
 BG.catalog = [
@@ -17,7 +17,7 @@ BG.catalog = [
     { id: 'ninety-nine', title: '99', players: '2–6 人', desc: '輪流加點數，誰超過 99 誰輸', ready: false },
     { id: 'cheat', title: '吹牛', players: '3–6 人', desc: '蓋牌出牌可以說謊，被抓到就收牌', ready: false },
     { id: 'dragon-gate', title: '射龍門', players: '2–6 人', desc: '抽到兩根門柱中間就贏', ready: false },
-    { id: 'blackjack', title: '21點', players: '1–6 人', desc: '和莊家比誰最接近 21 點', ready: false },
+    { id: 'blackjack', title: '21點', players: '1–6 人', desc: '和電腦莊家比誰最接近 21 點', ready: true, files: ['games/poker/poker.css', 'games/poker/cards.js', 'games/poker/blackjack.js'] },
     { id: 'high-card', title: '比大小', players: '2–6 人', desc: '抽一張比點數和花色，5 回合定勝負', ready: true, files: ['games/poker/poker.css', 'games/poker/cards.js', 'games/poker/high-card.js'] }
   ] },
   { id: 'uno', cat: '牌類', files: ['games/uno/uno.css', 'games/uno/rules.js', 'games/uno/game.js', 'games/uno/guide.js'], title: '彩色接龍', icon: '+4', color: '#e63946', players: '2–6 人', desc: 'UNO 玩法：同色或同數字接下去，先出完牌就贏', ready: true },
@@ -27,6 +27,15 @@ BG.catalog = [
   { id: 'mahjong', cat: '麻將', title: '中國麻將', icon: '中', color: '#1b7f5a', players: '4 人', desc: '規劃中', ready: false },
   { id: 'chinese-checkers', cat: '棋類', files: ['games/checkers/checkers.css', 'games/checkers/rules.js', 'games/checkers/game.js', 'games/checkers/guide.js'], title: '三色跳棋', icon: '✦', color: '#2a9d8f', players: '2–3 人', desc: '跳過彈珠連跳，先把對面的角填滿就贏', ready: true }
 ];
+/* 撲克牌玩法很多，獨立成一個類別，每種玩法一個圖塊 */
+(function () {
+  var ICON = { 'big2': '2', 'pick-red': '♥', 'old-maid': '🤡', 'sevens': '7', 'ten-half': '½', 'ninety-nine': '99', 'cheat': '?', 'dragon-gate': '門', 'blackjack': '21', 'high-card': '↕' };
+  var COL = ['#1f6b47', '#b8323f', '#6a2c91', '#2b5d8a', '#a0661f', '#1d7874', '#7a3e9d', '#8c2f39', '#174a33', '#3d5a80'];
+  for (var i = 0; i < BG.catalog.length; i++) if (BG.catalog[i].sub) {
+    var subs = BG.catalog[i].sub.map(function (v, k) { v.cat = '撲克牌'; v.icon = ICON[v.id] || '♠'; v.color = COL[k % COL.length]; return v; });
+    BG.catalog.splice.apply(BG.catalog, [i, 1].concat(subs)); break;
+  }
+})();
 BG.meta = function (id) {
   for (var i = 0; i < BG.catalog.length; i++) {
     var m = BG.catalog[i]; if (m.id === id) return m;
@@ -56,7 +65,7 @@ BG.showGuide = function (title, sections) {
   document.body.appendChild(ov); show(0);
 };
 
-BG.cats = ['棋類', '牌類', '麻將'];
+BG.cats = ['棋類', '撲克牌', '牌類', '麻將'];
 /* 只載入選到的遊戲檔案 */
 BG.load = function (id, cb) {
   var m = BG.meta(id); if (!m || !m.files) return cb(false);

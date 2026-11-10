@@ -81,7 +81,7 @@
     var r = T.g.res; if (!r || T.scored === T.round) return;
     T.scored = T.round;
     if (!SOLO) BGSfx.play('win');
-    var vsBot = T.seats.some(BG.isBot);
+    var vsBot = T.seats.some(BG.isBot) || T.seats.length === 1; // 一個人和電腦莊家玩也算對電腦
     T.seats.forEach(function (id, i) { var p = S.players[id]; if (!p) return; var s = p.stat = p.stat || { w: 0, d: 0, l: 0 };
       if (vsBot) { s.bot = s.bot || { w: 0, d: 0, l: 0 }; s = s.bot; }
       if (r.w < 0) s.d++; else if (r.w === i) s.w++; else s.l++; });
