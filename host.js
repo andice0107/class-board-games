@@ -143,9 +143,14 @@
 
   /* ---------- 配對 ---------- */
   function pair() { if (S.auto) pairNow(); }
-  function pairNow() {
-    var N = GAME.seats, ready = S.queue.filter(function (id) { var p = S.players[id]; return p && online(p); });
-    while (ready.length >= N) {
+  function seatN() { return GAME.seatOptions ? (S.seatN || GAME.seatOptions[GAME.seatOptions.length - 1]) : GAME.seats; }
+  function pairNow(manual) {
+    var N = seatN(), ready = S.queue.filter(function (id) { var p = S.players[id]; return p && online(p); });
+    // 老師按「立刻配對」時，不夠一整桌的人也先開小一點的桌（最少 2 人），盡量不留一個人
+    var flex = manual === true && GAME.seatOptions, full = N;
+    while (ready.length >= N || (flex && ready.length >= 2)) {
+      N = full;
+      if (flex) { N = Math.min(full, ready.length); if (ready.length - N === 1 && N > 2) N--; }
       var group = [ready.shift()];
       while (group.length < N) {
         var bi = 0, last = S.players[group[0]].lastOpp || [];
@@ -199,7 +204,7 @@
   }
   function newRound(T, rotate) {
     if (rotate) T.seats.push(T.seats.shift());
-    T.g = GAME.init(); T.again = {}; T.round++;
+    T.g = GAME.init(T.seats.length); T.again = {}; T.round++;
     touch(T);
   }
   function dissolve(T, first) {
@@ -243,10 +248,10 @@
   function tableBody(T, big) {
     var w = el('div', big ? 'big-view' : '');
     var order = GAME.hostOrder ? GAME.hostOrder(T.seats.length) : T.seats.map(function (x, i) { return i; });
-    // 兩人遊戲：上方第 2 位、棋盤、下方第 1 位
-    w.appendChild(nameTag(T, order[1]));
-    var bd = el('div', 'g-' + GID + '-mini'); bd.innerHTML = GAME.hostView(T.g); w.appendChild(bd);
-    w.appendChild(nameTag(T, order[0]));
+    var bd = el('div', 'g-' + GID + '-mini'); bd.innerHTML = GAME.hostView(T.g);
+    if (T.seats.length === 2) { // 兩人遊戲：上方第 2 位、棋盤、下方第 1 位
+      w.appendChild(nameTag(T, order[1])); w.appendChild(bd); w.appendChild(nameTag(T, order[0]));
+    } else { T.seats.forEach(function (x, i) { w.appendChild(nameTag(T, i)); }); w.appendChild(bd); }
     return w;
   }
   function doRender() {
@@ -293,7 +298,12 @@
   $('h-auto').addEventListener('change', function () { S.auto = this.checked; save(); pair(); });
   $('h-bot').checked = S.allowBot !== false;
   $('h-bot').addEventListener('change', function () { S.allowBot = this.checked; save(); S.queue.forEach(function (id) { bump(S.players[id]); }); });
-  $('h-pairnow').addEventListener('click', pairNow);
+  $('h-pairnow').addEventListener('click', function () { pairNow(true); });
+  if (GAME.seatOptions) {
+    var sw = el('div', 'switch'); sw.appendChild(el('span', '', '每桌人數：'));
+    GAME.seatOptions.forEach(function (k) { var b = btn('btn small' + (seatN() === k ? ' on' : ''), k + ' 人', function () { S.seatN = k; save(); [].forEach.call(sw.querySelectorAll('button'), function (x) { x.classList.toggle('on', x === b); }); pair(); }); sw.appendChild(b); });
+    $('h-auto').parentNode.parentNode.insertBefore(sw, $('h-auto').parentNode);
+  }
   $('h-new').addEventListener('click', function () {
     if (!confirm('開新房間會換一個新的代碼，目前所有棋局都會結束。確定嗎？')) return;
     Object.keys(S.players).forEach(function (k) { net.send({ t: 'kick', to: k, text: '老師開了新房間，請重新掃描大螢幕上的 QR code。' }); });

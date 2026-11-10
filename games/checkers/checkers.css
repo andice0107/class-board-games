@@ -1,0 +1,32 @@
+/* 三色跳棋棋桌：糖果彈珠、木製星盤 */
+.ck-svg { display: block; width: 100%; height: auto; user-select: none; -webkit-user-select: none; }
+.ck-m { transition: transform .15s; transform-box: fill-box; transform-origin: center; }
+.ck-m.sel { transform: scale(1.18); }
+.ck-m.land { animation: ckLand .35s cubic-bezier(.2,1.5,.4,1); }
+@keyframes ckLand { from { transform: scale(1.5); } }
+.ck-dot { animation: ckDot 1s ease-in-out infinite; }
+@keyframes ckDot { 50% { opacity: .4; } }
+
+.ck-table { position: relative; overflow: hidden; width: min(620px, 100%); padding: 12px 12px 14px; border-radius: 22px; display: flex; flex-direction: column; align-items: center; gap: 8px; color: #2d2a4a;
+  background: radial-gradient(circle at 15% 10%, rgba(255,255,255,.7) 0 8%, transparent 9%), radial-gradient(circle at 88% 22%, rgba(255,255,255,.55) 0 6%, transparent 7%), linear-gradient(160deg, #ffe6f0 0%, #e8f0ff 55%, #e6fff4 100%);
+  box-shadow: 0 8px 0 rgba(0,0,0,.2), 0 18px 40px rgba(0,0,0,.3); }
+.ck-status { font-weight: 900; font-size: 19px; min-height: 26px; color: #8a86a8; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.ck-status.me { color: #c0392b; }
+.ck-others { width: 100%; display: flex; flex-direction: column; gap: 6px; }
+.ck-who { width: 100%; display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 14px; background: rgba(255,255,255,.8); box-shadow: 0 0 0 1px rgba(45,42,74,.12); transition: box-shadow .3s; }
+.ck-who .n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; font-size: 16px; }
+.ck-who .tag { font-size: 12.5px; padding: 2px 9px; border-radius: 99px; background: rgba(45,42,74,.07); color: #6c6890; font-weight: 700; white-space: nowrap; }
+.ck-who .tag.now { background: #2d2a4a; color: #fff; }
+.ck-who.turn { box-shadow: 0 0 0 2.5px #2d2a4a, 0 6px 16px rgba(45,42,74,.2); }
+.ck-who.out { opacity: .5; }
+.ck-marble { width: 22px; height: 22px; border-radius: 50%; flex: none; box-shadow: 0 2px 3px rgba(0,0,0,.3); }
+.ck-board { width: min(100%, calc(100dvh - 380px)); min-width: 270px; touch-action: manipulation; filter: drop-shadow(0 10px 16px rgba(80,60,30,.3)); }
+.ck-tools { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+.ck-btn { border-radius: 14px; padding: 8px 13px; font-size: 15px; font-weight: 700; background: #fff; color: #2d2a4a; box-shadow: 0 0 0 1.5px #c9c4e8, 0 3px 0 #c9c4e8; }
+.ck-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 0 0 1.5px #c9c4e8, 0 1px 0 #c9c4e8; }
+.ck-btn.go { background: #27ae60; color: #fff; box-shadow: 0 3px 0 #1b7a43; }
+.ck-btn.no { background: #e74c3c; color: #fff; box-shadow: 0 3px 0 #a5281b; }
+.ck-req { width: 100%; text-align: center; padding: 12px; border-radius: 14px; background: #fff; box-shadow: 0 0 0 2.5px #f1c40f; }
+.ck-req p { margin: 0 0 10px; font-size: 18px; font-weight: 900; }
+.g-chinese-checkers-mini { margin: 4px 0; }
+.big-view .g-chinese-checkers-mini svg { max-height: 60vh; width: auto; margin: 0 auto; }

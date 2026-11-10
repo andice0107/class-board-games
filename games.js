@@ -13,7 +13,7 @@ BG.catalog = [
   { id: 'spot-match', cat: '牌類', title: '眼明手快', icon: '👀', color: '#8e44ad', players: '2–8 人', desc: '兩張牌找出唯一相同的圖案（規劃中）', ready: false },
   { id: 'seven-eat-nine', cat: '牌類', title: '7吃9', icon: '7', color: '#d35400', players: '待確認', desc: '規劃中（玩法待確認）', ready: false },
   { id: 'mahjong', cat: '麻將', title: '中國麻將', icon: '中', color: '#1b7f5a', players: '4 人', desc: '規劃中', ready: false },
-  { id: 'chinese-checkers', cat: '棋類', title: '三色跳棋', icon: '✦', color: '#2a9d8f', players: '2–3 人', desc: '規劃中', ready: false }
+  { id: 'chinese-checkers', cat: '棋類', files: ['games/checkers/checkers.css', 'games/checkers/rules.js', 'games/checkers/game.js', 'games/checkers/guide.js'], title: '三色跳棋', icon: '✦', color: '#2a9d8f', players: '2–3 人', desc: '跳過彈珠連跳，先把對面的角填滿就贏', ready: true }
 ];
 BG.meta = function (id) { for (var i = 0; i < BG.catalog.length; i++) if (BG.catalog[i].id === id) return BG.catalog[i]; return null; };
 
