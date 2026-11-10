@@ -127,3 +127,14 @@
 .nn-tag.sp { background: #c8102e; }
 .nn-host { font-size: 26px; margin-right: 6px; }
 @keyframes mj-pulse { 50% { transform: scale(1.08); } }
+
+/* 射龍門 */
+.dg-pot { color: #ffd166; font-weight: 800; font-size: 15px; }
+.dg-gate { display: flex; align-items: center; gap: 10px; }
+.dg-post { width: 64px; animation: pkIn .35s cubic-bezier(.2,1.3,.4,1); }
+.dg-mid { font-size: 30px; color: #fff4e0; }
+.dg-who { color: #fff4e0; font-size: 13px; }
+.dg-last { display: flex; flex-direction: column; align-items: center; gap: 2px; color: #fff4e0; font-size: 12px; background: rgba(0,0,0,.2); border-radius: 12px; padding: 4px 10px; }
+.dg-last.in { box-shadow: 0 0 0 2px #6ee7b7; } .dg-last.post { box-shadow: 0 0 0 2px #ff6b6b; }
+.dg-row { display: flex; gap: 3px; align-items: center; } .dg-row .pk-card { width: 26px; } .dg-row em { font-size: 11px; font-style: normal; padding: 0 4px; }
+.dg-shoot { font-size: 18px; padding: 10px 22px; }

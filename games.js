@@ -1,6 +1,6 @@
 /* 遊戲清單：每個遊戲是 games/<id>/ 裡獨立的模組，用 BG.register 加進來 */
 window.BG = window.BG || {};
-BG.VER = '202611101626';
+BG.VER = '202611101628';
 BG.games = BG.games || {};
 BG.register = function (id, mod) { mod.id = id; BG.games[id] = mod; };
 BG.catalog = [
@@ -17,7 +17,7 @@ BG.catalog = [
     { id: 'ten-half', title: '十點半', players: '1–6 人', desc: '補牌湊近十點半，超過就爆；J、Q、K 算半點', ready: true, files: ['games/poker/poker.css', 'games/poker/cards.js', 'games/poker/blackjack.js', 'games/poker/ten-half.js'] },
     { id: 'ninety-nine', title: '99', players: '2–6 人', desc: '輪流加點數，誰超過 99 誰輸', ready: true, files: ['games/poker/poker.css', 'games/poker/cards.js', 'games/poker/ninety-nine.js'] },
     { id: 'cheat', title: '吹牛', players: '3–6 人', desc: '蓋牌出牌可以說謊，被抓到就收牌', ready: false },
-    { id: 'dragon-gate', title: '射龍門', players: '2–6 人', desc: '抽到兩根門柱中間就贏', ready: false },
+    { id: 'dragon-gate', title: '射龍門', players: '2–6 人', desc: '抽到兩根門柱中間就贏', ready: true, files: ['games/poker/poker.css', 'games/poker/cards.js', 'games/poker/dragon-gate.js'] },
     { id: 'blackjack', title: '21點', players: '1–6 人', desc: '和電腦莊家比誰最接近 21 點', ready: true, files: ['games/poker/poker.css', 'games/poker/cards.js', 'games/poker/blackjack.js'] },
     { id: 'high-card', title: '比大小', players: '2–6 人', desc: '抽一張比點數和花色，5 回合定勝負', ready: true, files: ['games/poker/poker.css', 'games/poker/cards.js', 'games/poker/high-card.js'] }
   ] },
