@@ -1,0 +1,35 @@
+/* 五子棋棋桌：竹林庭院、榧木棋盤、蛤石棋子 */
+.gm-svg { display: block; width: 100%; height: auto; user-select: none; -webkit-user-select: none; }
+.gm-st.land { animation: gmLand .3s cubic-bezier(.2,1.5,.4,1); transform-box: fill-box; transform-origin: center; }
+@keyframes gmLand { from { transform: scale(1.5); opacity: .5; } }
+.gm-win { animation: gmWin 1s ease-in-out infinite; }
+@keyframes gmWin { 50% { opacity: .25; } }
+.gm-ghost { animation: gmGhost 1s ease-in-out infinite; }
+@keyframes gmGhost { 50% { opacity: .3; } }
+
+.gm-table { position: relative; overflow: hidden; width: min(620px, 100%); padding: 12px 12px 14px; border-radius: 22px; display: flex; flex-direction: column; align-items: center; gap: 8px;
+  background: linear-gradient(180deg, #eef4e4 0%, #dfead2 60%, #cfdec0 100%); color: #26331f;
+  box-shadow: 0 8px 0 rgba(0,0,0,.2), 0 18px 40px rgba(0,0,0,.3), inset 0 0 0 1px rgba(60,90,50,.2); }
+.gm-table > * { position: relative; }
+.gm-bamboo { position: absolute !important; left: 0; top: 0; height: 100%; width: 90px; pointer-events: none; }
+.gm-status { font-weight: 900; font-size: 19px; letter-spacing: 1px; min-height: 26px; color: #6d7a63; text-align: center; }
+.gm-status.me { color: #2f6d3a; }
+.gm-who { width: 100%; display: flex; align-items: center; gap: 9px; padding: 7px 12px; border-radius: 12px; background: rgba(255,255,255,.75); box-shadow: 0 0 0 1px rgba(38,51,31,.14); transition: box-shadow .3s; }
+.gm-who .n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; font-size: 17px; }
+.gm-who .tag { font-size: 13px; padding: 2px 10px; border-radius: 99px; background: rgba(38,51,31,.08); color: #6d7a63; font-weight: 700; }
+.gm-who .tag.now { background: #2f6d3a; color: #fff; }
+.gm-who.turn { box-shadow: 0 0 0 2.5px #2f6d3a, 0 6px 16px rgba(47,109,58,.25); }
+.gm-stone { width: 24px; height: 24px; border-radius: 50%; flex: none; box-shadow: 0 2px 3px rgba(0,0,0,.35); }
+.gm-stone.b { background: radial-gradient(circle at 35% 30%, #6b6b6b, #1f1f1f 45%, #000); }
+.gm-stone.w { background: radial-gradient(circle at 35% 30%, #fff, #ebe8e0 70%, #bdb8ac); }
+.gm-board { width: min(100%, calc(100dvh - 360px)); min-width: 270px; touch-action: manipulation; filter: drop-shadow(0 10px 16px rgba(60,40,15,.35)); }
+.gm-confirm { display: flex; gap: 8px; justify-content: center; }
+.gm-tools { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+.gm-btn { border-radius: 12px; padding: 8px 13px; font-size: 15px; font-weight: 700; background: #fff; color: #26331f; box-shadow: 0 0 0 1.5px #4d5c44, 0 3px 0 #4d5c44; }
+.gm-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 0 0 1.5px #4d5c44, 0 1px 0 #4d5c44; }
+.gm-btn.go { background: #2f6d3a; color: #fff; box-shadow: 0 3px 0 #1d4625; padding: 10px 22px; font-size: 17px; }
+.gm-btn.no { background: #c0392b; color: #fff; box-shadow: 0 3px 0 #7e1c16; }
+.gm-req { width: 100%; text-align: center; padding: 12px; border-radius: 12px; background: #fff; box-shadow: 0 0 0 2.5px #2f6d3a; }
+.gm-req p { margin: 0 0 10px; font-size: 18px; font-weight: 900; }
+.g-gomoku-mini { margin: 4px 0; }
+.big-view .g-gomoku-mini svg { max-height: 62vh; width: auto; margin: 0 auto; }

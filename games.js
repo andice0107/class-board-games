@@ -4,14 +4,15 @@ BG.games = BG.games || {};
 BG.register = function (id, mod) { mod.id = id; BG.games[id] = mod; };
 BG.catalog = [
   { id: 'xiangqi', cat: '棋類', files: ['games/xiangqi/xiangqi.css', 'games/xiangqi/rules.js', 'games/xiangqi/ai.js', 'games/xiangqi/game.js', 'games/xiangqi/guide.js'], title: '中國象棋', icon: '帥', color: '#c0392b', players: '2 人對戰', desc: '楚河漢界，完整規則自動判定輸贏', ready: true },
+  { id: 'gomoku', cat: '棋類', files: ['games/gomoku/gomoku.css', 'games/gomoku/rules.js', 'games/gomoku/game.js', 'games/gomoku/guide.js'], title: '五子棋', icon: '五', color: '#4f7a4a', players: '2 人對戰', desc: '橫直斜連成五顆就贏，一分鐘學會', ready: true },
   { id: 'go', cat: '棋類', title: '圍棋', icon: '●', color: '#3d3d3d', players: '2 人對戰', desc: '規劃中', ready: false },
   { id: 'chess', cat: '棋類', title: '西洋棋', icon: '♚', color: '#5b4636', players: '2 人對戰', desc: '規劃中', ready: false },
   { id: 'poker', cat: '牌類', title: '撲克牌', icon: '♠', color: '#2b2d42', players: '2–4 人', desc: '大老二、撿紅點、抽鬼牌、排7、十點半、99、吹牛、射龍門、21點、比大小', ready: false },
   { id: 'uno', cat: '牌類', title: 'UNO', icon: '+4', color: '#e63946', players: '2–6 人', desc: '規劃中', ready: false },
   { id: 'rummikub', cat: '牌類', title: '拉密', icon: '7', color: '#e07a1f', players: '2–4 人', desc: '規劃中', ready: false },
   { id: 'spot-match', cat: '牌類', title: '眼明手快', icon: '👀', color: '#8e44ad', players: '2–8 人', desc: '兩張牌找出唯一相同的圖案（規劃中）', ready: false },
+  { id: 'seven-eat-nine', cat: '牌類', title: '7吃9', icon: '7', color: '#d35400', players: '待確認', desc: '規劃中（玩法待確認）', ready: false },
   { id: 'mahjong', cat: '麻將', title: '中國麻將', icon: '中', color: '#1b7f5a', players: '4 人', desc: '規劃中', ready: false },
-  { id: 'gomoku', cat: '棋類', title: '五子棋', icon: '⚫', color: '#a0522d', players: '2 人對戰', desc: '規劃中', ready: false },
   { id: 'chinese-checkers', cat: '棋類', title: '三色跳棋', icon: '✦', color: '#2a9d8f', players: '2–3 人', desc: '規劃中', ready: false }
 ];
 BG.meta = function (id) { for (var i = 0; i < BG.catalog.length; i++) if (BG.catalog[i].id === id) return BG.catalog[i]; return null; };

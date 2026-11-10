@@ -66,7 +66,7 @@
     t.innerHTML = '<div class="brand"><div class="logo"><i></i><i></i><i></i><i></i></div><h1>桌遊對戰教室</h1></div><span class="sp"></span>';
     t.appendChild(BGSfx.button('btn small ghost'));
     if (joined && S && GAME && GAME.guide) t.appendChild(btn('btn small ghost', '📖 規則', function () { BG.showGuide((BG.meta(S.gid) || {}).title + '・玩法說明', GAME.guide.student); }));
-    if (code && !SOLO) t.appendChild(el('span', 'pill', '房間 ' + code));
+    if (code && !SOLO) t.appendChild(el('span', 'pill', '🔑 ' + code));
     return t;
   }
   function render() {
