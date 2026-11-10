@@ -1,0 +1,21 @@
+/* 西洋棋：深色胡桃木棋桌 */
+.ch-table { padding: 10px; border-radius: 18px; background: linear-gradient(160deg, #3b2a1f, #22170f); color: #f5ead7; display: flex; flex-direction: column; gap: 8px; }
+.ch-svg { width: 100%; height: auto; display: block; }
+.ch-pc { font-family: 'DejaVu Sans', 'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols 2', serif; paint-order: stroke; }
+.ch-board { max-width: 560px; width: 100%; margin: 0 auto; }
+.ch-status { text-align: center; font-weight: 700; padding: 6px 10px; border-radius: 12px; background: #ffffff14; }
+.ch-status.me { background: #f0d9b5; color: #3b2a1f; }
+.ch-who { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 12px; background: #ffffff10; border: 2px solid transparent; }
+.ch-who.turn { border-color: #f0d9b5; }
+.ch-who .n { font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ch-who .tag { font-size: 12px; background: #ffffff22; border-radius: 999px; padding: 2px 8px; } .ch-who .tag.now { background: #f0d9b5; color: #3b2a1f; }
+.ch-who .dot { width: 8px; height: 8px; border-radius: 50%; background: #888; } .ch-who .dot.on { background: #4ade80; }
+.ch-pcicon { font-size: 26px; line-height: 1; font-family: 'DejaVu Sans', 'Segoe UI Symbol', 'Apple Symbols', serif; }
+.ch-pcicon.w { color: #fffdf5; -webkit-text-stroke: 1px #000; } .ch-pcicon.b { color: #1d1d1d; -webkit-text-stroke: 1px #f5ead7; }
+.ch-tools { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.ch-btn { border: 1px solid #f0d9b588; background: #ffffff14; color: #f5ead7; border-radius: 999px; padding: 8px 14px; font-size: 15px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+.ch-btn.go { background: #f0d9b5; color: #3b2a1f; font-weight: 700; } .ch-btn:disabled { opacity: .45; }
+.ch-promo, .ch-req { background: #f5ead7; color: #3b2a1f; border-radius: 14px; padding: 10px; text-align: center; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.ch-promo .row, .ch-req .row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.ch-promo .ch-btn, .ch-req .ch-btn { color: #3b2a1f; border-color: #b58863; background: #fff; }
+.ch-fig .ch-svg { max-width: 220px; margin: 0 auto; }
