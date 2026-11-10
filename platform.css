@@ -228,3 +228,7 @@ input:focus { border-color: var(--sky); background: #fff; }
 .fit-land > .xq-board { width: calc((var(--vh, 1vh) * 100 - 120px) * .9) !important; }
 .fit-land > [class*="-status"] { white-space: normal; }
 .switch.gopt { background: #fff4d6; border: 2px solid #f4a300; border-radius: 14px; padding: 8px; margin: 4px 0 8px; font-weight: 800; }
+.chip.pick { cursor: pointer; user-select: none; }
+.chip.pick.sel { background: #fde68a; box-shadow: 0 0 0 2px #f59e0b; }
+.chip .ck { width: 16px; height: 16px; border-radius: 50%; background: #f59e0b; color: #fff; font-size: 11px; font-weight: 900; display: inline-flex; align-items: center; justify-content: center; }
+.manual { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; margin-top: 8px; text-align: center; }

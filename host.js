@@ -15,7 +15,7 @@
   $('h-game').innerHTML = '<b style="background:' + META.color + '">' + META.icon + '</b>';
   $('h-game').appendChild(document.createTextNode(META.title));
   var S = null, net = null;
-  function fresh() { return { gid: GID, code: BGNet.code(), broker: null, players: {}, queue: [], tables: {}, tn: 0, auto: true, at: Date.now() }; }
+  function fresh() { return { gid: GID, code: BGNet.code(), broker: null, players: {}, queue: [], tables: {}, tn: 0, auto: false, allowBot: false, at: Date.now() }; }
   var saved = null;
   try { saved = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
   start(!SOLO && saved && saved.code && saved.gid === GID && Date.now() - saved.at < 12 * 3600e3 ? saved : fresh());
@@ -69,7 +69,7 @@
     var q = S.players[pid]; return q ? { name: dname(q), on: online(q) } : { name: '（已離開）', on: false, gone: true }; }
   function names(T) { return T.seats.map(pub); }
   function stOf(p) {
-    var s = p.stat || { w: 0, d: 0, l: 0 }, m = { t: 'st', to: p.pid, v: p.ver, name: p.name, sid: p.sid, gid: GID, qn: S.queue.length, stat: s, pts: pts(s), allowBot: S.allowBot !== false, botSeats: GAME.botSeats || null };
+    var s = p.stat || { w: 0, d: 0, l: 0 }, m = { t: 'st', to: p.pid, v: p.ver, name: p.name, sid: p.sid, gid: GID, qn: S.queue.length, stat: s, pts: pts(s), allowBot: SOLO || S.allowBot === true, botSeats: GAME.botSeats || null };
     var T = p.table && S.tables[p.table];
     if (T) { var seat = T.seats.indexOf(p.pid); m.tb = { no: T.no, round: T.round, seat: seat, seats: names(T), view: GAME.view(T.g, seat), res: T.g.res || null, again: T.again }; }
     return m;
@@ -121,7 +121,7 @@
     if (!wasOn) { p._on = true; presence(p); }
     var T = tblOf(p), seat = T ? T.seats.indexOf(p.pid) : -1;
     if (d.t === 'ping') { if (d.v !== p.ver) send(p); return; }
-    if (d.t === 'bot') { if (!T && S.allowBot !== false) { botTable(p, d.level, d.n, SOLO ? d.opts : null); var NT = tblOf(p); if (NT && SOLO && SPEEDS[d.speed]) NT.speed = d.speed; } return; }
+    if (d.t === 'bot') { if (!T && (SOLO || S.allowBot === true)) { botTable(p, d.level, d.n, SOLO ? d.opts : null); var NT = tblOf(p); if (NT && SOLO && SPEEDS[d.speed]) NT.speed = d.speed; } return; }
     if (!T) return;
     if (d.t === 'emo') {
       T.seats.forEach(function (id) { if (id !== p.pid) net.send({ t: 'emo', to: id, from: seat, i: d.i | 0 }); });
@@ -166,15 +166,29 @@
         for (var i = 0; i < ready.length; i++) if (last.indexOf(ready[i]) < 0) { bi = i; break; }
         group.push(ready.splice(bi, 1)[0]);
       }
-      S.queue = S.queue.filter(function (id) { return group.indexOf(id) < 0; });
-      var used = {}; Object.keys(S.tables).forEach(function (k) { used[S.tables[k].no] = 1; });
-      var no = 1; while (used[no]) no++;
-      group.sort(function () { return Math.random() - .5; });
-      var T = { id: 't' + (++S.tn), no: no, round: 0, seats: group };
-      S.tables[T.id] = T;
-      group.forEach(function (id) { S.players[id].table = T.id; });
-      newRound(T, false);
+      makeTable(group);
     }
+    S.queue.forEach(function (id) { bump(S.players[id]); });
+    render(); save();
+  }
+  function makeTable(group) {
+    S.queue = S.queue.filter(function (id) { return group.indexOf(id) < 0; });
+    var used = {}; Object.keys(S.tables).forEach(function (k) { used[S.tables[k].no] = 1; });
+    var no = 1; while (used[no]) no++;
+    group.sort(function () { return Math.random() - .5; });
+    var T = { id: 't' + (++S.tn), no: no, round: 0, seats: group };
+    S.tables[T.id] = T;
+    group.forEach(function (id) { S.players[id].table = T.id; });
+    newRound(T, false);
+    return T;
+  }
+  /* 老師手動配對：在等候名單點學生名字選人，再按「開成一桌」 */
+  var SEL = [];
+  function manualRange() { return GAME.seatOptions ? [Math.min.apply(null, GAME.seatOptions), Math.max.apply(null, GAME.seatOptions)] : [GAME.seats, GAME.seats]; }
+  function manualPair() {
+    var r = manualRange(), g = SEL.filter(function (id) { return S.queue.indexOf(id) >= 0; });
+    if (g.length < r[0] || g.length > r[1]) { alert(r[0] === r[1] ? '這個遊戲一桌要剛好 ' + r[0] + ' 個人' : '一桌要 ' + r[0] + '～' + r[1] + ' 個人'); return; }
+    SEL = []; makeTable(g);
     S.queue.forEach(function (id) { bump(S.players[id]); });
     render(); save();
   }
@@ -297,11 +311,27 @@
     var w = $('h-wait'); w.innerHTML = '';
     $('h-wn').textContent = S.queue.length;
     if (!S.queue.length) w.appendChild(el('span', 'empty', '目前沒有人在等'));
+    SEL = SEL.filter(function (id) { return S.queue.indexOf(id) >= 0; });
     S.queue.forEach(function (id) {
       var p = S.players[id]; if (!p) return;
-      var c = el('span', 'chip'); c.appendChild(el('span', 'dot ' + (online(p) ? 'on' : 'off'))); c.appendChild(el('span', '', dname(p)));
+      var on = SEL.indexOf(id) >= 0, c = el('span', 'chip pick' + (on ? ' sel' : '')); c.title = '點名字選人，選好再按「開成一桌」';
+      c.appendChild(el('span', on ? 'ck' : 'dot ' + (online(p) ? 'on' : 'off'), on ? '✓' : null)); c.appendChild(el('span', '', dname(p)));
+      c.addEventListener('click', function (e) { if (e.target.classList.contains('x')) return; var i = SEL.indexOf(id); if (i >= 0) SEL.splice(i, 1); else SEL.push(id); render(); });
       c.appendChild(btn('x', '×', function () { kick(id); })); w.appendChild(c);
     });
+    var mp = $('h-manual');
+    if (!mp) { mp = el('div', 'manual'); mp.id = 'h-manual'; w.parentNode.insertBefore(mp, w.nextSibling); }
+    mp.innerHTML = '';
+    if (S.queue.length) {
+      var rg = manualRange();
+      if (!SEL.length) mp.appendChild(el('small', 'empty', '👆 手動配對：點學生名字選人（' + (rg[0] === rg[1] ? rg[0] : rg[0] + '～' + rg[1]) + ' 人一桌），再按「開成一桌」'));
+      else {
+        var ok = SEL.length >= rg[0] && SEL.length <= rg[1];
+        var b = btn('btn small' + (ok ? ' on' : ''), '🤝 把選的 ' + SEL.length + ' 人開成一桌', manualPair); if (!ok) b.disabled = true; mp.appendChild(b);
+        mp.appendChild(btn('btn small', '取消選取', function () { SEL = []; render(); }));
+        if (!ok) mp.appendChild(el('small', 'empty', SEL.length < rg[0] ? '還要再選 ' + (rg[0] - SEL.length) + ' 人' : '最多 ' + rg[1] + ' 人一桌'));
+      }
+    }
     var box = $('h-tables'); box.innerHTML = '';
     var ts = Object.keys(S.tables).map(function (k) { return S.tables[k]; }).sort(function (a, b) { return a.no - b.no; });
     $('h-notable').classList.toggle('hidden', ts.length > 0);
@@ -340,7 +370,7 @@
   })();
   $('h-lock').checked = !!S.locked;
   $('h-lock').addEventListener('change', function () { S.locked = this.checked; save(); render(); });
-  $('h-bot').checked = S.allowBot !== false;
+  $('h-bot').checked = S.allowBot === true;
   $('h-bot').addEventListener('change', function () { S.allowBot = this.checked; save(); S.queue.forEach(function (id) { bump(S.players[id]); }); });
   $('h-pairnow').addEventListener('click', function () { pairNow(true); });
   if (GAME.seatOptions) {

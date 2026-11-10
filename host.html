@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>桌遊對戰教室・老師房間</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@700&family=Noto+Sans+TC:wght@400;700;900&display=swap">
-<link rel="stylesheet" href="platform.css?v=202611101949">
+<link rel="stylesheet" href="platform.css?v=202611102009">
 </head>
 <body>
 <header class="h-top">
@@ -29,24 +29,24 @@
     <button type="button" class="url-copy" id="h-copy" title="點一下複製網址"><span class="url" id="h-url"></span><span class="url-btn" id="h-copy-t">📋 點一下複製網址</span></button>
     <div class="sec-title">⏳ 等候配對 <span class="pill" id="h-wn">0</span></div>
     <div class="chips" id="h-wait"></div>
-    <label class="switch"><input type="checkbox" id="h-auto" checked> 自動配對開桌</label>
-    <label class="switch" style="margin-top:6px"><input type="checkbox" id="h-bot" checked> 允許學生和電腦對戰</label>
+    <label class="switch"><input type="checkbox" id="h-auto"> 自動配對開桌</label>
+    <label class="switch" style="margin-top:6px"><input type="checkbox" id="h-bot"> 允許學生和電腦對戰</label>
     <label class="switch lock" style="margin-top:6px"><input type="checkbox" id="h-lock"> 🔒 鎖住房間（學生到齊後勾選，新的人就進不來）</label>
     <div class="row c" style="margin-top:10px"><button class="btn small" id="h-pairnow" type="button">🤝 立刻配對等候中的學生</button></div>
   </aside>
   <section>
     <div class="tables" id="h-tables"></div>
-    <div class="notable" id="h-notable"><div class="big">🎲</div><br>學生掃描左邊的 QR code、輸入 4 碼學號後，<br>系統會自動配對開桌，每一桌的狀況都會即時出現在這裡。</div>
+    <div class="notable" id="h-notable"><div class="big">🎲</div><br>學生掃描左邊的 QR code、輸入 4 碼學號後，<br>會先進入左邊的「等候配對」。<br>說明完規則後，點學生名字手動配對，或勾選「自動配對開桌」。<br>每一桌的狀況都會即時出現在這裡。</div>
   </section>
 </div>
 <div class="overlay hidden" id="h-ov"><div class="panel" id="h-ovbox"></div></div>
 <div class="overlay hidden" id="h-lbov"><div class="panel" id="h-lbbox"></div></div>
-<script src="decor.js?v=202611101949"></script>
-<script src="vendor/mqtt.min.js?v=202611101949"></script>
-<script src="vendor/qrcode.js?v=202611101949"></script>
-<script src="net.js?v=202611101949"></script>
-<script src="sfx.js?v=202611101949"></script>
-<script src="games.js?v=202611101949"></script>
-<script src="host.js?v=202611101949"></script>
+<script src="decor.js?v=202611102009"></script>
+<script src="vendor/mqtt.min.js?v=202611102009"></script>
+<script src="vendor/qrcode.js?v=202611102009"></script>
+<script src="net.js?v=202611102009"></script>
+<script src="sfx.js?v=202611102009"></script>
+<script src="games.js?v=202611102009"></script>
+<script src="host.js?v=202611102009"></script>
 </body>
 </html>
