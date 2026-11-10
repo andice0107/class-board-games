@@ -120,7 +120,7 @@ input:focus { border-color: var(--sky); background: #fff; }
 .p-card input { margin: 8px 0 16px; text-align: center; font-size: 22px; font-weight: 900; }
 .p-card .gbadge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 6px; border-radius: 99px; background: #f1f3fa; font-weight: 900; }
 .p-card .gbadge b { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 15px; }
-.p-top { width: min(600px, 100%); display: flex; align-items: center; gap: 8px; }
+.p-top { width: 100%; display: flex; align-items: center; gap: 8px; }
 .p-top .brand h1 { font-size: 17px; } .p-top .logo { width: 32px; height: 32px; padding: 4px; border-radius: 10px; gap: 2px; }
 .p-top .sp { flex: 1; }
 .wait-dice { display: flex; justify-content: center; gap: 14px; margin: 22px 0; }
@@ -221,3 +221,9 @@ input:focus { border-color: var(--sky); background: #fff; }
 .sub-item.off button .tag { background: #9a96b5; }
 .sub-item .solo-link { text-align: center; }
 .speedsel { display: grid !important; grid-template-columns: repeat(5, 1fr); gap: 4px; } .speedsel > span { grid-column: 1 / -1; } .speedsel .btn { min-width: 0; padding: 6px 2px; font-size: 13px; }
+/* 橫式畫面的棋盤遊戲：棋盤在左、資訊在右（player.js 自動加上 fit-land） */
+.fit-land { display: grid !important; grid-template-columns: auto minmax(240px, 1fr); grid-auto-rows: min-content; align-content: center; align-items: center; column-gap: 18px; row-gap: 10px; }
+.fit-land > * { grid-column: 2; }
+.fit-land > [class*="-board"] { grid-column: 1; grid-row: 1 / span 12; align-self: center; width: calc(var(--vh, 1vh) * 100 - 120px) !important; max-width: none !important; min-width: 0 !important; margin: 0 !important; }
+.fit-land > .xq-board { width: calc((var(--vh, 1vh) * 100 - 120px) * .9) !important; }
+.fit-land > [class*="-status"] { white-space: normal; }

@@ -37,8 +37,7 @@
 .mj-me-top { display: flex; align-items: center; gap: 6px; font-size: 14px; margin-bottom: 4px; } .mj-me-top i { width: 12px; height: 12px; border-radius: 50%; }
 .mj-mymelds { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 5px; }
 .mj-hand { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; }
-.mj-tile { width: min(44px, calc((100vw - 76px) / 9)); flex: none; padding: 0; border: 0; background: none; cursor: pointer; transition: transform .12s; -webkit-tap-highlight-color: transparent; }
-@media (min-width: 760px) { .mj-tile { width: min(46px, calc((100vw - 120px) / 17)); } }
+.mj-tile { width: min(46px, max(calc((var(--vw, 1vw) * 100 - 120px) / 17), min(44px, calc((var(--vw, 1vw) * 100 - 76px) / 9)))); flex: none; padding: 0; border: 0; background: none; cursor: pointer; transition: transform .12s; -webkit-tap-highlight-color: transparent; }
 .mj-tile.drawn { margin-left: 8px; }
 .mj-tile.sel { transform: translateY(-9px); } .mj-tile.sel .mj-t { filter: drop-shadow(0 0 4px #ffd54f) drop-shadow(0 2px 2px #0006); }
 .mj-tile.win .mj-t { filter: drop-shadow(0 0 5px #ff4d6d); }

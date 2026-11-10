@@ -82,11 +82,48 @@
       app.appendChild(c); return;
     }
     if (!S.tb || !GAME) return waiting();
+    var n0 = app.children.length;
     GAME.render(app, ctx());
+    fit(app.children[n0]);
     if (S.tb.res) result();
     if (showEmo) emotes();
     placeBubbles();
   }
+  /* 遊戲桌自動放大到填滿畫面：找出「整張桌子剛好放得下」的最大倍率。
+     只在開新局、換方向／視窗大小時重新計算；遊戲中不會因為牌變少而縮小，
+     只有內容變多到被擋住時才會稍微縮小一點。 */
+  var FIT = { key: '', z: 1 };
+  function fitAvail() {
+    var top = app.firstChild, th = top ? top.getBoundingClientRect().height : 40;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    return { w: vw - 16, h: vh - th - 46 };
+  }
+  function fitApply(t, z, av) {
+    t.style.zoom = z; t.style.width = Math.floor(av.w / z) + 'px'; t.style.maxWidth = 'none'; t.style.minHeight = Math.floor(av.h / z) + 'px'; t.style.boxSizing = 'border-box';
+    app.style.setProperty('--vw', (av.w / z / 100) + 'px'); app.style.setProperty('--vh', ((av.h + 60) / z / 100) + 'px');
+  }
+  function fitNeed(t, z, av) { fitApply(t, z, av); t.style.minHeight = '0px'; var h = t.scrollHeight; return h * z; }
+  function fitSearch(t, av, hiZ) {
+    var lo = 1, hi = Math.min(hiZ, 2.4, av.w / 380);
+    if (hi <= 1) return 1;
+    if (fitNeed(t, hi, av) <= av.h) return hi;
+    for (var k = 0; k < 9; k++) { var mid = (lo + hi) / 2; if (fitNeed(t, mid, av) <= av.h) lo = mid; else hi = mid; }
+    return Math.floor(lo * 100) / 100;
+  }
+  function fit(t) {
+    if (!t || !t.style) return;
+    var av = fitAvail(), key = S.tb.seat + ':' + S.tb.round + ':' + av.w + 'x' + av.h;
+    // 橫式畫面＋棋盤類：棋盤放左邊、其他資訊放右邊，棋盤用滿整個高度
+    var board = [].filter.call(t.children, function (c) { return /(^|\s)[a-z0-9]+-board(\s|$)/.test(c.getAttribute('class') || ''); })[0];
+    FIT.land = !!board && av.w / av.h > 1.2 && av.w >= 640;
+    t.classList.toggle('fit-land', FIT.land);
+    if (FIT.land) { if (FIT.key !== key) { FIT.key = key; FIT.z = Math.max(1, Math.min(1.6, av.h / 620, av.w / 900)); } }
+    else if (FIT.key !== key) { FIT.key = key; FIT.z = fitSearch(t, av, 9); }
+    else if (!FIT.land && FIT.z > 1 && fitNeed(t, FIT.z, av) > av.h * 1.02) FIT.z = fitSearch(t, av, FIT.z);
+    fitApply(t, FIT.z, av);
+  }
+  var fitT = null;
+  window.addEventListener('resize', function () { clearTimeout(fitT); fitT = setTimeout(function () { if (S && S.tb) render(); }, 150); });
   /* 只有換畫面時才播放進場動畫，平常更新不閃動 */
   var lastKey = '';
   var _render = render;

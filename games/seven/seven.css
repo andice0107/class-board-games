@@ -13,7 +13,7 @@
 .s9-pile { position: relative; }
 .s9-pile::before { content: ''; position: absolute; inset: 0; border-radius: 12px; background: #fff3; transform: translate(6px, 6px) rotate(4deg); }
 .s9-card { display: block; width: 100%; height: auto; }
-.s9-card.center { position: relative; width: min(36vw, 26vh, 170px); filter: drop-shadow(0 6px 10px #0006); }
+.s9-card.center { position: relative; width: min(36vw, calc(var(--vh, 1vh) * 26), 170px); filter: drop-shadow(0 6px 10px #0006); }
 .s9-card.center.in { animation: s9In .35s cubic-bezier(.2,1.3,.4,1); }
 @keyframes s9In { from { transform: translateY(-40px) scale(.8) rotate(-8deg); opacity: .3; } }
 .s9-info { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 120px; }
@@ -27,7 +27,7 @@
 .s9-me.frozen { filter: saturate(.3) brightness(.8); }
 .s9-lbl { font-size: 13px; opacity: .9; margin-bottom: 6px; text-align: center; }
 .s9-hand { display: flex; justify-content: center; gap: 6px; }
-.s9-hc { width: min(17vw, 92px); padding: 0; border: 0; background: none; cursor: pointer; transition: transform .12s; -webkit-tap-highlight-color: transparent; }
+.s9-hc { width: min(calc(var(--vw, 1vw) * 17), 92px); padding: 0; border: 0; background: none; cursor: pointer; transition: transform .12s; -webkit-tap-highlight-color: transparent; }
 .s9-hc:active { transform: translateY(-6px) scale(1.05); }
 .s9-hc.go { transform: translateY(-30px) scale(.9); opacity: .4; transition: all .25s; }
 .s9-hc.wrong { animation: s9Shake .3s; filter: drop-shadow(0 0 6px #e63946); }

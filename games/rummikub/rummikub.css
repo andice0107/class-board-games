@@ -6,7 +6,7 @@
 .rk-table .pk-opp { background: rgba(0,0,0,.18); border-color: rgba(255,244,224,.4); color: #fff4e0; }
 .rk-table .pk-opp.turn { border-color: #fff4e0; box-shadow: 0 0 0 2px #fff4e0; }
 .rk-mini { width: 11px; height: 16px; margin: 0 -2px; border-radius: 2px; background: #fff8ec; border: 1px solid #5e3b1c; transform-origin: 50% 120%; }
-.rk-felt { width: 100%; min-height: 120px; max-height: 46vh; overflow-y: auto; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 8px; padding: 10px; border-radius: 16px; background: rgba(40,24,10,.28); box-shadow: inset 0 2px 8px rgba(0,0,0,.35); }
+.rk-felt { width: 100%; min-height: 120px; max-height: calc(var(--vh, 1vh) * 46); overflow-y: auto; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 8px; padding: 10px; border-radius: 16px; background: rgba(40,24,10,.28); box-shadow: inset 0 2px 8px rgba(0,0,0,.35); }
 .rk-set { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 4px; border-radius: 9px; background: rgba(255,255,255,.12); border: 2px solid transparent; position: relative; }
 .rk-set.target { border-color: rgba(255,244,224,.7); border-style: dashed; cursor: pointer; }
 .rk-set.bad { border-color: #ff4d4d; border-style: solid; background: rgba(255,77,77,.15); }

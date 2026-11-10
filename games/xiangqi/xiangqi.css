@@ -25,7 +25,7 @@
 .xq-stone { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; flex: none; font-family: 'LXGW WenKai TC', serif; font-weight: 700; font-size: 16px;
   background: radial-gradient(circle at 38% 32%, #fffdf5, #f5e6c4 60%, #d8b67c); box-shadow: 0 2px 0 #8a5a2b, inset 0 0 0 2.5px #fffaf0, inset 0 0 0 3.5px currentColor; }
 .xq-stone.r { color: #b8322a; } .xq-stone.b { color: #1f1a17; }
-.xq-board { width: min(100%, calc((100dvh - 330px) * .91)); min-width: 260px; touch-action: manipulation; filter: drop-shadow(0 10px 16px rgba(70,45,20,.35)); }
+.xq-board { width: min(100%, calc((calc(var(--vh, 1dvh) * 100) - 330px) * .91)); min-width: 260px; touch-action: manipulation; filter: drop-shadow(0 10px 16px rgba(70,45,20,.35)); }
 .xq-tools { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
 .xq-btn { border-radius: 10px; padding: 8px 12px; font-size: 15px; font-weight: 700; background: #fffaf0; color: #1f1a17; box-shadow: 0 0 0 1.5px #4a423b, 0 3px 0 #4a423b; }
 .xq-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 0 0 1.5px #4a423b, 0 1px 0 #4a423b; }
@@ -34,11 +34,11 @@
 .xq-req { width: 100%; text-align: center; padding: 12px; border-radius: 12px; background: #fffaf0; box-shadow: 0 0 0 2.5px #b8322a, 0 8px 20px rgba(126,28,22,.18); }
 .xq-req p { margin: 0 0 10px; font-size: 19px; font-weight: 700; font-family: 'LXGW WenKai TC', 'Noto Serif TC', serif; }
 .xq-stamp { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 35; pointer-events: none; }
-.xq-stamp span { display: grid; place-items: center; width: clamp(140px, 42vw, 220px); height: clamp(140px, 42vw, 220px); font-family: 'LXGW WenKai TC', 'Noto Serif TC', serif; font-weight: 700; font-size: clamp(64px, 20vw, 110px); color: #fff4ec; background: #b8322a; border-radius: 18px;
+.xq-stamp span { display: grid; place-items: center; width: clamp(140px, calc(var(--vw, 1vw) * 42), 220px); height: clamp(140px, calc(var(--vw, 1vw) * 42), 220px); font-family: 'LXGW WenKai TC', 'Noto Serif TC', serif; font-weight: 700; font-size: clamp(64px, calc(var(--vw, 1vw) * 20), 110px); color: #fff4ec; background: #b8322a; border-radius: 18px;
   box-shadow: inset 0 0 0 6px #fff4ec, inset 0 0 0 10px #b8322a, 0 20px 50px rgba(126,28,22,.45); animation: xqStamp 1.1s ease-out forwards; }
 @keyframes xqStamp { 0% { transform: scale(2.6) rotate(-10deg); opacity: 0; } 22% { transform: scale(1) rotate(-6deg); opacity: .96; } 78% { opacity: .96; } 100% { opacity: 0; transform: scale(1) rotate(-6deg); } }
 .xq-splash { position: fixed; z-index: 34; pointer-events: none; border-radius: 50%; background: radial-gradient(circle, rgba(31,26,23,.45), rgba(31,26,23,0) 70%); animation: xqSplash .7s ease-out forwards; }
 @keyframes xqSplash { from { transform: scale(.2); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
 /* 老師端縮圖 */
 .g-xiangqi-mini { margin: 4px 0; }
-.big-view .g-xiangqi-mini svg { max-height: 62vh; width: auto; margin: 0 auto; }
+.big-view .g-xiangqi-mini svg { max-height: calc(var(--vh, 1vh) * 62); width: auto; margin: 0 auto; }

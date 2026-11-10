@@ -17,11 +17,11 @@
 .sp-wrap { position: relative; }
 .sp-wrap.pile::before, .sp-wrap.pile::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: #e9e2ff; transform: translate(5px, 5px); z-index: 0; box-shadow: 0 2px 6px #0004; }
 .sp-wrap.pile::after { transform: translate(10px, 10px); z-index: -1; background: #cfc3f5; }
-.sp-card { position: relative; z-index: 1; width: min(76vw, 40vh, 330px); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #f5f1ff 70%, #e7defc); border: 6px solid #ffd54f; box-shadow: 0 6px 18px #0006, inset 0 0 0 3px #fff; }
+.sp-card { position: relative; z-index: 1; width: min(76vw, calc(var(--vh, 1vh) * 31), 330px); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #f5f1ff 70%, #e7defc); border: 6px solid #ffd54f; box-shadow: 0 6px 18px #0006, inset 0 0 0 3px #fff; }
 .sp-card.mine { border-color: #1d7dd8; }
 .sp-card.empty { display: flex; align-items: center; justify-content: center; font-size: 60px; }
-.sp-sym { position: absolute; transform: translate(-50%, -50%) rotate(var(--r)) scale(var(--z)); font-size: calc(min(76vw, 40vh, 330px) * .17); line-height: 1; padding: 4px; border: 0; background: none; cursor: pointer; border-radius: 50%; transition: transform .12s, box-shadow .12s; -webkit-tap-highlight-color: transparent; font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif; }
-.sp-sym.txt { font-family: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif; font-weight: 900; font-size: calc(min(76vw, 40vh, 330px) * .16); }
+.sp-sym { position: absolute; transform: translate(-50%, -50%) rotate(var(--r)) scale(var(--z)); font-size: calc(min(76vw, calc(var(--vh, 1vh) * 31), 330px) * .17); line-height: 1; padding: 4px; border: 0; background: none; cursor: pointer; border-radius: 50%; transition: transform .12s, box-shadow .12s; -webkit-tap-highlight-color: transparent; font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif; }
+.sp-sym.txt { font-family: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif; font-weight: 900; font-size: calc(min(76vw, calc(var(--vh, 1vh) * 31), 330px) * .16); }
 .sp-sym:active { transform: translate(-50%, -50%) rotate(var(--r)) scale(calc(var(--z) * 1.15)); }
 .sp-sym.hi { background: #ffe066; box-shadow: 0 0 0 4px #ffb703, 0 0 18px #ffb703; animation: sp-pop .5s ease; }
 .sp-sym.wrong { background: #ffccd5; box-shadow: 0 0 0 4px #e63946; animation: sp-shake .3s; }

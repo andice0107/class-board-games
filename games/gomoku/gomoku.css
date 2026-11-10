@@ -22,7 +22,7 @@
 .gm-stone { width: 24px; height: 24px; border-radius: 50%; flex: none; box-shadow: 0 2px 3px rgba(0,0,0,.35); }
 .gm-stone.b { background: radial-gradient(circle at 35% 30%, #6b6b6b, #1f1f1f 45%, #000); }
 .gm-stone.w { background: radial-gradient(circle at 35% 30%, #fff, #ebe8e0 70%, #bdb8ac); }
-.gm-board { width: min(100%, calc(100dvh - 360px)); min-width: 270px; touch-action: manipulation; filter: drop-shadow(0 10px 16px rgba(60,40,15,.35)); }
+.gm-board { width: min(100%, calc(calc(var(--vh, 1dvh) * 100) - 360px)); min-width: 270px; touch-action: manipulation; filter: drop-shadow(0 10px 16px rgba(60,40,15,.35)); }
 .gm-confirm { display: flex; gap: 8px; justify-content: center; }
 .gm-tools { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
 .gm-btn { border-radius: 12px; padding: 8px 13px; font-size: 15px; font-weight: 700; background: #fff; color: #26331f; box-shadow: 0 0 0 1.5px #4d5c44, 0 3px 0 #4d5c44; }
@@ -32,4 +32,4 @@
 .gm-req { width: 100%; text-align: center; padding: 12px; border-radius: 12px; background: #fff; box-shadow: 0 0 0 2.5px #2f6d3a; }
 .gm-req p { margin: 0 0 10px; font-size: 18px; font-weight: 900; }
 .g-gomoku-mini { margin: 4px 0; }
-.big-view .g-gomoku-mini svg { max-height: 62vh; width: auto; margin: 0 auto; }
+.big-view .g-gomoku-mini svg { max-height: calc(var(--vh, 1vh) * 62); width: auto; margin: 0 auto; }
