@@ -47,7 +47,7 @@
     var q = qrcode(0, 'M'); q.addData(joinUrl()); q.make();
     $('h-qr').innerHTML = q.createSvgTag({ cellSize: 6, margin: 1, scalable: true });
     $('h-url').textContent = joinUrl();
-    $('h-copy').onclick = function () { copyText(joinUrl()); var t = $('h-copy-t'); t.textContent = '✅ 已複製，可以貼給學生了'; $('h-copy').classList.add('done'); clearTimeout(t._t); t._t = setTimeout(function () { t.textContent = '📋 點一下複製網址'; $('h-copy').classList.remove('done'); }, 2500); };
+    $('h-copy').onclick = function () { copyText(joinUrl()); var t = $('h-copy-t'); t.textContent = '✅ 已複製（序號 ' + S.code + '），可以貼給學生了'; $('h-copy').classList.add('done'); clearTimeout(t._t); t._t = setTimeout(function () { t.textContent = '📋 點一下複製網址'; $('h-copy').classList.remove('done'); }, 2500); };
   }
   var saveT = null;
   function save() { if (saveT) return; saveT = setTimeout(function () { saveT = null; S.at = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }, 400); }
@@ -309,7 +309,7 @@
   $('h-bot').addEventListener('change', function () { S.allowBot = this.checked; save(); S.queue.forEach(function (id) { bump(S.players[id]); }); });
   $('h-pairnow').addEventListener('click', function () { pairNow(true); });
   if (GAME.seatOptions) {
-    var sw = el('div', 'switch'); sw.appendChild(el('span', '', '每桌人數：'));
+    var sw = el('div', 'switch seatsel'); sw.appendChild(el('span', '', '每桌人數：'));
     GAME.seatOptions.forEach(function (k) { var b = btn('btn small' + (seatN() === k ? ' on' : ''), k + ' 人', function () { S.seatN = k; save(); [].forEach.call(sw.querySelectorAll('button'), function (x) { x.classList.toggle('on', x === b); }); pair(); }); sw.appendChild(b); });
     $('h-auto').parentNode.parentNode.insertBefore(sw, $('h-auto').parentNode);
   }

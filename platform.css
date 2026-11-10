@@ -209,3 +209,4 @@ input:focus { border-color: var(--sky); background: #fff; }
 .join .url-btn { display: inline-block; margin-top: 5px; font-size: 13px; font-weight: 800; color: #5b4fc4; }
 .join .url-copy.done .url-btn { color: #1b7a43; }
 
+.seatsel { flex-wrap: wrap; justify-content: center; gap: 6px; } .seatsel > span { flex: 0 0 100%; text-align: center; } .seatsel .btn { min-width: 44px; white-space: nowrap; }

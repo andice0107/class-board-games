@@ -1,14 +1,14 @@
 /* 三色跳棋模組：每桌 2 或 3 人，座位 0 紅、1 黃、2 藍 */
 (function () {
   'use strict';
-  var NAMES = ['紅色', '黃色', '藍色'], LIMIT = 600;
+  var NAMES = ['紅色', '黃色', '綠色'], LIMIT = 600;
   var REASONS = { finish: '十顆棋子全部走進對面的星角', resign: '其他人都認輸了', left: '其他人都離開了', draw: '雙方同意和棋', teacher: '老師判和', limit: '步數到了上限，剩下最少棋子的人獲勝', stuck: '大家都走不動了，平手' };
   function el(t, c, x) { var e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; }
   function nextTurn(g) {
     for (var k = 1; k <= g.np; k++) {
       var s = (g.turn + k) % g.np;
       if (g.out.indexOf(s) >= 0) continue;
-      if (CCK.allMoves(g.board, s).length) { g.turn = s; return true; }
+      if (CCK.allMoves(g.board, s, g.np).length) { g.turn = s; return true; }
     }
     return false;
   }
@@ -22,6 +22,7 @@
   var mod = {
     seats: 3, seatOptions: [2, 3], botSeats: [1, 2],
     reasons: REASONS,
+    levelDesc: ['隨便挑一顆往前走', '大致往前，常走得不划算', '每步都挑跳最遠的', '會先搭橋連跳，很難贏'],
     seatName: function (i) { return NAMES[i] || ''; },
     seatColor: function (i) { return CCK.COLORS[i]; },
     init: function (n) { n = n === 3 ? 3 : 2; return { np: n, board: CCK.init(n), turn: 0, hist: [], last: null, res: null, req: null, out: [], moves: 0 }; },
@@ -37,7 +38,7 @@
       switch (d.t) {
         case 'move':
           if (g.turn !== seat || d.n !== g.hist.length || g.board[d.from] !== String(seat)) return false;
-          var path = CCK.moves(g.board, d.from)[d.to]; if (!path) return false;
+          var path = CCK.moves(g.board, d.from, g.np)[d.to]; if (!path) return false;
           g.hist.push({ board: g.board, last: g.last, turn: g.turn, moves: g.moves });
           g.board = CCK.move(g.board, d.from, d.to); g.last = path; g.req = null; g.moves++;
           if (CCK.won(g.board, g.np, seat)) { g.res = { w: seat, why: 'finish' }; return true; }
@@ -143,7 +144,7 @@
         ctx.snd(L.dests[i].length > 2 || !adjacent(L.dests[i]) ? 'cap' : 'move');
         ctx.send('move', { from: L.sel, to: i, n: v.cnt }); L.sel = -1; L.dests = {}; ctx.rerender(); return;
       }
-      if (v.board[i] === String(seat)) { L.sel = L.sel === i ? -1 : i; L.dests = L.sel >= 0 ? CCK.moves(v.board, i) : {}; if (L.sel >= 0 && !Object.keys(L.dests).length) { ctx.toast('這顆彈珠現在走不動'); ctx.snd('error'); } else ctx.snd('tap'); }
+      if (v.board[i] === String(seat)) { L.sel = L.sel === i ? -1 : i; L.dests = L.sel >= 0 ? CCK.moves(v.board, i, v.np) : {}; if (L.sel >= 0 && !Object.keys(L.dests).length) { ctx.toast('這顆彈珠現在走不動'); ctx.snd('error'); } else ctx.snd('tap'); }
       else { L.sel = -1; L.dests = {}; }
       ctx.rerender();
     });

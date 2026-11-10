@@ -9,6 +9,7 @@
     seats: 2,
     botSeats: [1, 1],
     reasons: REASONS,
+    levelDesc: ['隨便下，常常忘記擋', '會擋明顯的威脅', '攻守都會，不會漏擋', '會製造雙重威脅，很難贏'],
     seatName: function (i) { return i === 0 ? '黑子' : '白子'; },
     seatColor: function (i) { return i === 0 ? '#1d1d1d' : '#f1efe8'; },
     init: function () { return { board: GMK.empty(), turn: 'b', hist: [], last: null, win: null, res: null, req: null }; },

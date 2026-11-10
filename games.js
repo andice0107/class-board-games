@@ -1,5 +1,6 @@
 /* 遊戲清單：每個遊戲是 games/<id>/ 裡獨立的模組，用 BG.register 加進來 */
 window.BG = window.BG || {};
+BG.VER = '202611101441';
 BG.games = BG.games || {};
 BG.register = function (id, mod) { mod.id = id; BG.games[id] = mod; };
 BG.catalog = [
@@ -8,7 +9,7 @@ BG.catalog = [
   { id: 'go', cat: '棋類', title: '圍棋', icon: '●', color: '#3d3d3d', players: '2 人對戰', desc: '規劃中', ready: false },
   { id: 'chess', cat: '棋類', title: '西洋棋', icon: '♚', color: '#5b4636', players: '2 人對戰', desc: '規劃中', ready: false },
   { id: 'poker', cat: '牌類', title: '撲克牌', icon: '♠', color: '#2b2d42', players: '2–4 人', desc: '大老二、撿紅點、抽鬼牌、排7、十點半、99、吹牛、射龍門、21點、比大小', ready: false },
-  { id: 'uno', cat: '牌類', title: 'UNO', icon: '+4', color: '#e63946', players: '2–6 人', desc: '規劃中', ready: false },
+  { id: 'uno', cat: '牌類', files: ['games/uno/uno.css', 'games/uno/rules.js', 'games/uno/game.js', 'games/uno/guide.js'], title: '彩色接龍', icon: '+4', color: '#e63946', players: '2–6 人', desc: 'UNO 玩法：同色或同數字接下去，先出完牌就贏', ready: true },
   { id: 'rummikub', cat: '牌類', title: '拉密', icon: '7', color: '#e07a1f', players: '2–4 人', desc: '規劃中', ready: false },
   { id: 'spot-match', cat: '牌類', title: '眼明手快', icon: '👀', color: '#8e44ad', players: '2–8 人', desc: '兩張牌找出唯一相同的圖案（規劃中）', ready: false },
   { id: 'seven-eat-nine', cat: '牌類', title: '7吃9', icon: '7', color: '#d35400', players: '待確認', desc: '規劃中（玩法待確認）', ready: false },
@@ -50,15 +51,15 @@ BG.load = function (id, cb) {
   var files = m.files.slice();
   (function next() {
     var f = files.shift(); if (!f) return done(!!BG.games[id]);
-    if (/\.css$/.test(f)) { var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = f; document.head.appendChild(l); return next(); }
-    var s = document.createElement('script'); s.src = f; s.onload = next; s.onerror = function () { done(false); }; document.body.appendChild(s);
+    if (/\.css$/.test(f)) { var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = f + '?v=' + BG.VER; document.head.appendChild(l); return next(); }
+    var s = document.createElement('script'); s.src = f + '?v=' + BG.VER; s.onload = next; s.onerror = function () { done(false); }; document.body.appendChild(s);
   })();
 };
 
 /* 電腦強度 */
 BG.levels = [
   { n: 1, name: '入門', icon: '🐣', desc: '剛學會規則，常常亂走' },
-  { n: 2, name: '簡單', icon: '🙂', desc: '會吃子，但看不遠' },
+  { n: 2, name: '簡單', icon: '🙂', desc: '會抓明顯的機會，但看不遠' },
   { n: 3, name: '普通', icon: '🤔', desc: '會想兩步，有點挑戰' },
   { n: 4, name: '困難', icon: '🔥', desc: '認真下棋，很難贏' }
 ];

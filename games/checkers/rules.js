@@ -16,7 +16,8 @@ window.CCK = (function () {
   var CC = {}; Object.keys(CORNERS).forEach(function (k) { CC[k] = cornerCells(k); });
   // 每個角的尖端（離中心最遠的洞）
   var TIP = {}; Object.keys(CC).forEach(function (k) { var best = -1, bi = 0; CC[k].forEach(function (i) { var c = CELLS[i], d = Math.max(Math.abs(c[0]), Math.abs(c[1]), Math.abs(c[2])); if (d > best) { best = d; bi = i; } }); TIP[k] = bi; });
-  var HOMES = { 2: ['qp', 'qn'], 3: ['qp', 'rp', 'sp'] };
+  /* 兩人、三人都用「間隔」的角，終點是正對面同色、空著的角（台灣三色跳棋的玩法） */
+  var HOMES = { 2: ['qp', 'rp'], 3: ['qp', 'rp', 'sp'] };
   function homes(n) { return HOMES[n] || HOMES[2]; }
   function dist(a, b) { var A = CELLS[a], B = CELLS[b]; return (Math.abs(A[0] - B[0]) + Math.abs(A[1] - B[1]) + Math.abs(A[2] - B[2])) / 2; }
 
@@ -26,8 +27,10 @@ window.CCK = (function () {
     return b.join('');
   }
   /* 從 i 出發能到的所有位置：走一步，或連續跳（跳過相鄰任何一顆棋子） */
-  function moves(b, i) {
+  function moves(b, i, n) {
     var out = {}, seen = {}; seen[i] = 1;
+    var lock = null; // 已經走進終點的彈珠，只能在終點裡移動
+    if (n && b[i] !== '.') { var tg = target(n, +b[i]); if (tg.indexOf(i) >= 0) { lock = {}; tg.forEach(function (t) { lock[t] = 1; }); } }
     NB[i].forEach(function (j) { if (j >= 0 && b[j] === '.') out[j] = [i, j]; });
     var stack = [[i, [i]]];
     while (stack.length) {
@@ -40,6 +43,7 @@ window.CCK = (function () {
         stack.push([to, path]);
       }
     }
+    if (lock) Object.keys(out).forEach(function (t) { if (!lock[t]) delete out[t]; });
     return out; // {目的地: 路徑}
   }
   function move(b, from, to) { var a = b.split(''); a[to] = a[from]; a[from] = '.'; return a.join(''); }
@@ -61,15 +65,15 @@ window.CCK = (function () {
     for (var i = 0; i < b.length; i++) if (b[i] === String(seat)) tot += dist(i, tp);
     return tot;
   }
-  function allMoves(b, seat) {
+  function allMoves(b, seat, n) {
     var list = [];
-    for (var i = 0; i < b.length; i++) if (b[i] === String(seat)) { var m = moves(b, i); Object.keys(m).forEach(function (t) { list.push([i, +t, m[t]]); }); }
+    for (var i = 0; i < b.length; i++) if (b[i] === String(seat)) { var m = moves(b, i, n); Object.keys(m).forEach(function (t) { list.push([i, +t, m[t]]); }); }
     return list;
   }
 
   /* ---------- 電腦 ---------- */
   function pick(b, n, seat, level) {
-    var tp = tip(n, seat), list = allMoves(b, seat); if (!list.length) return null;
+    var tp = tip(n, seat), list = allMoves(b, seat, n); if (!list.length) return null;
     var tset = {}; target(n, seat).forEach(function (i) { tset[i] = 1; });
     function gain(bb, m) {
       var g = dist(m[0], tp) - dist(m[1], tp);
@@ -90,7 +94,7 @@ window.CCK = (function () {
       list.sort(function (a, c) { return c.g - a.g; });
       list.slice(0, 14).forEach(function (m) {
         var nb = move(b, m[0], m[1]), best = 0;
-        allMoves(nb, seat).forEach(function (m2) { var g2 = gain(nb, m2); if (g2 > best) best = g2; });
+        allMoves(nb, seat, n).forEach(function (m2) { var g2 = gain(nb, m2); if (g2 > best) best = g2; });
         m.v = m.g + best * .8 + Math.random() * .02;
       });
       list = list.slice(0, 14);
@@ -99,46 +103,52 @@ window.CCK = (function () {
     return list[0];
   }
 
-  /* ---------- 棋盤 SVG ---------- */
-  var COLORS = ['#e74c3c', '#f1c40f', '#3498db'], HOLE = { qp: 0, qn: 1, rp: 1, rn: 0, sp: 2, sn: 2 };
+  /* ---------- 棋盤 SVG：六個彩色三角形（對角同色）、中間六角形、格線、凹洞 ---------- */
+  var COLORS = ['#e53935', '#f9c21b', '#2e9e4f'], PAIR = { qp: 0, qn: 0, rp: 1, rn: 1, sp: 2, sn: 2 };
+  var CNAMES = ['紅', '黃', '綠'];
   function XY(i) { var c = CELLS[i]; return [(c[0] + c[1] / 2) * 6, c[1] * 6 * 0.8660254]; }
+  function P(q, r) { return [((q + r / 2) * 6).toFixed(2), (r * 6 * .8660254).toFixed(2)].join(','); }
   function homeAngle(n, seat) { var p = XY(TIP[homes(n)[seat]]); return Math.atan2(p[1], p[0]) * 180 / Math.PI; }
+  // 三角形頂點（軸座標，往外多留半格）
+  var TRI = { qp: [[9.1, -4.55], [4.45, -4.55], [4.45, .1]], qn: [[-9.1, 4.55], [-4.45, 4.55], [-4.45, -.1]],
+    rp: [[-4.55, 9.1], [-4.55, 4.45], [.1, 4.45]], rn: [[4.55, -9.1], [4.55, -4.45], [-.1, -4.45]],
+    sp: [[-4.55, -4.55], [.1, -4.55], [-4.55, .1]], sn: [[4.55, 4.55], [-.1, 4.55], [4.55, -.1]] };
+  var LINES = (function () { var o = []; CELLS.forEach(function (c, i) { [0, 2, 4].forEach(function (d) { var j = NB[i][d]; if (j > i || (j >= 0 && j < i)) { if (j >= 0 && (d === 0 || d === 2 || d === 4)) { var a = XY(i), b = XY(j); o.push('M' + a[0].toFixed(2) + ' ' + a[1].toFixed(2) + 'L' + b[0].toFixed(2) + ' ' + b[1].toFixed(2)); } } }); }); return o.join(''); })();
   function svg(b, o) {
     o = o || {};
     var n = o.n || 2, rot = o.seat != null ? 90 - homeAngle(n, o.seat) : 0, h = [];
-    var hs = homes(n), tint = {};
-    hs.forEach(function (k, seat) { CC[k].forEach(function (i) { tint[i] = seat; }); CC[OPP[k]].forEach(function (i) { tint[i] = seat; }); });
-    h.push('<svg class="ck-svg" viewBox="-58 -58 116 116" xmlns="http://www.w3.org/2000/svg"><defs>' +
-      COLORS.map(function (c, k) { return '<radialGradient id="ckM' + k + '" cx=".35" cy=".3" r=".75"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".25" stop-color="' + c + '"/><stop offset="1" stop-color="' + shade(c) + '"/></radialGradient>'; }).join('') +
-      '<radialGradient id="ckBoard" cx=".5" cy=".5" r=".6"><stop offset="0" stop-color="#fff8ea"/><stop offset="1" stop-color="#f0dcb4"/></radialGradient></defs>');
+    h.push('<svg class="ck-svg" viewBox="-60 -60 120 120" xmlns="http://www.w3.org/2000/svg"><defs>' +
+      COLORS.map(function (c, k) { return '<radialGradient id="ckM' + k + '" cx=".35" cy=".3" r=".75"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".28" stop-color="' + c + '"/><stop offset="1" stop-color="' + shade(c) + '"/></radialGradient>'; }).join('') +
+      '<radialGradient id="ckHole" cx=".5" cy=".38" r=".6"><stop offset="0" stop-color="#000" stop-opacity=".45"/><stop offset="1" stop-color="#000" stop-opacity=".12"/></radialGradient></defs>');
     h.push('<g transform="rotate(' + rot + ')">');
-    // 星形底板
-    var star = [[8, -4], [4, 0], [4, 4], [0, 4], [-4, 8], [-4, 4], [-8, 4], [-4, 0], [-4, -4], [0, -4], [4, -8], [4, -4]].map(function (qr) { return [((qr[0] + qr[1] / 2) * 6 * 1.13).toFixed(2), (qr[1] * 6 * .866 * 1.13).toFixed(2)].join(','); }).join(' ');
-    h.push('<polygon points="' + star + '" fill="url(#ckBoard)" stroke="#b78a4a" stroke-width="1.6" stroke-linejoin="round"/>');
+    var star = [[8, -4], [4, 0], [4, 4], [0, 4], [-4, 8], [-4, 4], [-8, 4], [-4, 0], [-4, -4], [0, -4], [4, -8], [4, -4]];
+    function starPts(k) { return star.map(function (qr) { return [((qr[0] + qr[1] / 2) * 6 * k).toFixed(2), (qr[1] * 6 * .866 * k).toFixed(2)].join(','); }).join(' '); }
+    h.push('<polygon points="' + starPts(1.16) + '" fill="#f6efe0" stroke="#5c4632" stroke-width="2.2" stroke-linejoin="round"/>');
+    Object.keys(TRI).forEach(function (k) { h.push('<polygon points="' + TRI[k].map(function (p) { return P(p[0], p[1]); }).join(' ') + '" fill="' + COLORS[PAIR[k]] + '" opacity=".78" stroke="' + shade(COLORS[PAIR[k]]) + '" stroke-width=".6" stroke-linejoin="round"/>'); });
+    h.push('<path d="' + LINES + '" stroke="#5c4632" stroke-width=".45" opacity=".45" fill="none"/>');
     var hl = {}; (o.dots || []).forEach(function (i) { hl[i] = 1; });
     var last = {}; (o.path || []).forEach(function (i) { last[i] = 1; });
-    if (o.path && o.path.length > 1) h.push('<polyline points="' + o.path.map(function (i) { return XY(i).join(','); }).join(' ') + '" fill="none" stroke="#2ecc71" stroke-width="1" stroke-dasharray="1.6 1.2" opacity=".85"/>');
-    for (var i = 0; i < CELLS.length; i++) {
-      var p = XY(i), v = b[i];
-      var tcol = tint[i] != null ? COLORS[tint[i]] : '#c9a571';
-      h.push('<circle cx="' + p[0].toFixed(2) + '" cy="' + p[1].toFixed(2) + '" r="2" fill="' + tcol + '" opacity="' + (tint[i] != null ? .28 : .35) + '"/>');
+    for (var i = 0; i < CELLS.length; i++) { var p = XY(i); h.push('<circle cx="' + p[0].toFixed(2) + '" cy="' + p[1].toFixed(2) + '" r="2" fill="url(#ckHole)"/>'); }
+    if (o.path && o.path.length > 1) h.push('<polyline points="' + o.path.map(function (i) { return XY(i).join(','); }).join(' ') + '" fill="none" stroke="#fff" stroke-width="1.3" stroke-dasharray="1.6 1.2" stroke-linecap="round" opacity=".95"/>');
+    for (i = 0; i < CELLS.length; i++) {
+      var q = XY(i), v = b[i];
       if (v !== '.') {
         var k = +v;
-        h.push('<g class="ck-m' + (o.sel === i ? ' sel' : '') + (o.anim && o.path && o.path[o.path.length - 1] === i ? ' land' : '') + '"><circle cx="' + (p[0] + .3).toFixed(2) + '" cy="' + (p[1] + .45).toFixed(2) + '" r="2.45" fill="#000" opacity=".25"/><circle cx="' + p[0].toFixed(2) + '" cy="' + p[1].toFixed(2) + '" r="2.45" fill="url(#ckM' + k + ')"' + (o.sel === i ? ' stroke="#2c3e50" stroke-width=".7"' : '') + '/></g>');
+        h.push('<g class="ck-m' + (o.sel === i ? ' sel' : '') + (o.anim && o.path && o.path[o.path.length - 1] === i ? ' land' : '') + '"><circle cx="' + (q[0] + .35).toFixed(2) + '" cy="' + (q[1] + .55).toFixed(2) + '" r="2.55" fill="#000" opacity=".3"/><circle cx="' + q[0].toFixed(2) + '" cy="' + q[1].toFixed(2) + '" r="2.55" fill="url(#ckM' + k + ')" stroke="' + (o.sel === i ? '#fff' : shade(COLORS[k])) + '" stroke-width="' + (o.sel === i ? .9 : .3) + '"/></g>');
       }
-      if (hl[i]) h.push('<circle class="ck-dot" cx="' + p[0].toFixed(2) + '" cy="' + p[1].toFixed(2) + '" r="1.25" fill="#27ae60"/>');
-      else if (last[i] && v === '.' ) h.push('<circle cx="' + p[0].toFixed(2) + '" cy="' + p[1].toFixed(2) + '" r=".7" fill="#27ae60" opacity=".6"/>');
+      if (hl[i]) h.push('<circle class="ck-dot" cx="' + q[0].toFixed(2) + '" cy="' + q[1].toFixed(2) + '" r="1.35" fill="#fff" stroke="#1b5e20" stroke-width=".7"/>');
+      else if (last[i] && v === '.') h.push('<circle cx="' + q[0].toFixed(2) + '" cy="' + q[1].toFixed(2) + '" r=".8" fill="#fff" opacity=".85"/>');
     }
     h.push('</g></svg>');
     return h.join('');
   }
   function shade(c) { var n = parseInt(c.slice(1), 16), r = (n >> 16) * .55, g = ((n >> 8) & 255) * .55, bl = (n & 255) * .55; return 'rgb(' + (r | 0) + ',' + (g | 0) + ',' + (bl | 0) + ')'; }
   function hit(el, ev, n, seat) {
-    var r = el.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width * 116 - 58, y = (ev.clientY - r.top) / r.height * 116 - 58;
+    var r = el.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width * 120 - 60, y = (ev.clientY - r.top) / r.height * 120 - 60;
     var rot = (seat != null ? 90 - homeAngle(n, seat) : 0) * Math.PI / 180, c = Math.cos(-rot), s = Math.sin(-rot);
     var ux = x * c - y * s, uy = x * s + y * c, best = -1, bd = 3.4 * 3.4;
     for (var i = 0; i < CELLS.length; i++) { var p = XY(i), d = (p[0] - ux) * (p[0] - ux) + (p[1] - uy) * (p[1] - uy); if (d < bd) { bd = d; best = i; } }
     return best;
   }
-  return { CELLS: CELLS, COLORS: COLORS, init: init, moves: moves, move: move, won: won, left: left, score: score, allMoves: allMoves, pick: pick, svg: svg, hit: hit, target: target };
+  return { CELLS: CELLS, COLORS: COLORS, CNAMES: CNAMES, homes: homes, tip: tip, init: init, moves: moves, move: move, won: won, left: left, score: score, allMoves: allMoves, pick: pick, svg: svg, hit: hit, target: target };
 })();

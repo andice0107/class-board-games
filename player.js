@@ -155,7 +155,7 @@
       var lv = el('div', 'levels');
       BG.levels.forEach(function (L) {
         var b = btn('lv', '', function () { send('bot', { level: L.n, n: nb }); toast('正在幫你開桌…'); });
-        b.innerHTML = '<span class="ic">' + L.icon + '</span><b>' + L.name + '</b><small>' + L.desc + '</small>';
+        b.innerHTML = '<span class="ic">' + L.icon + '</span><b>' + L.name + '</b><small>' + ((GAME && GAME.levelDesc && GAME.levelDesc[L.n - 1]) || L.desc) + '</small>';
         lv.appendChild(b);
       });
       bc.appendChild(lv);
