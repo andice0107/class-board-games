@@ -108,7 +108,7 @@
   function el(t, c, x) { var e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; }
   function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
   function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
-  function clamp(m) { return Math.max(MIN, Math.min(MAX, m)); }
+  function clamp(m) { return Math.max(MIN, m); }   // 正分沒有上限，負分最低 -10
   function draw(g) { if (!g.deck.length) { g.deck = shuffle(g.disc); g.disc = []; } return g.deck.pop(); }
   function alive(g) { var a = []; for (var s = 0; s < g.np; s++) if (g.out.indexOf(s) < 0) a.push(s); return a; }
   function turnSeat(g) { return g.order[g.pos]; }
@@ -161,9 +161,8 @@
   }
   function checkEnd(g) {
     var hi = false, lo = false;
-    g.P.forEach(function (p) { if (p.m >= MAX) hi = true; if (p.m <= MIN) lo = true; });
+    g.P.forEach(function (p) { if (p.m <= MIN) lo = true; });
     if (lo) return finish(g, 'crash'), true;
-    if (hi && g.mode !== 'coop') return finish(g, 'joy'), true;
     if (g.plays >= g.len * alive(g).length) return finish(g, 'time'), true;
     return false;
   }
@@ -197,7 +196,7 @@
     return shuffle(deck);
   }
   var mod = {
-    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 2,
+    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 3,
     reasons: REASONS,
     opts: [
       { k: 'mode', label: '玩法：', list: [['comp', '🏆 比賽（心情＋星星最高的人贏）'], ['coop', '🤝 合作（大家都在 0 以上才過關）']] },
@@ -348,7 +347,7 @@
       var hiO = Math.max.apply(null, others.map(function (j) { return ms[j]; }));
       function score(o) {
         var c = o.c, v = 0, m = o.p != null ? ms[o.p] : 0;
-        if (c.k === 'a') v = coop || lv === 2 ? 30 - m * 2 + c.v * 3 : 10 - m * 1.5 + (m + c.v >= MAX ? -40 : 0);
+        if (c.k === 'a') v = coop || lv === 2 ? 30 - m * 2 + c.v * 3 : 10 - m * 1.5;
         else if (c.k === 'd') v = coop ? -10 + m * 2 - (m - c.v <= MIN ? 60 : 0) : (lv === 2 ? 2 : 20) + m * 2 + (g.P[o.p].shield ? -15 : 0);
         else switch (c.g) {
           case 3: case 10: v = coop ? 35 - m * 2 : 8 - m * 1.5; break;
@@ -391,7 +390,7 @@
 
   /* ---------- 圖像（SVG 臉，表情跟著心情變） ---------- */
   function faceSVG(fi, m) {
-    var f = FACES[fi], k = m / 10, my = 66, curve = (k * 14).toFixed(1);
+    var f = FACES[fi], k = Math.min(m, 10) / 10, my = 66, curve = (k * 14).toFixed(1);
     var mouth = '<path d="M38 ' + my + ' Q50 ' + (my + +curve) + ' 62 ' + my + '" stroke="#5d3a1a" stroke-width="3.5" fill="none" stroke-linecap="round"/>';
     if (m >= 7) mouth = '<path d="M36 63 Q50 84 64 63 Z" fill="#8b2e16"/><path d="M41 66 Q50 72 59 66" fill="#fff"/>';
     if (m <= -10) mouth = '<ellipse cx="50" cy="70" rx="8" ry="6" fill="#5d3a1a"/>';
@@ -403,7 +402,7 @@
   }
   function meterEl(m) {
     var w = el('div', 'ad-meter'), f = el('i', m > 0 ? 'up' : 'dn');
-    f.style.left = (m >= 0 ? 50 : 50 + m * 5) + '%'; f.style.width = Math.abs(m) * 5 + '%';
+    f.style.left = (m >= 0 ? 50 : 50 + m * 5) + '%'; f.style.width = Math.min(10, Math.abs(m)) * 5 + '%';
     w.appendChild(f); w.appendChild(el('b')); return w;
   }
 
@@ -667,7 +666,7 @@
     return r;
   }
   function spark(h) {
-    var W = 200, H = 40, n = h.length, pts = h.map(function (m, k) { return (k * W / (n - 1)).toFixed(1) + ',' + (H / 2 - m * H / 21).toFixed(1); }).join(' ');
+    var W = 200, H = 40, n = h.length, top = Math.max(10, Math.max.apply(null, h)), pts = h.map(function (m, k) { return (k * W / (n - 1)).toFixed(1) + ',' + (H / 2 - m * (H / 2 - 1) / (m > 0 ? top : 10)).toFixed(1); }).join(' ');
     var d = el('div', 'ad-spark');
     d.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"><line x1="0" x2="' + W + '" y1="' + H / 2 + '" y2="' + H / 2 + '" stroke="#bbb" stroke-dasharray="3 3"/><polyline points="' + pts + '" fill="none" stroke="#7c4dff" stroke-width="2.5" stroke-linejoin="round"/></svg>';
     return d;
@@ -904,7 +903,7 @@
 
   mod.guide = {
     student: [
-      { h: '怎麼玩', html: '<ol><li>桌上有一排<b>圖像</b>，每個圖像都有<b>情緒碼錶</b>（-10 到 +10），一開始都是 0「普通」。</li><li>每個人會祕密分到一個圖像。按住「🤫 按住看我的圖像」偷偷看，<b>不要告訴別人</b>你是哪一個！</li><li>每人手上 3 張牌。輪到你時一定要出一張牌（不能 pass），出完自動補到 3 張。</li><li><b>天使牌</b>讓圖像心情變好，<b>惡魔牌</b>讓圖像心情變差。選一個圖像（不能選自己的），<b>看著它大聲念出卡片上的話</b>。</li><li><b>天神牌</b>有特別的功能，例如迴轉、圖像大風吹、守護天使。</li><li><b>⚡ 天神時刻</b>：轉盤會轉到一位同學回答機會或命運題，答得好可以得到<b>天神星星 ⭐</b>（星星是祕密的）。</li><li>大家都出完規定張數，或有圖像到 +10 或 -10，遊戲就結束，所有人的圖像翻開。</li></ol>' },
+      { h: '怎麼玩', html: '<ol><li>桌上有一排<b>圖像</b>，每個圖像都有<b>情緒碼錶</b>，一開始都是 0「普通」。心情可以一直往上加（沒有上限），最低是 -10「崩潰」。</li><li>每個人會祕密分到一個圖像。按住「🤫 按住看我的圖像」偷偷看，<b>不要告訴別人</b>你是哪一個！</li><li>每人手上 3 張牌。輪到你時一定要出一張牌（不能 pass），出完自動補到 3 張。</li><li><b>天使牌</b>讓圖像心情變好，<b>惡魔牌</b>讓圖像心情變差。選一個圖像（不能選自己的），<b>看著它大聲念出卡片上的話</b>。</li><li><b>天神牌</b>有特別的功能，例如迴轉、圖像大風吹、守護天使。</li><li><b>⚡ 天神時刻</b>：轉盤會轉到一位同學回答機會或命運題，答得好可以得到<b>天神星星 ⭐</b>（星星是祕密的）。</li><li>大家都出完規定張數，或有圖像掉到 -10，遊戲就結束，所有人的圖像翻開。</li></ol>' },
       { h: '贏的方法', html: '<p><b>🏆 比賽模式：</b>翻開後，<b>自己圖像的心情＋天神星星</b>最高的人贏。</p><p><b>🤝 合作模式：</b>結束時，所有人的圖像都在 0 以上，大家一起過關！有圖像掉到 -10 就失敗。</p><table class="g-tbl"><tr><th>結果</th><th>得分</th></tr><tr><td>🏆 贏（或合作過關）</td><td>3 分</td></tr><tr><td>🤝 大家一樣高</td><td>1 分</td></tr><tr><td>💪 其他</td><td>0 分</td></tr></table><p>和電腦玩的不列入總分。</p>' },
       { h: '天神牌', html: '<table class="g-tbl"><tr><th>牌</th><th>功能</th></tr>' + GOD.map(function (c) { return '<tr><td>' + c.e + ' ' + c.n + '</td><td>' + c.d + '</td></tr>'; }).join('') + '</table><p>每局可以把一張手牌換掉 1 次（換完還是要出牌）。</p>' },
       { h: '說話的規則', html: '<ul><li>惡魔牌上的話是<b>卡片上的話，不是你心裡的話</b>。</li><li>要<b>照卡片念</b>，不可以自己加詞。</li><li>念惡魔牌時看著<b>圖像</b>，不要看著同學。</li><li><b>酸言酸語牌</b>表面上像在稱讚，其實是在說別人不好。卡片上有寫要用什麼語氣，也有寫「真正的意思」。</li><li>不舒服的時候，按「🛑 我需要休息」，老師會過來。</li></ul>' }
