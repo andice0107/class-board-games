@@ -212,11 +212,11 @@
     }
   }
   function result() {
-    var tb = S.tb, r = tb.res, win = r.l != null ? r.l !== tb.seat : r.w === tb.seat, draw = r.l == null && r.w < 0;
+    var tb = S.tb, r = tb.res, win = r.ws ? r.ws.indexOf(tb.seat) >= 0 : r.l != null ? r.l !== tb.seat : r.w === tb.seat, draw = !r.ws && r.l == null && r.w < 0;
     var c = el('div', 'panel result');
     var b = el('div', 'badge', draw ? '🤝' : (win ? '🏆' : '💪')); b.style.background = draw ? '#bfeee9' : (win ? '#ffe7a3' : '#d8e9ff'); c.appendChild(b);
     c.appendChild(el('h2', '', draw ? '平手！' : (win ? '你贏了！' : '這局輸了')));
-    c.appendChild(el('p', '', r.l != null ? (win ? '別人' + (GAME.reasons[r.why] || '') + '你安全過關！' : '你' + (GAME.reasons[r.why] || '') + '下一局再加油！') : (GAME.reasons[r.why] || '') + (win || draw ? '' : '・下一局再加油！')));
+    c.appendChild(el('p', '', r.ws ? (GAME.reasons[r.why] || '') : r.l != null ? (win ? '別人' + (GAME.reasons[r.why] || '') + '你安全過關！' : '你' + (GAME.reasons[r.why] || '') + '下一局再加油！') : (GAME.reasons[r.why] || '') + (win || draw ? '' : '・下一局再加油！')));
     if (r.note) c.appendChild(el('p', 'res-note', r.note));
     if (r.lose != null && r.lose >= 0) c.appendChild(el('p', 'res-note', r.lose === tb.seat ? '🤡 鬼牌最後在你手上！' : '🤡 鬼牌最後在 ' + tb.seats[r.lose].name + ' 手上'));
     if (S.stat) c.appendChild(el('p', '', '我的積分：' + S.pts + ' 分（' + S.stat.w + ' 勝 ' + S.stat.d + ' 和 ' + S.stat.l + ' 負）'));

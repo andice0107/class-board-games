@@ -84,7 +84,7 @@
     var vsBot = T.seats.some(BG.isBot) || T.seats.length === 1; // 一個人和電腦莊家玩也算對電腦
     T.seats.forEach(function (id, i) { var p = S.players[id]; if (!p) return; var s = p.stat = p.stat || { w: 0, d: 0, l: 0 };
       if (vsBot) { s.bot = s.bot || { w: 0, d: 0, l: 0 }; s = s.bot; }
-      if (r.l != null) { if (r.l === i) s.l++; else s.w++; } else if (r.w < 0) s.d++; else if (r.w === i) s.w++; else s.l++; });
+      if (r.ws) { if (r.ws.indexOf(i) >= 0) s.w++; else s.l++; } else if (r.l != null) { if (r.l === i) s.l++; else s.w++; } else if (r.w < 0) s.d++; else if (r.w === i) s.w++; else s.l++; });
   }
   function touch(T) { score(T); runBots(T); T.seats.forEach(function (id) { bump(S.players[id]); }); render(); save(); if (ovId === T.id) drawOv(); drawLb(); }
   function tblOf(p) { return p.table ? S.tables[p.table] : null; }
@@ -292,6 +292,7 @@
   }
   function statusOf(T) {
     var nm = names(T), r = T.g.res;
+    if (r && r.ws) return { t: (r.ws.length ? '🏆 ' + r.ws.map(function (i) { return nm[i].name; }).join('、') + ' 獲勝・' : '💪 ') + GAME.reasons[r.why], c: 'done' };
     if (r && r.l != null) return { t: '💥 ' + nm[r.l].name + '（' + GAME.seatName(r.l) + '）' + GAME.reasons[r.why], c: 'done' };
     if (r) return { t: r.w < 0 ? '🤝 ' + GAME.reasons[r.why] : '🏆 ' + nm[r.w].name + '（' + GAME.seatName(r.w) + '）獲勝・' + GAME.reasons[r.why], c: 'done' };
     return GAME.hostStatus(T.g, nm);
