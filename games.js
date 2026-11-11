@@ -1,6 +1,6 @@
 /* 遊戲清單：每個遊戲是 games/<id>/ 裡獨立的模組，用 BG.register 加進來 */
 window.BG = window.BG || {};
-BG.VER = '202611111749';
+BG.VER = '202611111759';
 BG.games = BG.games || {};
 BG.register = function (id, mod) { mod.id = id; BG.games[id] = mod; };
 BG.catalog = [
@@ -30,7 +30,7 @@ BG.catalog = [
   { id: 'mudpig', cat: '牌類', files: ['games/mudpig/mudpig.css', 'games/mudpig/game.js'], title: '泥巴豬農場', icon: '🐷', color: '#8d6e63', players: '2–6 人', desc: '讓自己的小豬全部滾進泥巴！蓋豬舍防下雨，用農夫和閃電搗蛋', ready: true },
   { id: 'guess', cat: '益智', files: ['games/guess/guess.css', 'games/guess/game.js'], title: '終極密碼', icon: '?', color: '#0f766e', players: '2–6 人', desc: '猜 1～100 之間的祕密數字，範圍越縮越小，猜中的人爆炸（也可以設成猜中的人贏）', ready: true },
   { id: 'dice-bluff', cat: '益智', files: ['games/dice/dice.css', 'games/dice/game.js'], title: '骰子吹牛', icon: '🎲', color: '#b45309', players: '2–6 人', desc: '每人 5 顆骰子，喊「全桌至少幾個幾」，不相信就開！1 點萬用、可以喊齋', ready: true },
-  { id: 'angel', cat: '益智', files: ['games/angel/angel.css', 'games/angel/game.js'], title: '天使與惡魔', icon: '😇', color: '#7c4dff', players: '3–6 人', desc: '社會技巧卡牌：用天使的話讓圖像心情變好、惡魔的話讓心情變差，誰的圖像是誰都保密', ready: true },
+  { id: 'angel', cat: '社會技巧/溝通訓練', files: ['games/angel/angel.css', 'games/angel/game.js'], title: '天使與惡魔', icon: '😇', color: '#7c4dff', players: '3–6 人', desc: '社會技巧卡牌：用天使的話讓圖像心情變好、惡魔的話讓心情變差，誰的圖像是誰都保密', ready: true },
   { id: 'mahjong', cat: '麻將', files: ['games/mahjong/mahjong.css', 'games/mahjong/rules.js', 'games/mahjong/game.js', 'games/mahjong/guide.js'], title: '台灣麻將', icon: '中', color: '#1b7f5a', players: '2–4 人', desc: '台灣 16 張：吃碰槓胡、花牌、算台數', ready: true },
   { id: 'chinese-checkers', cat: '棋類', files: ['games/checkers/checkers.css', 'games/checkers/rules.js', 'games/checkers/game.js', 'games/checkers/guide.js'], title: '三色跳棋', icon: '✦', color: '#2a9d8f', players: '2–3 人', desc: '跳過彈珠連跳，先把對面的角填滿就贏', ready: true }
 ];
@@ -72,7 +72,7 @@ BG.showGuide = function (title, sections) {
   document.body.appendChild(ov); show(0);
 };
 
-BG.cats = ['棋類', '撲克牌', '牌類', '麻將', '益智'];
+BG.cats = ['棋類', '撲克牌', '牌類', '麻將', '益智', '社會技巧/溝通訓練'];
 /* 只載入選到的遊戲檔案 */
 BG.load = function (id, cb) {
   var m = BG.meta(id); if (!m || !m.files) return cb(false);
