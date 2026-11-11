@@ -62,7 +62,7 @@
       g.res = tie ? { w: -1, why: 'tie', note: '每個人拿到：' + a.map(function (s) { return g.won[s]; }).join('、') + ' 張' } : { w: best, why: 'most', note: '拿到 ' + bw + ' 張牌' };
     }
     var mod = {
-      seats: 4, seatOptions: [2, 3, 4, 5, 6], seatDefault: 4, botSeats: [1, 5], ver: 1,
+      seats: 4, seatOptions: [2, 3, 4, 5, 6], seatDefault: 4, botSeats: [1, 5], ver: 1, fitZoom: false,
       reasons: REASONS,
       levelDesc: ['反應很慢，大約 10 秒才找到', '大約 7 秒找到', '大約 5 秒找到', '大約 3 秒就找到，眼睛很利'],
       seatName: function (i) { return '第 ' + (i + 1) + ' 位'; },

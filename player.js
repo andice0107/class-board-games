@@ -118,6 +118,7 @@
     FIT.land = !!board && av.w / av.h > 1.2 && av.w >= 640;
     t.classList.toggle('fit-land', FIT.land);
     if (FIT.land) { if (FIT.key !== key) { FIT.key = key; FIT.z = Math.max(1, Math.min(1.6, av.h / 620, av.w / 900)); } }
+    else if (GAME && GAME.fitZoom === false) { FIT.key = key; FIT.z = 1; }   // 這個遊戲自己用滿畫面（例如眼明手快的兩個圈），不整頁放大
     else if (FIT.key !== key) { FIT.key = key; FIT.z = fitSearch(t, av, 9); }
     else if (!FIT.land && FIT.z > 1 && fitNeed(t, FIT.z, av) > av.h * 1.02) FIT.z = fitSearch(t, av, FIT.z);
     fitApply(t, FIT.z, av);
