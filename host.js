@@ -86,7 +86,14 @@
       if (vsBot) { s.bot = s.bot || { w: 0, d: 0, l: 0 }; s = s.bot; }
       if (r.ws) { if (r.ws.indexOf(i) >= 0) s.w++; else s.l++; } else if (r.l != null) { if (r.l === i) s.l++; else s.w++; } else if (r.w < 0) s.d++; else if (r.w === i) s.w++; else s.l++; });
   }
-  function touch(T) { score(T); runBots(T); T.seats.forEach(function (id) { bump(S.players[id]); }); render(); save(); if (ovId === T.id) drawOv(); drawLb(); }
+  function touch(T) { drain(T); score(T); runBots(T); T.seats.forEach(function (id) { bump(S.players[id]); }); render(); save(); if (ovId === T.id) drawOv(); drawLb(); }
+  /* 遊戲可以回報事件（例如天使與惡魔的課後紀錄），用學號存起來 */
+  function drain(T) {
+    if (!GAME.drain || !T.g) return;
+    var ev = GAME.drain(T.g); if (!ev || !ev.length) return;
+    S.gx = S.gx || {};
+    ev.forEach(function (e) { var id = T.seats[e.seat], p = id && S.players[id]; if (GAME.hostRecord) GAME.hostRecord(S.gx, e, p ? { sid: p.sid || '', name: p.name, bot: false } : { sid: '', name: BG.isBot(id) ? '電腦' : '', bot: BG.isBot(id) }); });
+  }
   function tblOf(p) { return p.table ? S.tables[p.table] : null; }
 
   function onUp(d) {
@@ -249,7 +256,7 @@
   }
   /* 遊戲自己的設定（例如終極密碼的「猜中的人輸／贏」）：老師端設定，單人練習由學生自己選 */
   function gopts(T) {
-    var o = {}; (GAME.opts || []).forEach(function (d) { o[d.k] = (T && T.opts && T.opts[d.k] != null) ? T.opts[d.k] : (S.gopts && S.gopts[d.k] != null ? S.gopts[d.k] : d.list[0][0]); });
+    var o = { _x: SOLO ? {} : (S.gx && S.gx.cfg) || {}, _solo: SOLO, _bots: T ? T.seats.map(BG.isBot) : [] }; (GAME.opts || []).forEach(function (d) { o[d.k] = (T && T.opts && T.opts[d.k] != null) ? T.opts[d.k] : (S.gopts && S.gopts[d.k] != null ? S.gopts[d.k] : d.list[0][0]); });
     return o;
   }
   function newRound(T, rotate) {
@@ -333,6 +340,7 @@
         if (!ok) mp.appendChild(el('small', 'empty', SEL.length < rg[0] ? '還要再選 ' + (rg[0] - SEL.length) + ' 人' : '最多 ' + rg[1] + ' 人一桌'));
       }
     }
+    if (GAME.hostPanelUpdate) GAME.hostPanelUpdate(API);
     var box = $('h-tables'); box.innerHTML = '';
     var ts = Object.keys(S.tables).map(function (k) { return S.tables[k]; }).sort(function (a, b) { return a.no - b.no; });
     $('h-notable').classList.toggle('hidden', ts.length > 0);
@@ -342,6 +350,7 @@
       hd.appendChild(no); hd.appendChild(el('span', 'pill light', '第 ' + T.round + ' 局'));
       c.appendChild(hd); c.appendChild(tableBody(T));
       var s = statusOf(T); c.appendChild(el('div', 'st ' + s.c, s.t));
+      var bdg = GAME.hostBadge && GAME.hostBadge(T.g); if (bdg) { c.appendChild(el('div', 'st warn tbadge', bdg)); c.classList.add('alert'); }
       c.addEventListener('click', function () { openOv(T.id); });
       box.appendChild(c);
     });
@@ -357,11 +366,28 @@
     hd.appendChild(btn('btn small', '✕ 關閉', closeOv)); b.appendChild(hd);
     b.appendChild(tableBody(T, true));
     var s = statusOf(T); b.appendChild(el('p', 'st ' + s.c, s.t));
+    if (GAME.hostTable) b.appendChild(GAME.hostTable(T, API));
     var row = el('div', 'row c');
     if (!T.g.res) row.appendChild(btn('btn', '🤝 判和並結束這局', function () { if (confirm('確定要判這局和棋嗎？')) { GAME.teacherDraw(T.g); touch(T); } }));
     row.appendChild(btn('btn', '↩️ 解散這桌（回等候區）', function () { if (confirm('確定要解散第 ' + T.no + ' 桌嗎？')) { if (!T.g.res) GAME.teacherDraw(T.g); dissolve(T); } }));
     b.appendChild(row);
   }
+  /* 給遊戲模組用的老師端工具（天使與惡魔的天神功能） */
+  var API = {
+    solo: SOLO, state: function () { return S; },
+    cfg: function () { S.gx = S.gx || {}; S.gx.cfg = S.gx.cfg || {}; return S.gx.cfg; },
+    gx: function () { S.gx = S.gx || {}; return S.gx; },
+    tables: function () { return Object.keys(S.tables).map(function (k) { return S.tables[k]; }).sort(function (a, b) { return a.no - b.no; }); },
+    act: function (T, d) { if (!GAME.hostAct || !T.g) return false; var ok = GAME.hostAct(T.g, d, function (toSeat, text) { var id = T.seats[toSeat]; if (id) net.send({ t: 'note', to: id, text: text }); }); if (ok) touch(T); return ok; },
+    actAll: function (d) { var n = 0; API.tables().forEach(function (T) { if (API.act(T, d)) n++; }); return n; },
+    name: function (T, i) { return pub(T.seats[i]).name; },
+    isBot: function (T, i) { return BG.isBot(T.seats[i]); },
+    save: save, render: function () { render(); if (ovId) drawOv(); },
+    project: function (node) { var o = $('h-proj'); if (!o) { o = el('div', 'proj'); o.id = 'h-proj'; document.body.appendChild(o); } o.innerHTML = ''; o.appendChild(btn('btn small proj-x', '✕ 關閉投影', function () { o.remove(); })); o.appendChild(node); return o; },
+    download: function (name, text, type) { var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: type || 'text/csv;charset=utf-8' })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000); },
+    el: el, btn: btn
+  };
+  if (GAME.hostPanel && !SOLO) { var gp = GAME.hostPanel(API); if (gp) { gp.classList.add('gpanel'); $('h-tables').parentNode.insertBefore(gp, $('h-tables')); } }
   $('h-ov').addEventListener('click', function (e) { if (e.target === this) closeOv(); });
   $('h-auto').addEventListener('change', function () { S.auto = this.checked; save(); pair(); });
   (function () {

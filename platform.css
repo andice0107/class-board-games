@@ -232,3 +232,9 @@ input:focus { border-color: var(--sky); background: #fff; }
 .chip.pick.sel { background: #fde68a; box-shadow: 0 0 0 2px #f59e0b; }
 .chip .ck { width: 16px; height: 16px; border-radius: 50%; background: #f59e0b; color: #fff; font-size: 11px; font-weight: 900; display: inline-flex; align-items: center; justify-content: center; }
 .manual { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; margin-top: 8px; text-align: center; }
+/* 遊戲自己的老師端工具列、投影畫面 */
+.gpanel { margin-bottom: 14px; }
+.tcard.alert { box-shadow: 0 0 0 3px #ff9800, 0 6px 18px #ff980055; }
+.tbadge { font-weight: 800; }
+.proj { position: fixed; inset: 0; z-index: 60; background: #1b123a; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 5vw; overflow: auto; }
+.proj .proj-x { position: absolute; top: 14px; right: 14px; }
