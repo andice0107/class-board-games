@@ -291,7 +291,7 @@
     return shuffle(deck);
   }
   var mod = {
-    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 8,
+    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 9,
     reasons: REASONS,
     opts: [
       { k: 'mode', label: '玩法：', list: [['comp', '🏆 比賽（心情＋星星最高的人贏）'], ['coop', '🤝 合作（大家都在 0 以上才過關）']] },
@@ -586,7 +586,11 @@
     if (prev && v.cnt !== L.key && v.log) {
       var lg = v.log, c = lg.c && C(lg.c);
       fx.snd(!c ? 'move' : c.k === 'a' ? 'pop' : c.k === 'd' ? 'cap' : 'check');
-      if (c && c.k === 'g' && c.g === 4 && lg.s !== tb.seat) fx.toast('🌪️ 圖像大風吹！按住「我的圖像」看看你現在是誰');
+      if (c && c.k === 'g' && c.g === 4 && lg.s !== tb.seat && !lg.T) fx.toast('🌪️ 圖像大風吹！按住「我的圖像」看看你現在是誰');
+      if (lg.T && c) {   // 老師（天神）臨時出天神牌：取消正在選的牌，提醒大家
+        var mid = L.sel >= 0 || L.pick; L.sel = -1; L.pick = null;
+        fx.toast('⚡ 天神（老師）用了「' + c.e + ' ' + c.n + '」！' + (c.g === 4 ? '按住「我的圖像」看看你現在是誰。' : '') + (v.turn === tb.seat && !tb.res ? (mid ? '剛剛選的牌取消了，請重新選一張。' : '輪到你出牌。') : ''));
+      }
       if (v.turn === tb.seat && !tb.res && !v.ev) setTimeout(function () { fx.snd('turn'); }, 500);
     }
     if (v.ev && !L.spin[v.ev.id]) { L.spin[v.ev.id] = Date.now() + 3600; fx.snd('check'); }
