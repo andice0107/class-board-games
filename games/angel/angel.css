@@ -45,7 +45,13 @@
 .ad-say em.up { background: #fff1c1; color: #b36b00; } .ad-say em.dn { background: #e3e6ff; color: #303f9f; } .ad-say em.blk { background: #e0f7fa; color: #00838f; }
 .ad-breathe { margin: 6px 0 0; font-size: 18px; font-weight: 800; color: #0277bd; animation: adBreath 4s ease-in-out infinite; }
 @keyframes adBreath { 50% { transform: scale(1.15); opacity: .7; } }
-.ad-log { display: flex; flex-direction: column; gap: 3px; }
+.ad-log { display: flex; flex-direction: column; gap: 3px; max-height: 420px; overflow-y: auto; background: #ffffff59; border-radius: 12px; padding: 6px; -webkit-overflow-scrolling: touch; }
+.ad-loghd { font-size: 13px; font-weight: 700; color: #5e35b1; padding: 0 4px 2px; position: sticky; top: -6px; background: #f3edff; border-radius: 8px; }
+.ad-count { font-size: 14px; text-align: center; background: #ffffffc7; border-radius: 12px; padding: 5px 10px; color: #4a3b7a; }
+.ad-count b { font-size: 18px; color: #7c4dff; }
+.ad-count span { display: inline-block; margin-left: 10px; color: #6d6d80; }
+.ad-count.low b { color: #e53935; }
+.ad-tlist { max-height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
 .ad-li { display: flex; align-items: flex-start; gap: 6px; font-size: 13px; background: #ffffffb8; border-radius: 10px; padding: 4px 8px; line-height: 1.4; }
 .ad-li i { flex: none; width: 9px; height: 9px; border-radius: 50%; margin-top: 5px; }
 .ad-me { background: #ffffffd0; border-radius: 16px; padding: 8px; border: 3px solid transparent; display: flex; flex-direction: column; gap: 8px; }

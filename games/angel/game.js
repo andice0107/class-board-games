@@ -20,31 +20,31 @@
     '接納': 'include', '陪伴': 'include', '分享': 'include', '尊重': 'include', '排斥': 'include', '排擠': 'include', '酸言酸語': 'sarcasm',
     '關懷': 'comfort', '關注': 'comfort', '同理': 'comfort', '支持': 'comfort', '聆聽': 'comfort', '體諒': 'comfort', '協助': 'comfort', '幫助': 'comfort', '信任': 'comfort', '嘲笑': 'comfort', '否定': 'comfort', '威脅': 'comfort', '挑釁': 'comfort' };
   var ANGEL = [
-    ['你還好嗎？', '關懷'], ['需要我幫忙嗎？', '幫助'], ['我發現你今天有點不開心。', '關注'], ['謝謝你幫我。', '感謝'],
-    ['你這個想法很棒！', '鼓勵'], ['沒關係，每個人都會犯錯。', '寬容'], ['慢慢來，我等你。', '體諒'], ['你想說的話，我在聽。', '聆聽'],
-    ['要不要跟我們一起玩？', '接納'], ['下課我們一起去吧！', '陪伴'], ['我們一起想辦法。', '協助'], ['我相信你做得到！', '信任'],
-    ['你已經比上次進步了。', '鼓勵'], ['你的作品好特別！', '稱讚'], ['你說得也有道理。', '尊重'], ['我的東西可以借你用。', '分享'],
-    ['輪到你了，你先說。', '尊重'], ['別擔心，我陪你去找老師。', '協助'], ['你今天幫了大家很多忙。', '稱讚'], ['對不起，剛剛是我不對。', '道歉'],
+    ['你還好嗎？需要我陪你坐一下嗎？', '關懷'], ['需要我幫忙嗎？我可以幫你一起做。', '幫助'], ['我發現你今天有點不開心。', '關注'], ['謝謝你幫我，你真的很好心。', '感謝'],
+    ['你這個想法很棒，我怎麼沒想到！', '鼓勵'], ['沒關係，每個人都會犯錯。', '寬容'], ['慢慢來沒關係，我會等你喔。', '體諒'], ['你想說什麼都可以，我在聽。', '聆聽'],
+    ['要不要跟我們一起玩？還有位子喔！', '接納'], ['下課我們一起去操場玩吧！', '陪伴'], ['別擔心，我們一起想辦法解決。', '協助'], ['我相信你一定做得到，加油！', '信任'],
+    ['你已經比上次進步很多了！', '鼓勵'], ['你的作品好特別，我好喜歡！', '稱讚'], ['你說得也有道理，我會想一想。', '尊重'], ['我的東西可以借你用，不用客氣。', '分享'],
+    ['輪到你了，你先說，我們等你。', '尊重'], ['別擔心，我陪你去找老師。', '協助'], ['你今天幫了大家很多忙。', '稱讚'], ['對不起，剛剛是我不對，我會改。', '道歉'],
     ['你不是一個人，我在你旁邊。', '支持', 2], ['他們那樣說不對，不是你的錯。', '同理', 2], ['如果是我，我也會很難過。', '同理', 2],
-    ['我喜歡和你當朋友。', '接納', 2], ['你認真的樣子很帥氣！', '稱讚', 2], ['不管別人怎麼說，你都很重要。', '支持', 2]
+    ['我很喜歡和你當好朋友。', '接納', 2], ['你認真做事的樣子真的很帥氣！', '稱讚', 2], ['不管別人怎麼說，你都很重要。', '支持', 2]
   ].map(function (a, k) { return { id: 'a' + k, k: 'a', t: a[0], c: a[1], v: a[2] || 1 }; });
   var DEVIL = [
-    ['你怎麼這麼笨？', '輕視', '這題比較難，我們一起想想看。'], ['這麼簡單你也不會？', '輕視', '不會沒關係，我教你。'],
-    ['你懂什麼？不要吵！', '否定', '你的想法是什麼？說來聽聽。'], ['都是你害的！', '指責', '沒關係，我們一起想辦法補救。'],
-    ['你每次都搞砸！', '指責', '這次沒成功，下次會更好。'], ['你好煩喔，走開啦！', '排斥', '我現在想安靜一下，等一下再聊好嗎？'],
-    ['哈哈哈，你好好笑。', '嘲笑', '每個人都會出糗，沒關係。'], ['你是膽小鬼吧？', '嘲笑', '會害怕很正常，我陪你。'],
-    ['你的想法太幼稚了。', '批評', '你的想法很特別，可以再多說一點嗎？'], ['你寫得好糟喔。', '批評', '這裡再改一下，會更好。'],
-    ['來啊，誰怕誰！', '挑釁', '我們先冷靜一下，好好說。'], ['我才不要跟你一組。', '排斥', '我們一起一組吧！'],
-    ['大家不要跟他玩！', '排擠', '大家一起玩吧！', 2], ['你根本不是我們這一國的。', '排擠', '歡迎你加入我們。', 2],
-    ['你敢說出去，就給我小心。', '威脅', '有事情可以說出來，沒關係。', 2], ['沒有人想理你。', '否定', '我想聽你說。', 2]
+    ['你怎麼這麼笨？連這個都不會？', '輕視', '這題比較難，我們一起想想看。'], ['這麼簡單你也不會，真的很遜。', '輕視', '不會沒關係，我可以慢慢教你。'],
+    ['你懂什麼？不要在那邊吵！', '否定', '你的想法是什麼？說來聽聽。'], ['都是你害的，我們才會輸！', '指責', '沒關係，我們一起想辦法補救。'],
+    ['你每次都搞砸，真的很糟糕！', '指責', '這次沒成功，下次會更好。'], ['你好煩喔，走開啦，不要靠近我！', '排斥', '我現在想安靜一下，等一下再聊好嗎？'],
+    ['哈哈哈，你好好笑，大家快來看！', '嘲笑', '每個人都會出糗，沒關係。'], ['你是膽小鬼吧？這樣也會怕！', '嘲笑', '會害怕很正常，我陪你一起去。'],
+    ['你的想法太幼稚了，誰會聽你的？', '批評', '你的想法很特別，可以再多說一點嗎？'], ['你寫得好糟喔，根本看不懂。', '批評', '這裡再改一下，就會變得更好。'],
+    ['來啊，誰怕誰，有種就來啊！', '挑釁', '我們先冷靜一下，好好說。'], ['我才不要跟你一組，換別人啦！', '排斥', '我們一起一組吧，一定會很好玩！'],
+    ['大家不要跟他玩，不要理他！', '排擠', '大家一起玩吧，人多比較好玩！', 2], ['你根本不是我們這一國的。', '排擠', '歡迎你加入我們，一起來玩吧！', 2],
+    ['你敢說出去，就給我小心。', '威脅', '有事情可以說出來，沒關係。', 2], ['沒有人想理你，你自己玩啦。', '否定', '我想聽你說，你可以慢慢講。', 2]
   ].map(function (a, k) { return { id: 'd' + k, k: 'd', t: a[0], c: a[1], r: a[2], v: a[3] || 1 }; });
   [
-    ['對—對—對—，你最厲害。', '翻白眼、拉長音', '你很愛炫耀，我不想聽。', '你真的很厲害，可以教我嗎？'],
-    ['對啦，你很棒啦。', '不看對方、語氣敷衍', '我根本不覺得你很棒。', '你真的做得很好！'],
-    ['啊不就好棒棒～', '語調上揚、做鬼臉', '這沒什麼了不起。', '你好棒，我替你開心！'],
-    ['哇，你好聰明喔。', '拍手很慢、冷笑', '你剛剛的答案很笨。', '沒關係，答錯也是在學習。'],
-    ['你最乾淨、你最乖。', '嘲笑的笑', '你很愛裝。', '謝謝你提醒大家。'],
-    ['好喔，你說了算。', '聳肩、嘆氣', '我不同意，但懶得跟你說。', '我的想法不太一樣，我們可以討論嗎？']
+    ['對—對—對—，你最厲害，什麼都會。', '翻白眼、拉長音', '你很愛炫耀，我不想再聽了。', '你真的很厲害，可以教我嗎？'],
+    ['對啦對啦，你很棒啦，這樣可以了吧。', '不看對方、語氣敷衍', '我根本不覺得你很棒，別再說了。', '你真的做得很好，我覺得很棒！'],
+    ['啊不就好棒棒～你最了不起了嘛～', '語調上揚、做鬼臉', '這沒什麼了不起，不用一直講。', '你好棒，我真心替你感到開心！'],
+    ['哇，你好聰明喔，真是天才耶。', '拍手很慢、冷笑', '你剛剛的答案很笨，我在笑你。', '沒關係，答錯也是在學習。'],
+    ['對啦，你最乾淨、你最乖了啦。', '嘲笑的笑', '你很愛裝乖，我看不順眼。', '謝謝你提醒大家，你很細心。'],
+    ['好喔好喔，反正都是你說了算。', '聳肩、嘆氣', '我不同意，但懶得跟你說。', '我的想法不太一樣，我們可以討論嗎？']
   ].forEach(function (a) { DEVIL.push({ id: 'd' + DEVIL.length, k: 'd', s: 1, t: a[0], tone: a[1], mean: a[2], r: a[3], c: '酸言酸語', v: 1 }); });
   var GOD = [
     { n: '重新開始', d: '收回所有人的手牌，洗牌後每人重發 3 張', e: '🔄' },
@@ -141,7 +141,7 @@
     if (note) { p.rec.push(note); if (p.rec.length > 14) p.rec.shift(); }
     return p.m - before;
   }
-  function pushLog(g, lg) { g.log = lg; g.logs.push(lg); if (g.logs.length > 10) g.logs.shift(); }
+  function pushLog(g, lg) { g.log = lg; g.logs.push(lg); if (g.logs.length > 400) g.logs.shift(); }
   function rec(g, e) { g.evq.push(e); }
   function owners(g) { var o = []; for (var i = 0; i < g.P.length; i++) o.push(g.own.indexOf(i)); return o; }
   function total(g, s) { return g.P[g.own[s]].m + (g.stars[s] || 0); }
@@ -196,7 +196,7 @@
     return shuffle(deck);
   }
   var mod = {
-    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 3,
+    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 4,
     reasons: REASONS,
     opts: [
       { k: 'mode', label: '玩法：', list: [['comp', '🏆 比賽（心情＋星星最高的人贏）'], ['coop', '🤝 合作（大家都在 0 以上才過關）']] },
@@ -214,7 +214,7 @@
         P: faces.map(function (f) { return { f: f, m: 0, hist: [0], rec: [], shield: false, hitAt: -1, ga: 0, gd: 0 }; }),
         own: shuffle(faces.map(function (f, i) { return i; })).slice(0, n),
         order: shuffle(alive({ np: n, out: [] })), pos: 0, dir: 1, deck: buildDeck(cfg), disc: [], hands: [], swap: [], out: [], stars: [],
-        plays: 0, cnt: 0, log: null, logs: [], lastDevil: null, res: null, turnAt: Date.now(),
+        plays: 0, pc: [], cnt: 0, log: null, logs: [], lastDevil: null, res: null, turnAt: Date.now(),
         ev: null, evn: 0, used: [], paused: false, help: null, moodQ: 0, moodA: {}, chal: null, evq: [] };
       for (s = 0; s < n; s++) { g.hands.push([]); g.swap.push(false); g.stars.push(0); }
       for (var k = 0; k < HAND; k++) for (s = 0; s < n; s++) g.hands[s].push(draw(g));
@@ -228,7 +228,7 @@
       return { np: g.np, mode: g.mode, len: g.len, cx: g.cx, P: g.P.map(function (p) { return { f: p.f, m: p.m, shield: p.shield, hitAt: p.hitAt, hist: g.res ? p.hist : null, rec: g.res ? p.rec : null, ga: p.ga, gd: p.gd }; }),
         mine: seat >= 0 ? g.own[seat] : -1, owners: g.res ? owners(g) : null, hand: seat >= 0 ? g.hands[seat] : null, swapped: seat >= 0 ? g.swap[seat] : true,
         stars: g.res ? g.stars : null, myStars: seat >= 0 ? g.stars[seat] : 0,
-        order: g.order, pos: g.pos, dir: g.dir, turn: turnSeat(g), plays: g.plays, deck: g.deck.length, lastDevil: g.lastDevil, log: g.log, logs: g.logs, out: g.out, cnt: g.cnt,
+        order: g.order, pos: g.pos, dir: g.dir, turn: turnSeat(g), plays: g.plays, limit: g.len * alive(g).length, len: g.len, myPlays: seat >= 0 ? (g.pc || [])[seat] || 0 : 0, deck: g.deck.length, lastDevil: g.lastDevil, log: g.log, logs: g.logs, out: g.out, cnt: g.cnt,
         ev: g.ev, judge: g.cfg.judge, paused: g.paused, help: g.help != null, moodQ: g.moodQ, moodMine: seat >= 0 ? g.moodA[seat] : null,
         chal: g.chal && g.plays < g.chal.until ? g.chal.k : null, timer: g.cfg.timer, left: g.cfg.timer && !blocked(g) ? Math.max(0, g.cfg.timer - (Date.now() - g.turnAt) / 1000) : null };
     },
@@ -282,7 +282,7 @@
       g.disc.push(cid);
       if (g.chal && g.chal.k) lg.ch = chalOn(g, g.chal.k) ? g.chal.k : null;
       rec(g, { seat: seat, k: 'play', ck: c.k === 'g' ? 'g' : c.s ? 's' : c.k });
-      g.plays++; g.cnt++;
+      g.plays++; g.cnt++; g.pc = g.pc || []; g.pc[seat] = (g.pc[seat] || 0) + 1;
       pushLog(g, lg);
       if (checkEnd(g)) return true;
       if (!jump) advance(g);
@@ -522,6 +522,9 @@
       ord.appendChild(ch);
     });
     wrap.appendChild(ord);
+    if (!tb.res && v.limit) { var left = Math.max(0, v.limit - v.plays), cn = el('div', 'ad-count' + (left <= v.order.length ? ' low' : ''));
+      cn.innerHTML = '🃏 這一局還可以出 <b>' + left + '</b> 張（全桌一起算，已出 ' + v.plays + '／' + v.limit + '）<span>你已經出了 ' + (v.myPlays || 0) + ' 張</span>';
+      wrap.appendChild(cn); }
     // 圖像
     var grid = el('div', 'ad-faces n' + v.P.length);
     v.P.forEach(function (p, i) {
@@ -545,8 +548,8 @@
     var sp = tb.res ? null : speech(tb, v, v.log, ctx);
     if (sp) wrap.appendChild(sp);
     if (tb.res) wrap.appendChild(debrief(tb, v));
-    var lgBox = el('div', 'ad-log'), lgs = (v.logs || []).slice(0, -1).slice(-3).reverse();
-    if (!tb.res && lgs.length) { lgs.forEach(function (lg) { var li = el('div', 'ad-li'), d = el('i'); d.style.background = lg.s >= 0 ? SEATC[lg.s] : '#29b6f6'; li.appendChild(d); li.appendChild(document.createTextNode(logText(tb, v, lg))); lgBox.appendChild(li); }); wrap.appendChild(lgBox); }
+    var lgBox = el('div', 'ad-log'), lgAll = v.logs || [], lgs = lgAll.slice(0, -1).reverse();
+    if (!tb.res && lgs.length) { lgBox.appendChild(el('div', 'ad-loghd', '📜 出牌紀錄（最新的在上面，共 ' + lgAll.length + ' 筆）')); lgs.forEach(function (lg) { var li = el('div', 'ad-li'), d = el('i'); d.style.background = lg.s >= 0 ? SEATC[lg.s] : '#29b6f6'; li.appendChild(d); li.appendChild(document.createTextNode(logText(tb, v, lg))); lgBox.appendChild(li); }); wrap.appendChild(lgBox); }
     if (!tb.res && !out && v.hand) {
       var me = el('div', 'ad-me' + (myTurn ? ' turn' : '')); me.setAttribute('data-seat', seat);
       var pk = el('button', 'ad-peek' + (L.peek ? ' on' : '')); pk.type = 'button';
@@ -584,6 +587,9 @@
       else if (v.help || v.paused) { var po = el('div', 'ad-ov soft'), pb = el('div', 'ad-ovb god'); pb.appendChild(el('div', 'ad-ovh', v.help ? '🛑 暫停一下' : '⏸️ 老師暫停了')); pb.appendChild(el('p', 'ad-ovhelp', v.help ? '有同學需要休息一下，老師馬上過來。大家先等一等。' : '請看大螢幕，聽老師說明。')); po.appendChild(pb); wrap.appendChild(po); }
     }
     box.appendChild(wrap);
+    // 出牌紀錄：一次剛好看得到 5 則，其他的用捲軸往下看
+    var its = lgBox.querySelectorAll('.ad-li');
+    if (its.length > 5) { var b0 = lgBox.getBoundingClientRect(), b5 = its[4].getBoundingClientRect(); if (b5.bottom > b0.top) lgBox.style.maxHeight = Math.ceil(b5.bottom - b0.top + 16) + 'px'; }
   };
   function evBox(tb, v, ctx) {
     var e = v.ev, ov = el('div', 'ad-ov'), bx = el('div', 'ad-ovb god ad-ev'), spinning = Date.now() < (L.spin[e.id] || 0);
@@ -772,10 +778,11 @@
     T.seats.forEach(function (id, i) { if (api.isBot(T, i)) return; pr.appendChild(hbtn(api, '', '⭐ ' + api.name(T, i) + (g.stars[i] ? '（' + g.stars[i] + '）' : ''), function () { api.act(T, { t: 'star', seat: i, r: H.reason }); api.render(); })); });
     sr.appendChild(pr); w.appendChild(sr);
     // 教學時刻：投影一句話
-    var said = (g.logs || []).filter(function (lg) { return (lg.k === 'a' || lg.k === 'd') && C(lg.c); }).slice(-5).reverse();
+    var said = (g.logs || []).filter(function (lg) { return (lg.k === 'a' || lg.k === 'd') && C(lg.c); }).reverse();
     if (said.length) {
-      var tm = api.el('div', 'ad-teach'); tm.appendChild(api.el('b', '', '📽️ 教學時刻：點一句話投影到大螢幕，全班一起討論'));
-      said.forEach(function (lg) { var c = C(lg.c); tm.appendChild(api.btn('ad-tline ' + (c.k === 'a' ? 'a' : 'd'), (c.k === 'a' ? '😇 ' : '😈 ') + c.t, function () { api.actAll({ t: 'pause' }); teachProj(api, c); })); });
+      var tm = api.el('div', 'ad-teach'); tm.appendChild(api.el('b', '', '📽️ 教學時刻：點一句話投影到大螢幕，全班一起討論（這一局說過的 ' + said.length + ' 句，最新的在上面）'));
+      var tl = api.el('div', 'ad-tlist'); tm.appendChild(tl);
+      said.forEach(function (lg) { var c = C(lg.c); tl.appendChild(api.btn('ad-tline ' + (c.k === 'a' ? 'a' : 'd'), (c.k === 'a' ? '😇 ' : '😈 ') + c.t + '　（' + api.name(T, lg.s) + '）', function () { api.actAll({ t: 'pause' }); teachProj(api, c); })); });
       w.appendChild(tm);
     }
     if (g.res) w.appendChild(hbtn(api, 'on', '📽️ 分享時刻投影', function () { shareProj(api, T); }));
