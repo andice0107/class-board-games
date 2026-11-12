@@ -252,3 +252,9 @@
 .ad-pend.redo .ad-btn { display: block; margin: 10px auto 0; font-size: 1.1em; }
 .ad-hand.ad-dis { opacity: .5; filter: grayscale(.6); }
 .ad-pass { min-width: 150px; font-size: 1.1em; }
+
+/* 同步投影舞台固定 1600x900，字級不能用 vw/vh，主持人和玩家才會一樣 */
+.cast-stage .ad-proj { width: 1400px; }
+.cast-stage .ad-pj-line { font-size: 72px; }
+.cast-stage .ad-pj-q, .cast-stage .ad-pj-ans { font-size: 32px; }
+.cast-stage .ad-pj-bars { height: 470px; }

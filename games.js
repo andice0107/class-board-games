@@ -1,6 +1,6 @@
 /* 遊戲清單：每個遊戲是 games/<id>/ 裡獨立的模組，用 BG.register 加進來 */
 window.BG = window.BG || {};
-BG.VER = '202611121324';
+BG.VER = '202611121439';
 BG.games = BG.games || {};
 BG.register = function (id, mod) { mod.id = id; BG.games[id] = mod; };
 BG.catalog = [
@@ -65,6 +65,7 @@ BG.showGuide = function (title, sections) {
   function show(k) {
     [].forEach.call(tabs.children, function (b, j) { b.classList.toggle('on', j === k); });
     body.innerHTML = sections[k].html; body.scrollTop = 0; box.scrollTop = 0;
+    if (sections[k].act) { var ab = document.createElement('button'); ab.type = 'button'; ab.className = 'btn btn-sun g-act'; ab.textContent = sections[k].act.label; ab.addEventListener('click', function () { close(); sections[k].act.fn(); }); body.insertBefore(ab, body.firstChild); }
   }
   sections.forEach(function (s, k) { var b = document.createElement('button'); b.type = 'button'; b.textContent = s.h; b.addEventListener('click', function () { show(k); }); tabs.appendChild(b); });
   function close() { ov.remove(); }
@@ -174,3 +175,24 @@ BG.zoom = function (key, content) {
   setTimeout(check, 5000); setInterval(check, 120000);
   document.addEventListener('visibilitychange', function () { if (!document.hidden) check(); });
 })();
+
+/* ---------- 同步投影（老師投影到每位學生的裝置）：共用的畫筆繪製 ---------- */
+BG.CAST_W = 1600; BG.CAST_H = 900;
+BG.castDraw = function (cv, list) {
+  var x = cv.getContext('2d'); x.clearRect(0, 0, cv.width, cv.height);
+  (list || []).forEach(function (k) {
+    if (!k || !k.p || !k.p.length) return;
+    x.save(); x.globalCompositeOperation = k.e ? 'destination-out' : 'source-over';
+    x.strokeStyle = k.c || '#ffeb3b'; x.fillStyle = k.c || '#ffeb3b'; x.lineWidth = k.w || 6; x.lineCap = 'round'; x.lineJoin = 'round';
+    if (k.p.length === 1) { x.beginPath(); x.arc(k.p[0][0], k.p[0][1], (k.w || 6) / 2, 0, Math.PI * 2); x.fill(); }
+    else { x.beginPath(); x.moveTo(k.p[0][0], k.p[0][1]); for (var i = 1; i < k.p.length; i++) x.lineTo(k.p[i][0], k.p[i][1]); x.stroke(); }
+    x.restore();
+  });
+};
+/* 把 1600x900 的投影舞台等比縮放到可用空間（主持人和學生看到的版面一樣，畫筆位置才對得上） */
+BG.castFit = function (fit, stage, padBottom) {
+  var W = window.innerWidth, H = window.innerHeight - (padBottom || 0);
+  var k = Math.min(W / BG.CAST_W, H / BG.CAST_H);
+  stage.style.transform = 'scale(' + k + ')';
+  fit.style.width = BG.CAST_W * k + 'px'; fit.style.height = BG.CAST_H * k + 'px';
+};

@@ -246,3 +246,25 @@ input:focus { border-color: var(--sky); background: #fff; }
 .overlay.wide .ov-l .gpanel { margin: 0; }
 @media (max-width: 900px) { .overlay.wide > .panel { grid-template-columns: 1fr; overflow-y: auto; } .overlay.wide .ov-l, .overlay.wide .ov-r { overflow: visible; } }
 .overlay.wide .ov-l > .panel { width: auto; max-height: none; overflow: visible; animation: none; }
+
+/* 同步投影 */
+.proj.cast { padding: 8px 8px 0; justify-content: flex-start; overflow: hidden; touch-action: none; }
+.cast-fit { position: relative; flex: none; margin: 0 auto; }
+.cast-stage { position: absolute; left: 0; top: 0; width: 1600px; height: 900px; transform-origin: 0 0; }
+.cast-html { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 30px 60px; overflow: hidden; }
+.cast-cv { position: absolute; inset: 0; width: 1600px; height: 900px; pointer-events: none; touch-action: none; }
+.cast-bar { flex: none; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; padding: 8px 60px 10px; }
+.cast-bar .btn.on { outline: 3px solid #ffc107; }
+.cast-live { color: #ffe082; font-weight: 800; font-size: 15px; margin-right: 6px; }
+.p-cast .cast-live { display: block; text-align: center; padding: 6px 0 10px; font-size: 18px; }
+.cast-dot { width: 30px; height: 30px; border-radius: 50%; border: 3px solid #fff6; padding: 0; cursor: pointer; }
+.cast-dot.on { border-color: #fff; box-shadow: 0 0 0 3px #ffc107; }
+.p-cast { z-index: 100000; }
+.p-cast .btn, .p-cast .host-only, .p-cast button { visibility: hidden; }
+.cast .host-only { opacity: .7; }
+
+.g-act { display: block; margin: 4px auto 14px; }
+.cast-html.doc { justify-content: flex-start; overflow-y: auto; padding: 20px 60px; }
+.p-cast .cast-html.doc { overflow: hidden; }
+.cast-doc { background: #fff; color: #2b2340; border-radius: 22px; padding: 28px 44px; text-align: left; font-size: 28px; line-height: 1.7; width: 1400px; max-height: none; overflow: visible; }
+.cast-doc h2 { margin: 0 0 10px; font-size: 40px; } .cast-doc h3 { font-size: 32px; margin: 18px 0 6px; }

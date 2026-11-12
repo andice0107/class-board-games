@@ -348,7 +348,7 @@
     return shuffle(deck);
   }
   var mod = {
-    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 29, oneTable: true,
+    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 30, oneTable: true,
     reasons: REASONS,
     opts: [
       { k: 'mode', label: '玩法：', list: [['comp', '🏆 比賽（心情＋星星最高的人贏）'], ['coop', '🤝 合作（大家都在 0 以上才過關）']] },
@@ -1212,8 +1212,8 @@
       d.appendChild(api.btn('btn', '揭曉答案', function () { ans.classList.remove('hidden'); this.remove(); }));
       d.appendChild(ans);
     }
-    d.appendChild(api.el('p', 'ad-pj-sub', '各桌已經暫停，討論完請按「▶️ 全班繼續」'));
-    api.project(d);
+    d.appendChild(api.el('p', 'ad-pj-sub host-only', '（只有天神看得到這行）遊戲已經暫停，關閉投影就會繼續'));
+    api.project(d, { cast: true, onClose: function () { api.actAll({ t: 'resume' }); } });
   }
   function moodProj(api) {
     var d = api.el('div', 'ad-proj'); d.appendChild(api.el('div', 'ad-pj-k a', '😀 心情快問'));
@@ -1225,7 +1225,7 @@
       bars.innerHTML = '';
       MOODS.forEach(function (m, i) { var b = api.el('div', 'ad-pj-bar'); b.innerHTML = '<span>' + m[0] + '</span><i style="height:' + (n ? cnt[i] / n * 100 : 0) + '%"></i><b>' + cnt[i] + '</b><small>' + m[1] + '</small>'; bars.appendChild(b); });
     }
-    draw(); var o = api.project(d), iv = setInterval(function () { if (!document.body.contains(o)) return clearInterval(iv); draw(); }, 1000);
+    draw(); var o = api.project(d, { cast: true }), iv = setInterval(function () { if (!document.body.contains(o)) return clearInterval(iv); draw(); }, 1000);
   }
   function shareProj(api, T) {
     var g = T.g, v = mod.view(g, -1), ms = v.P.map(function (p) { return p.m; }), hi = Math.max.apply(null, ms), lo = Math.min.apply(null, ms);
@@ -1244,7 +1244,7 @@
       else row.appendChild(api.el('p', 'ad-pj-sub', '🙌 最後請對旁邊的同學，真心說一句天使牌上的話。'));
       d.appendChild(row);
     }
-    show(); api.project(d);
+    show(); api.project(d, { cast: true });
   }
   function modal(api, title, body, onSave) {
     var ov = api.el('div', 'overlay'), bx = api.el('div', 'panel ad-modal'); ov.appendChild(bx);

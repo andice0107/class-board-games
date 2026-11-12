@@ -27,11 +27,34 @@
   }
   function hello() { if (net) net.send({ t: 'hello', pid: me.pid, sid: me.sid || '' }); }
   function send(t, extra) { if (!net) return; var d = { t: t, pid: me.pid }; for (var k in extra) d[k] = extra[k]; net.send(d); }
-  setInterval(function () { if (!net) return; if (!joined) hello(); else send('ping', { v: S ? S.v : -1 }); }, 4000);
+  setInterval(function () { if (!net) return; if (!joined) hello(); else send('ping', { v: S ? S.v : -1, cs: CAST ? CAST.seq : -1 }); }, 4000);
+  /* 同步投影：主持人投影時，蓋住整個畫面、關不掉，主持人關掉才回到自己的畫面 */
+  var CAST = null, castEl = null;
+  function setCast(c) {
+    if (c && CAST && c.id === CAST.id && c.seq < CAST.seq) return;
+    CAST = c || null;
+    if (!CAST) { if (castEl) { castEl.remove(); castEl = null; } return; }
+    if (!castEl) {
+      castEl = el('div', 'proj cast p-cast'); var fit = el('div', 'cast-fit'), stage = el('div', 'cast-stage'), body = el('div', 'cast-html'), cv = document.createElement('canvas');
+      cv.width = BG.CAST_W; cv.height = BG.CAST_H; cv.className = 'cast-cv';
+      stage.appendChild(body); stage.appendChild(cv); fit.appendChild(stage);
+      castEl.appendChild(el('div', 'cast-live', '📽️ 請看投影畫面'));
+      castEl.appendChild(fit); document.body.appendChild(castEl);
+      castEl._b = body; castEl._cv = cv; castEl._f = fit; castEl._s = stage; castEl._h = null;
+      var lay = function () { if (!castEl) return; castEl.firstChild.textContent = window.innerHeight > window.innerWidth * 1.1 ? '📽️ 請看投影畫面（把裝置橫過來看，畫面會比較大）' : '📽️ 請看投影畫面'; BG.castFit(castEl._f, castEl._s, 60); }; castEl._lay = lay; window.addEventListener('resize', lay);
+      snd.play('start');
+    }
+    if (castEl._h !== CAST.html) { castEl._b.innerHTML = CAST.html; castEl._h = CAST.html; }
+    castEl._b.classList.toggle('doc', !!CAST.doc);
+    var bb = castEl._b; bb.scrollTop = (CAST.st || 0) * Math.max(0, bb.scrollHeight - bb.clientHeight);
+    BG.castDraw(castEl._cv, CAST.sk);
+    castEl._lay();
+  }
 
   var fx = { snd: function (k) { snd.play(k); }, toast: toast };
   function onDown(d) {
-    if (!d || d.to !== me.pid) return;
+    if (!d || (d.to !== me.pid && !(d.to === '*' && d.t === 'cast'))) return;
+    if (d.t === 'cast') { if (joined) setCast(d.c); return; }
     if (d.t === 'st') {
       if (S && joined && d.v < S.v) return;
       if (!BG.games[d.gid] || !BG.games[d.gid].guide) { BG.load(d.gid, function () { onDown(d); }); return; }
@@ -47,6 +70,7 @@
         }
       }
       if (!SOLO) BGSfx.force(d.snd !== false);
+      if (!SOLO && 'cast' in d) setCast(d.cast);
       S = d; me.name = d.name; save(); render();
     } else if (d.t === 'sidtaken') {
       if (joined) return;

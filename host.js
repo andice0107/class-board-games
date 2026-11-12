@@ -22,7 +22,7 @@
 
   function start(state) {
     if (net) net.close();
-    S = state; S.at = Date.now();
+    S = state; S.at = Date.now(); S.cast = null;   // 重新整理後投影一定關掉，學生不會卡在投影畫面
     Object.keys(S.players).forEach(function (k) { S.players[k].lastSeen = 0; S.players[k]._on = false; });
     // 遊戲規則改版後，舊的棋局資料不相容：重新開一局
     Object.keys(S.tables).forEach(function (k) { var T = S.tables[k]; if ((T.gv || 0) !== (GAME.ver || 0)) { T.g = GAME.init(T.seats.length, gopts(T)); T.again = {}; T.round++; T.gv = GAME.ver || 0; } });
@@ -69,7 +69,7 @@
     var q = S.players[pid]; return q ? { name: dname(q), on: online(q) } : { name: '（已離開）', on: false, gone: true }; }
   function names(T) { return T.seats.map(pub); }
   function stOf(p) {
-    var s = p.stat || { w: 0, d: 0, l: 0 }, m = { t: 'st', to: p.pid, v: p.ver, name: p.name, sid: p.sid, gid: GID, qn: S.queue.length, stat: s, pts: pts(s), allowBot: SOLO || S.allowBot === true, emo: SOLO || S.emo === true, snd: SOLO || S.snd !== false, botSeats: GAME.botSeats || null };
+    var s = p.stat || { w: 0, d: 0, l: 0 }, m = { t: 'st', to: p.pid, v: p.ver, name: p.name, sid: p.sid, gid: GID, qn: S.queue.length, stat: s, pts: pts(s), allowBot: SOLO || S.allowBot === true, cast: S.cast || null, emo: SOLO || S.emo === true, snd: SOLO || S.snd !== false, botSeats: GAME.botSeats || null };
     var T = p.table && S.tables[p.table];
     if (T) { var seat = T.seats.indexOf(p.pid); m.tb = { no: T.no, round: T.round, seat: seat, seats: names(T), view: GAME.view(T.g, seat), res: T.g.res || null, again: T.again }; }
     return m;
@@ -127,7 +127,7 @@
     var wasOn = online(p); p.lastSeen = Date.now();
     if (!wasOn) { p._on = true; presence(p); }
     var T = tblOf(p), seat = T ? T.seats.indexOf(p.pid) : -1;
-    if (d.t === 'ping') { if (d.v !== p.ver) send(p); return; }
+    if (d.t === 'ping') { if (d.v !== p.ver) send(p); else if ((S.cast ? S.cast.seq : -1) !== (d.cs == null ? -1 : d.cs)) net.send({ t: 'cast', to: p.pid, c: S.cast || null }); return; }
     if (d.t === 'bot') { if (!T && (SOLO || S.allowBot === true)) { botTable(p, d.level, d.n, SOLO ? d.opts : null); var NT = tblOf(p); if (NT && SOLO && SPEEDS[d.speed]) NT.speed = d.speed; } return; }
     if (!T) return;
     if (d.t === 'emo') {
@@ -363,6 +363,54 @@
       box.appendChild(c);
     });
   }
+  /* ---------- 同步投影：主持人畫面上的內容，同步出現在每位學生的裝置上（學生關不掉），可以用螢幕畫筆 ---------- */
+  function castOpen(o, node, opt) {
+    o.classList.add('cast');
+    var fit = el('div', 'cast-fit'), stage = el('div', 'cast-stage'), cv = document.createElement('canvas');
+    cv.width = BG.CAST_W; cv.height = BG.CAST_H; cv.className = 'cast-cv';
+    var body = el('div', 'cast-html' + (opt.doc ? ' doc' : '')); body.appendChild(node);
+    stage.appendChild(body); stage.appendChild(cv); fit.appendChild(stage); o.appendChild(fit);
+    var C = S.cast = { id: Date.now(), seq: 0, html: '', sk: [] }, cur = null, mode = 'op', color = '#ffeb3b', timer = null;
+    function ser() { return body.innerHTML.replace(/（\d{4}）/g, ''); }   // 學生畫面不顯示學號
+    function push(now) {
+      if (timer && !now) return;
+      clearTimeout(timer);
+      timer = setTimeout(function () { timer = null; if (S.cast !== C) return; C.seq++; C.html = ser(); C.doc = !!opt.doc; C.st = body.scrollHeight > body.clientHeight ? body.scrollTop / (body.scrollHeight - body.clientHeight) : 0; net.send({ t: 'cast', to: '*', c: { id: C.id, seq: C.seq, html: C.html, doc: C.doc, st: C.st, sk: cur ? C.sk.concat([cur]) : C.sk } }); }, now ? 0 : 120);
+    }
+    body.addEventListener('scroll', function () { push(); });   // 捲動也同步給玩家
+    var mo = new MutationObserver(function () { push(); }); mo.observe(body, { subtree: true, childList: true, characterData: true, attributes: true });
+    function redraw() { BG.castDraw(cv, cur ? C.sk.concat([cur]) : C.sk); }
+    // 工具列
+    var bar = el('div', 'cast-bar'), tools = {};
+    function setMode(m) { mode = m; cv.style.pointerEvents = m === 'op' ? 'none' : 'auto'; cv.style.cursor = m === 'er' ? 'cell' : m === 'pen' ? 'crosshair' : ''; Object.keys(tools).forEach(function (k) { tools[k].classList.toggle('on', k === m); }); }
+    tools.op = btn('btn small', '👆 操作畫面', function () { setMode('op'); });
+    tools.pen = btn('btn small', '🖊️ 畫筆', function () { setMode('pen'); });
+    tools.er = btn('btn small', '🧽 橡皮擦', function () { setMode('er'); });
+    bar.appendChild(el('span', 'cast-live', '📡 投影中：每位玩家的畫面都會看到'));
+    bar.appendChild(tools.op); bar.appendChild(tools.pen);
+    ['#ffeb3b', '#ff5252', '#69f0ae', '#40c4ff', '#ffffff'].forEach(function (c) { var b = btn('cast-dot', '', function () { color = c; setMode('pen'); [].forEach.call(bar.querySelectorAll('.cast-dot'), function (x) { x.classList.toggle('on', x === b); }); }); b.style.background = c; if (c === color) b.classList.add('on'); bar.appendChild(b); });
+    bar.appendChild(tools.er);
+    bar.appendChild(btn('btn small', '↩️ 返回上一步', function () { C.sk.pop(); redraw(); push(true); }));
+    bar.appendChild(btn('btn small', '🗑️ 全清筆劃', function () { C.sk = []; redraw(); push(true); }));
+    bar.appendChild(btn('btn small btn-sun', '✕ 關閉投影', function () { close(); }));
+    o.appendChild(bar);
+    setMode('op');
+    function pt(e) { var r = cv.getBoundingClientRect(); return [Math.round((e.clientX - r.left) / r.width * BG.CAST_W), Math.round((e.clientY - r.top) / r.height * BG.CAST_H)]; }
+    cv.addEventListener('pointerdown', function (e) { if (mode === 'op') return; e.preventDefault(); try { cv.setPointerCapture(e.pointerId); } catch (x) {} cur = { c: color, w: mode === 'er' ? 60 : 7, e: mode === 'er' ? 1 : 0, p: [pt(e)] }; redraw(); push(); });
+    cv.addEventListener('pointermove', function (e) { if (!cur) return; cur.p.push(pt(e)); redraw(); push(); });
+    function up() { if (!cur) return; C.sk.push(cur); cur = null; redraw(); push(true); }
+    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+    function layout() { BG.castFit(fit, stage, bar.offsetHeight + 16); }
+    window.addEventListener('resize', layout); setTimeout(layout, 0); layout();
+    function close() {
+      mo.disconnect(); window.removeEventListener('resize', layout); clearTimeout(timer);
+      o.remove(); if (S.cast === C) { S.cast = null; net.send({ t: 'cast', to: '*', c: null }); }
+      if (opt.onClose) opt.onClose();
+    }
+    o._close = close;
+    push(true);
+    return o;
+  }
   var ovId = null;
   var GP = null;   // 遊戲自己的老師控制台（天神控制台）
   function wideOv() { return !!(GAME.oneTable && GP); }
@@ -401,7 +449,13 @@
     name: function (T, i) { return pub(T.seats[i]).name; },
     isBot: function (T, i) { return BG.isBot(T.seats[i]); },
     save: save, render: function () { render(); if (ovId) drawOv(); },
-    project: function (node) { var o = $('h-proj'); if (!o) { o = el('div', 'proj'); o.id = 'h-proj'; document.body.appendChild(o); } o.innerHTML = ''; o.appendChild(btn('btn small proj-x', '✕ 關閉投影', function () { o.remove(); })); o.appendChild(node); return o; },
+    project: function (node, opt) {
+      opt = opt || {};
+      var o0 = $('h-proj'); if (o0) { if (o0._close) o0._close(); else o0.remove(); }
+      var o = el('div', 'proj'); o.id = 'h-proj'; document.body.appendChild(o);
+      if (opt.cast && !SOLO) return castOpen(o, node, opt);
+      o.appendChild(btn('btn small proj-x', '✕ 關閉投影', function () { o.remove(); if (opt.onClose) opt.onClose(); })); o.appendChild(node); return o;
+    },
     download: function (name, text, type) { var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: type || 'text/csv;charset=utf-8' })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000); },
     el: el, btn: btn,
     open: function (T) { if (T && S.tables[T.id]) openOv(T.id); }
@@ -444,7 +498,11 @@
   });
   $('h-help').addEventListener('click', function () {
     var st = GAME.guide.student.map(function (x) { return '<h3>' + x.h + '</h3>' + x.html; }).join('');
-    BG.showGuide('教師說明・' + META.title, GAME.guide.teacher.concat([{ h: '學生版規則（可投影）', html: st }]));
+    var act = SOLO ? null : { label: '📽️ 投影給所有玩家看（同步到每個人的裝置）', fn: function () {
+      var d = el('div', 'g-body cast-doc'); d.innerHTML = '<h2>📖 ' + META.title + '・玩法說明</h2>' + st;
+      API.project(d, { cast: true, doc: true });
+    } };
+    BG.showGuide('教師說明・' + META.title, GAME.guide.teacher.concat([{ h: '學生版規則（可投影）', html: st, act: act }]));
   });
   $('h-lb').addEventListener('click', function () { $('h-lbov').classList.remove('hidden'); drawLb(); });
   $('h-lbov').addEventListener('click', function (e) { if (e.target === this || e.target.id === 'lb-close') this.classList.add('hidden'); });
