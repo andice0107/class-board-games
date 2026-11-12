@@ -96,3 +96,10 @@
 .sn-pj-a { flex: 0 0 100%; font-style: normal; font-size: 18px; color: #9ff5e6; } .sn-pj-a.bad { color: #fecaca; } .sn-pj-a.f1 { color: #bae6fd; } .sn-pj-a.f0 { color: #cbd5e1; }
 .sn-pj-sub { font-size: 20px; opacity: .9; }
 .sn-proj .hidden { display: none; }
+.sn-hist { align-items: stretch; text-align: left; gap: 5px; }
+.sn-hist-h { font-size: 15px; color: #6b4b2a; }
+.sn-hi { background: #fff; border-radius: 10px; padding: 6px 9px; border-left: 4px solid #ff8a3d; }
+.sn-hi-q { display: flex; align-items: flex-start; gap: 6px; font-size: 14px; font-weight: 800; line-height: 1.45; }
+.sn-hi-q i { flex: none; width: 9px; height: 9px; border-radius: 50%; margin-top: 6px; }
+.sn-hi-a { font-size: 14px; color: #8a4b12; margin-left: 15px; line-height: 1.45; } .sn-hi-a.none { color: #6b7280; }
+.sn-teach { max-height: 340px; overflow: auto; }
