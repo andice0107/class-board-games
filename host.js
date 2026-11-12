@@ -69,7 +69,7 @@
     var q = S.players[pid]; return q ? { name: dname(q), on: online(q) } : { name: '（已離開）', on: false, gone: true }; }
   function names(T) { return T.seats.map(pub); }
   function stOf(p) {
-    var s = p.stat || { w: 0, d: 0, l: 0 }, m = { t: 'st', to: p.pid, v: p.ver, name: p.name, sid: p.sid, gid: GID, qn: S.queue.length, stat: s, pts: pts(s), allowBot: SOLO || S.allowBot === true, emo: SOLO || S.emo !== false, snd: SOLO || S.snd !== false, botSeats: GAME.botSeats || null };
+    var s = p.stat || { w: 0, d: 0, l: 0 }, m = { t: 'st', to: p.pid, v: p.ver, name: p.name, sid: p.sid, gid: GID, qn: S.queue.length, stat: s, pts: pts(s), allowBot: SOLO || S.allowBot === true, emo: SOLO || S.emo === true, snd: SOLO || S.snd !== false, botSeats: GAME.botSeats || null };
     var T = p.table && S.tables[p.table];
     if (T) { var seat = T.seats.indexOf(p.pid); m.tb = { no: T.no, round: T.round, seat: seat, seats: names(T), view: GAME.view(T.g, seat), res: T.g.res || null, again: T.again }; }
     return m;
@@ -131,7 +131,7 @@
     if (d.t === 'bot') { if (!T && (SOLO || S.allowBot === true)) { botTable(p, d.level, d.n, SOLO ? d.opts : null); var NT = tblOf(p); if (NT && SOLO && SPEEDS[d.speed]) NT.speed = d.speed; } return; }
     if (!T) return;
     if (d.t === 'emo') {
-      if (S.emo === false && !SOLO) return;
+      if (S.emo !== true && !SOLO) return;
       T.seats.forEach(function (id) { if (id !== p.pid) net.send({ t: 'emo', to: id, from: seat, i: d.i | 0 }); });
       return;
     }
@@ -396,9 +396,9 @@
     var sw = el('div', 'switch seatsel speedsel'); sw.appendChild(el('span', '', '電腦出牌速度：'));
     [['vslow', '🐌 最慢'], ['slow', '🐢 慢'], ['normal', '普通'], ['fast', '🐇 快'], ['vfast', '⚡ 最快']].forEach(function (o) { var b = btn('btn small' + ((S.speed || 'normal') === o[0] ? ' on' : ''), o[1], function () { S.speed = o[0]; save(); [].forEach.call(sw.querySelectorAll('button'), function (x) { x.classList.toggle('on', x === b); }); }); sw.appendChild(b); });
     $('h-lock').parentNode.parentNode.insertBefore(sw, $('h-lock').parentNode);
-    // 學生端的「說話」和音效由老師統一控制（預設都開）
+    // 學生端的「說話」和音效由老師統一控制（說話預設關、音效預設開）
     [['emo', '💬 讓學生使用「說話」功能'], ['snd', '🔊 學生端音效']].forEach(function (o) {
-      var lb = el('label', 'switch'), cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = S[o[0]] !== false;
+      var lb = el('label', 'switch'), cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = o[0] === 'emo' ? S.emo === true : S[o[0]] !== false;   // 說話預設關、音效預設開
       cb.addEventListener('change', function () { S[o[0]] = this.checked; save(); Object.keys(S.players).forEach(function (k) { bump(S.players[k]); }); });
       lb.appendChild(cb); lb.appendChild(document.createTextNode(' ' + o[1]));
       sw.parentNode.insertBefore(lb, sw);   // 速度列維持在「鎖住房間」正上方
