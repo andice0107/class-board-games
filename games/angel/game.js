@@ -92,7 +92,9 @@
     { n: '道歉修復', d: '選一個這一輪被惡魔牌打到的圖像，說一句道歉的話，心情 +2', e: '🤝' },
     { n: '公平之光', d: '目前心情最低的圖像 +3（一樣低的都加）', e: '🌈' },
     { n: '換位思考', d: '選一個圖像（不能是自己的），說出「如果我是它，我現在覺得……」，心情 +2', e: '🧠' },
-    { n: '冷靜時間', d: '全桌一起深呼吸 3 次，所有心情在 -5 以下的圖像 +2', e: '🌬️' }
+    { n: '冷靜時間', d: '全桌一起深呼吸 3 次，所有心情在 -5 以下的圖像 +2', e: '🌬️' },
+    { n: '手牌大洗牌', d: '把所有人手上的牌收起來洗亂，再照原本的張數發回去（不從牌堆拿新牌）', e: '🃏' },
+    { n: '手牌交換', d: '選一個人，和他交換全部的手牌（天神用的時候：選兩個人互換）', e: '🔀' }
   ].map(function (o, k) { o.id = 'g' + k; o.k = 'g'; o.g = k; return o; });
   var CARD = {}; ANGEL.concat(DEVIL, GOD).forEach(function (c) { CARD[c.id] = c; });
   function C(cid) { return CARD[cid]; }
@@ -157,7 +159,7 @@
     if (!c) return null;
     for (var i = 0; i < g.P.length; i++) if (i !== own) all.push(i);
     if (c.k === 'a' || c.k === 'd') return { p: all };
-    if (c.g === 1) { var ss = alive(g).filter(function (s) { return s !== seat; }); return ss.length ? { s: ss } : null; }
+    if (c.g === 1 || c.g === 13) { var ss = alive(g).filter(function (s) { return s !== seat; }); return ss.length ? { s: ss } : null; }
     if (c.g === 3 || c.g === 10) return { p: all };
     if (c.g === 6) { var sh = all.filter(function (i) { return !g.P[i].shield; }); return sh.length ? { p: sh } : null; }
     if (c.g === 7) return canTurn(g, seat) ? { now: true } : null;
@@ -193,7 +195,7 @@
   function hostGodOK(g) {   // 老師現在能用的天神牌：同一張不能連續 3 次；轉念牌要有人剛出過惡魔牌
     if (g.res || g.wait) return [];
     var hg = g.hg || [], ban = hg.length >= 2 && hg[hg.length - 1] === hg[hg.length - 2] ? hg[hg.length - 1] : -1;
-    return GOD.map(function (c) { return c.g; }).filter(function (k) { return k !== ban && !(k === 7 && !g.lastDevil); });
+    return GOD.map(function (c) { return c.g; }).filter(function (k) { return k !== ban && !(k === 7 && !g.lastDevil) && !(k === 13 && alive(g).length < 2); });
   }
   function autoJudge(g, seat) { return g.solo || g.cfg.judge === 'auto' || !g.hum[seat]; }
   function scoreJ(g, id, pts, notify) {
@@ -272,6 +274,16 @@
           g.P.forEach(function (x, j) { if (x.m === lo) { change(g, j, 3, cid); lg.ps.push(j); } }); break;
         case 10: lg.d = change(g, p, 2, cid); break;
         case 11: lg.ps = []; g.P.forEach(function (x, j) { if (x.m <= -5) { change(g, j, 2, cid); lg.ps.push(j); } }); break;
+        case 12: if (h) h.splice(i, 1);   // 手牌大洗牌：只用大家手上現有的牌
+          var al = alive(g), pool = [], cnt = {};
+          al.forEach(function (s) { cnt[s] = g.hands[s].length; pool = pool.concat(g.hands[s]); });
+          shuffle(pool); al.forEach(function (s) { g.hands[s] = pool.splice(0, cnt[s]); });
+          al.forEach(function (s) { while (g.hands[s].length < HAND) g.hands[s].push(draw(g)); });
+          h = null; break;
+        case 13: if (h) h.splice(i, 1);   // 手牌交換：一對一
+          var a1 = seat >= 0 ? seat : lg.from2, b1 = s2, tmp = g.hands[a1]; g.hands[a1] = g.hands[b1]; g.hands[b1] = tmp;
+          [a1, b1].forEach(function (s) { while (g.hands[s].length < HAND) g.hands[s].push(draw(g)); });
+          lg.from2 = a1; lg.to = b1; h = null; break;
       }
     return { h: h, jump: jump };
   }
@@ -296,7 +308,7 @@
     return shuffle(deck);
   }
   var mod = {
-    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 15,
+    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 16,
     reasons: REASONS,
     opts: [
       { k: 'mode', label: '玩法：', list: [['comp', '🏆 比賽（心情＋星星最高的人贏）'], ['coop', '🤝 合作（大家都在 0 以上才過關）']] },
@@ -340,10 +352,11 @@
       if (d.t === 'evdone') { if (!g.ev || g.ev.seat !== seat || g.cfg.judge !== 'auto') return false; return scoreEv(g, 2, notify); }
       if (blocked(g) || turnSeat(g) !== seat || d.n !== g.cnt) return false;
       var h = g.hands[seat], i = d.i | 0, cid = h[i]; if (!cid) return false;
-      if (d.t === 'swap') {
-        if (g.swap[seat]) return false;
-        g.swap[seat] = true; g.disc.push(cid); h[i] = draw(g); g.cnt++;
-        pushLog(g, { k: 'swap', s: seat }); return true;
+      if (d.t === 'redraw') {   // 手上全是惡魔牌：整組換新（不算出牌、不限次數）
+        if (!h.length || !h.every(function (x) { return C(x).k === 'd'; })) return false;
+        g.disc = g.disc.concat(h); var nh = []; while (nh.length < HAND) nh.push(draw(g)); g.hands[seat] = nh;
+        g.rdT = g.rdT || {}; g.rdT[seat] = g.plays; g.cnt++;
+        pushLog(g, { k: 'swap', s: seat, all: 1 }); return true;
       }
       if (d.t === 'dump') {   // 手上的牌都不能用：換一張新的（不算出牌、不限次數）
         if (h.some(function (x) { return !!targets(g, seat, x); })) return false;
@@ -410,6 +423,7 @@
         var rk = pick(ok), rd = { t: 'gcard', k: rk };
         if (NEEDP[rk]) rd.p = Math.floor(Math.random() * g.P.length);
         if (rk === 1) { var cand = alive(g).filter(function (x) { return x !== turnSeat(g); }); rd.s = cand.length ? pick(cand) : turnSeat(g); }
+        if (rk === 13) { var two = shuffle(alive(g).slice()); rd.s = two[0]; rd.s2 = two[1]; }
         d = rd; t = 'gcard';
       }
       if (t === 'gcard') {   // 老師（天神）用天神牌：不限次數，但同一張不能連續 3 次
@@ -418,8 +432,9 @@
         var hg = g.hg = g.hg || [];
         var gp = null, gs = null;
         if (NEEDP[k]) { gp = +d.p; if (!(gp >= 0 && gp < g.P.length)) return false; }
-        if (k === 1) { gs = +d.s; if (!(gs >= 0 && gs < g.np) || g.out.indexOf(gs) >= 0) return false; }
+        if (k === 1 || k === 13) { gs = +d.s; if (!(gs >= 0 && gs < g.np) || g.out.indexOf(gs) >= 0) return false; }
         var glg = { k: 'g', c: gc.id, s: -1, T: 1, p: gp, d: 0 };
+        if (k === 13) { var ga = +d.s2; if (!(ga >= 0 && ga < g.np) || g.out.indexOf(ga) >= 0 || ga === gs) return false; glg.from2 = ga; }
         godFx(g, -1, gc, gp, gs, glg, null, -1);
         hg.push(k); if (hg.length > 6) hg.shift();
         g.cnt++; pushLog(g, glg); return true;
@@ -476,14 +491,14 @@
           case 11: v = ms.filter(function (x) { return x <= -5; }).length * (coop ? 30 : 8) + (me <= -5 ? 25 : 0) - 5; break;
           case 4: v = coop ? 0 : (me < hiO ? 10 + (hiO - me) * 3 : -20); break;
           case 6: v = coop ? 20 - m * 1.5 : 4 - m; break;
-          case 0: v = 6; break; case 2: case 5: v = 5; break; case 1: v = 4; break;
+          case 0: v = 6; break; case 2: case 5: v = 5; break; case 1: v = 4; break; case 12: v = 4; break; case 13: v = 3; break;
         }
         if (lv >= 3 && !coop && c.k === 'd' && m === hiO) v += 15;
         if (!coop && lv >= 2) v += c.k === 'a' ? 20 + c.v * 6 : c.k === 'g' && HELP[c.g] ? 15 + HELP[c.g] * 5 : c.k === 'g' && JUDGE[c.g] ? 28 : 0;   // 助人會得分
         return v + Math.random() * (lv === 2 ? 20 : lv === 3 ? 10 : 4);
       }
       opts.sort(function (a, b) { return score(b) - score(a); });
-      if (!g.swap[seat] && lv >= 3 && score(opts[0]) < 0) return { t: 'swap', i: opts[opts.length - 1].i, n: n };
+      if (lv >= 2 && h.every(function (x) { return C(x).k === 'd'; }) && !(g.rdT && g.rdT[seat] === g.plays)) return { t: 'redraw', i: 0, n: n };
       return A(opts[0]);
     },
     hostView: function (g) {
@@ -538,7 +553,7 @@
     if (lg.k === 'chal') return '🎯 天神挑戰：' + chalText(lg.ch);
     if (lg.k === 'ev') return '⚡ 天神時刻：' + who(tb, lg.s) + ' 回答了' + (lg.ek === 'chance' ? '機會' : '命運') + '題' + (lg.pts ? '，得到 ' + lg.pts + ' 顆星星' : '');
     var a = who(tb, lg.s), c = lg.c && C(lg.c);
-    if (lg.k === 'swap') return a + (lg.dump ? ' 手上的牌都不能用，換了一張新牌' : ' 換了一張手牌');
+    if (lg.k === 'swap') return a + (lg.all ? ' 手上都是惡魔牌，換了一組新手牌' : lg.dump ? ' 手上的牌都不能用，換了一張新牌' : ' 換了一張手牌');
     var pre = lg.tt ? a + ' 先轉念「' + C(lg.tt.from).r + '」，然後' : a;
     if (lg.k === 'a') return pre + ' 對【' + fname(v, lg.p) + '】說：「' + c.t + '」 ' + sgn(lg.d);
     if (lg.k === 'd') return pre + ' 對【' + fname(v, lg.p) + '】說：「' + c.t + '」 ' + (lg.blocked ? '🛡️ 被守護天使擋下了' : sgn(lg.d));
@@ -548,6 +563,8 @@
       case 2: return t + '，出牌方向反過來了';
       case 3: case 10: case 8: return t + '：【' + fname(v, lg.p) + '】' + sgn(lg.d);
       case 4: return t + '！大家的圖像換過了，按住「我的圖像」看看';
+      case 12: return t + '！大家手上的牌洗亂重發了';
+      case 13: return t + '：' + who(tb, lg.from2) + ' 和 ' + who(tb, lg.to) + ' 交換了全部手牌';
       case 6: return t + '：【' + fname(v, lg.p) + '】受到保護';
       case 7: return t + '：把「' + C(lg.from).t + '」改成「' + C(lg.from).r + '」【' + fname(v, lg.p) + '】' + sgn(lg.d);
       case 9: case 11: return t + (lg.ps.length ? '：' + lg.ps.map(function (j) { return '【' + fname(v, j) + '】'; }).join('') + '心情變好了' : '（這次沒有圖像需要）');
@@ -597,6 +614,7 @@
       var lg = v.log, c = lg.c && C(lg.c);
       fx.snd(!c ? 'move' : c.k === 'a' ? 'pop' : c.k === 'd' ? 'cap' : 'check');
       if (c && c.k === 'g' && c.g === 4 && lg.s !== tb.seat && !lg.T) fx.toast('🌪️ 圖像大風吹！按住「我的圖像」看看你現在是誰');
+      if (c && c.k === 'g' && (c.g === 0 || c.g === 12 || (c.g === 13 && (lg.to === tb.seat || lg.from2 === tb.seat)))) { L.sel = -1; L.pick = null; if (!lg.T && lg.s !== tb.seat) fx.toast(c.g === 13 ? '🔀 你的手牌被交換了！看看新的手牌' : '🃏 大家的手牌換過了！看看新的手牌'); }
       if (lg.T && c) {   // 老師（天神）臨時出天神牌：取消正在選的牌，提醒大家
         var mid = L.sel >= 0 || L.pick; L.sel = -1; L.pick = null;
         fx.toast('⚡ 天神用了「' + c.e + ' ' + c.n + '」！' + (c.g === 4 ? '按住「我的圖像」看看你現在是誰。' : '') + (v.turn === tb.seat && !tb.res ? (mid ? '剛剛選的牌取消了，請重新選一張。' : '輪到你出牌。') : ''));
@@ -625,7 +643,7 @@
     else if (v.wait) st.textContent = '🧠 牌出完了！等天神評完分就公布結果';
     else if (out) st.textContent = '你已經認輸，正在觀看';
     else if (hold) st.textContent = v.ev ? '⚡ 天神時刻！' : v.help ? '有人需要休息一下，請等天神' : v.paused ? '⏸️ 天神暫停了，請看大螢幕' : '請先回答心情快問';
-    else if (myTurn) { st.className = 'ad-status me'; st.textContent = stuck ? '你的牌現在都不能用，按下面「🔁 換一張新牌」' : !selC ? '輪到你了！選一張牌' : !tg ? '這張牌現在不能用，換一張' : tg.p ? '點一個發光的圖像' : tg.s ? '選下一個出牌的人' : '按下面的按鈕使用這張牌'; }
+    else if (myTurn) { st.className = 'ad-status me'; st.textContent = stuck ? '你的牌現在都不能用，按下面「🔁 換一張新牌」' : !selC ? '輪到你了！選一張牌' : !tg ? '這張牌現在不能用，換一張' : tg.p ? '點一個發光的圖像' : tg.s ? (C(selC).g === 13 ? '選一個人和你交換手牌' : '選下一個出牌的人') : '按下面的按鈕使用這張牌'; }
     else st.textContent = '輪到 ' + who(tb, v.turn) + ' 出牌…';
     if (v.left != null && !tb.res && !hold) {
       var tm = el('span', 'ad-timer'), end = (L.recv || Date.now()) + v.left * 1000;
@@ -699,7 +717,8 @@
       wrap.appendChild(me);
       var tools = el('div', 'ad-tools');
       if (stuck) tools.appendChild(ctx.button('ad-btn go', '🔁 換一張新牌（不算出牌）', function () { var i = L.sel >= 0 ? L.sel : 0; L.sel = -1; ctx.send('dump', { i: i, n: v.cnt }); L.sent = v.cnt; ctx.rerender(); }));
-      if (myTurn && selC && !v.swapped && !stuck) tools.appendChild(ctx.button('ad-btn', '🔁 換掉這張（每局 1 次）', function () { if (confirm('把這張牌換成一張新的？換完還是要出牌喔（每局只能換 1 次）')) { var i = L.sel; L.sel = -1; ctx.send('swap', { i: i, n: v.cnt }); L.sent = v.cnt; ctx.rerender(); } }));
+      var allD = myTurn && !stuck && v.hand.length && v.hand.every(function (x) { return C(x).k === 'd'; });
+      if (allD) tools.appendChild(ctx.button('ad-btn go', '🔄 手上都是惡魔牌，換一組新手牌（不算出牌）', function () { L.sel = -1; L.pick = null; ctx.send('redraw', { i: 0, n: v.cnt }); L.sent = v.cnt; ctx.rerender(); }));
       if (myTurn && tg && tg.now && !L.pick) tools.appendChild(ctx.button('ad-btn go', '⚡ 使用這張牌', function () { L.pick = {}; ctx.rerender(); }));
       if (!v.help && !v.ev) tools.appendChild(ctx.button('ad-btn help', '🛑 我需要休息', function () { if (confirm('要請天神過來嗎？這一桌會先暫停。')) ctx.send('help', {}); }));
       tools.appendChild(ctx.button('ad-btn', '🏳️', function () { if (confirm('確定要認輸嗎？')) ctx.send('resign', {}); }));
@@ -755,7 +774,7 @@
     else if (c.g === 8) { line = '對不起，剛剛那樣說讓你難過了。'; help = '對【' + fname(v, pick.p) + '】說一句道歉的話，例如：'; }
     else if (c.g === 10) { line = '如果我是' + FACES[v.P[pick.p].f].n + '，我現在覺得' + MOOD(v.P[pick.p].m) + '，因為……'; help = '想一想【' + fname(v, pick.p) + '】的心情，大聲說出來：'; }
     else if (c.g === 11) { help = '請全桌一起深呼吸 3 次：'; line = '吸氣……吐氣……'; }
-    else help = c.d + (pick.p != null ? '：【' + fname(v, pick.p) + '】' : pick.s != null ? '：下一個換 ' + who(tb, pick.s) : '');
+    else help = c.d + (pick.p != null ? '：【' + fname(v, pick.p) + '】' : pick.s != null ? (c.g === 13 ? '：和 ' + who(tb, pick.s) + ' 交換全部手牌' : '：下一個換 ' + who(tb, pick.s)) : '');
     bx.appendChild(el('div', 'ad-ovh', c.k === 'g' ? c.e + ' ' + c.n : c.k === 'a' ? '😇 天使牌' : '😈 惡魔牌'));
     bx.appendChild(el('p', 'ad-ovhelp', help));
     if (line) bx.appendChild(el('p', 'ad-ovline', '「' + line + '」'));
@@ -960,7 +979,7 @@
       GOD.forEach(function (c) {
         var on = H.gsel && H.gsel.no === T.no && H.gsel.k === c.g;
         var b = hbtn(api, on ? 'on' : '', c.e + ' ' + c.n, function () {
-          if (NEEDP[c.g] || c.g === 1) { H.gsel = on ? null : { no: T.no, k: c.g }; api.render(); return; }
+          if (NEEDP[c.g] || c.g === 1 || c.g === 13) { H.gsel = on ? null : { no: T.no, k: c.g }; api.render(); return; }
           if (!api.act(T, { t: 'gcard', k: c.g })) alert('現在不能用這張天神牌'); H.gsel = null; api.render();
         });
         if (c.g === ban || (c.g === 7 && !g.lastDevil) || g.wait) { b.disabled = true; b.classList.add('ad-dis'); }
@@ -971,8 +990,9 @@
       if (!g.lastDevil) gw.appendChild(api.el('small', 'ad-hnote', '轉念牌要在有人剛出完惡魔牌之後才能用。'));
       if (H.gsel && H.gsel.no === T.no) {
         var k = H.gsel.k, pr2 = api.el('div', 'ad-hrow');
-        pr2.appendChild(api.el('span', 'ad-hl', GOD[k].e + ' ' + GOD[k].n + '：' + (k === 1 ? '選下一個出牌的人' : '選一個圖像')));
-        if (k === 1) T.seats.forEach(function (id, i) { if (g.out.indexOf(i) >= 0) return; pr2.appendChild(hbtn(api, '', api.name(T, i), function () { api.act(T, { t: 'gcard', k: 1, s: i }); H.gsel = null; api.render(); })); });
+        pr2.appendChild(api.el('span', 'ad-hl', GOD[k].e + ' ' + GOD[k].n + '：' + (k === 1 ? '選下一個出牌的人' : k === 13 ? (H.gsel.a == null ? '先選第一個人' : '再選要和「' + api.name(T, H.gsel.a) + '」交換手牌的人') : '選一個圖像')));
+        if (k === 13) T.seats.forEach(function (id, i) { if (g.out.indexOf(i) >= 0 || i === H.gsel.a) return; pr2.appendChild(hbtn(api, '', api.name(T, i), function () { if (H.gsel.a == null) { H.gsel.a = i; api.render(); return; } if (!api.act(T, { t: 'gcard', k: 13, s: i, s2: H.gsel.a })) alert('現在不能用這張天神牌'); H.gsel = null; api.render(); })); });
+        else if (k === 1) T.seats.forEach(function (id, i) { if (g.out.indexOf(i) >= 0) return; pr2.appendChild(hbtn(api, '', api.name(T, i), function () { api.act(T, { t: 'gcard', k: 1, s: i }); H.gsel = null; api.render(); })); });
         else { var ow = owners(g); g.P.forEach(function (pp, j) { var f = FACES[pp.f]; pr2.appendChild(hbtn(api, '', f.i + f.n + '（' + sgn(pp.m).replace('±0', '0') + '・' + (ow[j] >= 0 ? api.name(T, ow[j]) : '沒有人') + '）', function () { if (!api.act(T, { t: 'gcard', k: k, p: j })) alert('現在不能用這張天神牌'); H.gsel = null; api.render(); })); }); }
         pr2.appendChild(hbtn(api, '', '取消', function () { H.gsel = null; api.render(); }));
         gw.appendChild(pr2);
@@ -1158,7 +1178,7 @@
     student: [
       { h: '怎麼玩', html: '<ol><li>桌上有一排<b>圖像</b>，每個圖像都有<b>情緒碼錶</b>，一開始都是 0「普通」。心情可以一直往上加（沒有上限），最低是 -10「崩潰」。</li><li>每個人會祕密分到一個圖像。按住「🤫 按住看我的圖像」偷偷看，<b>不要告訴別人</b>你是哪一個！</li><li>每人手上 3 張牌。輪到你時一定要出一張牌（不能 pass），出完自動補到 3 張。</li><li><b>天使牌</b>讓圖像心情變好，<b>惡魔牌</b>讓圖像心情變差。選一個圖像（不能選自己的），<b>看著它大聲念出卡片上的話</b>。</li><li><b>天神牌</b>有特別的功能，例如迴轉、圖像大風吹、守護天使。</li><li><b>⚡ 天神時刻</b>：轉盤會轉到一位玩家回答機會或命運題，答得好可以得到<b>天神星星 ⭐</b>（星星是祕密的）。</li><li>大家都出完規定張數，或有圖像掉到 -10，遊戲就結束，所有人的圖像翻開。</li></ol>' },
       { h: '贏的方法', html: '<p><b>🏆 比賽模式：</b>比的是<b>⭐ 實際得分</b>，最高的人贏。圖像的心情<b>不算分</b>，只用來決定遊戲什麼時候結束（有圖像掉到 -10，或全桌出牌次數到了）。</p><p><b>怎麼得分（只加不扣）：</b>出天使牌 +1、大天使牌 +2；天神祝福、公平之光 +3；守護天使、冷靜時間 +2；轉念牌、道歉修復、換位思考要先想一想再說出自己的話，天神給 0～5 分；機會命運題答得好、天神給的星星也會加分。惡魔牌不扣分，但也不會得分。</p><p><b>🤝 合作模式：</b>結束時，所有人的圖像都在 0 以上，大家一起過關！有圖像掉到 -10 就失敗。</p><table class="g-tbl"><tr><th>結果</th><th>得分</th></tr><tr><td>🏆 贏（或合作過關）</td><td>3 分</td></tr><tr><td>🤝 大家一樣高</td><td>1 分</td></tr><tr><td>💪 其他</td><td>0 分</td></tr></table><p>和電腦玩的不列入總分。</p>' },
-      { h: '天神牌', html: '<table class="g-tbl"><tr><th>牌</th><th>功能</th></tr>' + GOD.map(function (c) { return '<tr><td>' + c.e + ' ' + c.n + '</td><td>' + c.d + '</td></tr>'; }).join('') + '</table><p>每局可以把一張手牌換掉 1 次（換完還是要出牌）。</p>' },
+      { h: '天神牌', html: '<table class="g-tbl"><tr><th>牌</th><th>功能</th></tr>' + GOD.map(function (c) { return '<tr><td>' + c.e + ' ' + c.n + '</td><td>' + c.d + '</td></tr>'; }).join('') + '</table><p>輪到你時，如果手上 3 張全是惡魔牌，可以按「🔄 換一組新手牌」，不算出牌、一局不限次數。手上的牌都不能用時，也可以換一張新牌。</p>' },
       { h: '說話的規則', html: '<ul><li>惡魔牌上的話是<b>卡片上的話，不是你心裡的話</b>。</li><li>要<b>照卡片念</b>，不可以自己加詞。</li><li>念惡魔牌時看著<b>圖像</b>，不要看著同學。</li><li><b>酸言酸語牌</b>表面上像在稱讚，其實是在說別人不好。卡片上有寫要用什麼語氣，也有寫「真正的意思」。</li><li>不舒服的時候，按「🛑 我需要休息」，天神會過來。</li></ul>' }
     ],
     teacher: [
