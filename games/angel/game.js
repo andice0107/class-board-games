@@ -199,6 +199,13 @@
   }
   function allDevil(g, s) { var h = g.hands[s] || []; return h.length > 0 && h.every(function (x) { return C(x) && C(x).k === 'd'; }); }
   /* 新的一回合開始時檢查：手上全是惡魔牌最多連續 2 回合，第 3 回合一定換進一張天使牌 */
+  /* 出完牌補牌：已經連續 2 回合全是惡魔牌，這次補的一定是非惡魔牌；連續 2 回合沒有惡魔牌，這次補的一定是惡魔牌 */
+  function drawFor(g, s, h) {
+    var dv = (g.dv || {})[s] || 0, nd = (g.nd || {})[s] || 0;
+    if (dv >= 2 && h.every(function (x) { return C(x).k === 'd'; })) return takeKind(g, '!d', ANGEL);
+    if (nd >= 2 && !h.some(function (x) { return C(x).k === 'd'; })) return takeKind(g, 'd', DEVIL);
+    return draw(g);
+  }
   function takeKind(g, k, list) {   // 從牌堆（沒有就從棄牌堆）拿一張指定種類的牌；k = '!d' 表示「非惡魔牌」（天使或天神，照牌堆原本的比例）
     var j, id = null, ok1 = function (x) { return k === '!d' ? C(x).k !== 'd' : C(x).k === k; };
     for (j = g.deck.length - 1; j >= 0 && !id; j--) if (ok1(g.deck[j])) id = g.deck.splice(j, 1)[0];
@@ -335,7 +342,7 @@
     return shuffle(deck);
   }
   var mod = {
-    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 19,
+    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 20,
     reasons: REASONS,
     opts: [
       { k: 'mode', label: '玩法：', list: [['comp', '🏆 比賽（心情＋星星最高的人贏）'], ['coop', '🤝 合作（大家都在 0 以上才過關）']] },
@@ -409,7 +416,7 @@
         if (autoJudge(g, seat)) addPts(g, seat, 'j', 3, notify, c.n);
         else { g.jq = g.jq || []; g.jq.push(jit); }
       }
-      if (h) { h.splice(i, 1); h.push(draw(g)); }
+      if (h) { h.splice(i, 1); h.push(drawFor(g, seat, h)); }
       g.disc.push(cid);
       if (g.chal && g.chal.k) lg.ch = chalOn(g, g.chal.k) ? g.chal.k : null;
       rec(g, { seat: seat, k: 'play', ck: c.k === 'g' ? 'g' : c.s ? 's' : c.k });
