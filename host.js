@@ -165,7 +165,7 @@
     var N = seatN(), ready = S.queue.filter(function (id) { var p = S.players[id]; return p && online(p); });
     // 老師按「立刻配對」時，不夠一整桌的人也先開小一點的桌（最少 2 人），盡量不留一個人
     var flex = manual === true && GAME.seatOptions, full = N;
-    while (ready.length >= N || (flex && ready.length >= 2)) {
+    while ((ready.length >= N || (flex && ready.length >= 2)) && !oneFull()) {
       N = full;
       if (flex) { N = Math.min(full, ready.length); if (ready.length - N === 1 && N > 2) N--; }
       var group = [ready.shift()];
@@ -179,7 +179,10 @@
     S.queue.forEach(function (id) { bump(S.players[id]); });
     render(); save();
   }
+  // 有些遊戲（天使與惡魔）全班只能開一桌
+  function oneFull() { return !!GAME.oneTable && !SOLO && Object.keys(S.tables).length > 0; }
   function makeTable(group) {
+    var first = GAME.oneTable && !SOLO && !Object.keys(S.tables).length;
     S.queue = S.queue.filter(function (id) { return group.indexOf(id) < 0; });
     var used = {}; Object.keys(S.tables).forEach(function (k) { used[S.tables[k].no] = 1; });
     var no = 1; while (used[no]) no++;
@@ -188,6 +191,7 @@
     S.tables[T.id] = T;
     group.forEach(function (id) { S.players[id].table = T.id; });
     newRound(T, false);
+    if (first) setTimeout(function () { openOv(T.id); }, 50);   // 只有一桌：開好就直接放大
     return T;
   }
   /* 老師手動配對：在等候名單點學生名字選人，再按「開成一桌」 */
@@ -195,6 +199,7 @@
   function manualRange() { return GAME.seatOptions ? [Math.min.apply(null, GAME.seatOptions), Math.max.apply(null, GAME.seatOptions)] : [GAME.seats, GAME.seats]; }
   function manualPair() {
     var r = manualRange(), g = SEL.filter(function (id) { return S.queue.indexOf(id) >= 0; });
+    if (oneFull()) { alert('這個遊戲全班只能開一桌。要換人玩，請先在桌子裡按「解散這桌」。'); return; }
     if (g.length < r[0] || g.length > r[1]) { alert(r[0] === r[1] ? '這個遊戲一桌要剛好 ' + r[0] + ' 個人' : '一桌要 ' + r[0] + '～' + r[1] + ' 個人'); return; }
     SEL = []; makeTable(g);
     S.queue.forEach(function (id) { bump(S.players[id]); });
@@ -316,6 +321,8 @@
   }
   function doRender() {
     renderT = null;
+    // 只有一桌的遊戲：桌子開了之後，控制台就放在桌子的放大畫面裡（左半邊）
+    if (GP && GAME.oneTable && !$('h-ov').classList.contains('wide')) GP.style.display = Object.keys(S.tables).length ? 'none' : '';
     $('h-count').textContent = Object.keys(S.players).length + ' 位學生';
     var w = $('h-wait'); w.innerHTML = '';
     $('h-wn').textContent = S.queue.length;
@@ -357,10 +364,20 @@
     });
   }
   var ovId = null;
-  function openOv(id) { ovId = id; $('h-ov').classList.remove('hidden'); drawOv(); }
-  function closeOv() { ovId = null; $('h-ov').classList.add('hidden'); }
+  var GP = null;   // 遊戲自己的老師控制台（天神控制台）
+  function wideOv() { return !!(GAME.oneTable && GP); }
+  function openOv(id) {
+    ovId = id; $('h-ov').classList.remove('hidden');
+    if (wideOv()) { var bx = $('h-ovbox'); $('h-ov').classList.add('wide'); bx.innerHTML = ''; var L = el('div', 'ov-l'), R = el('div', 'ov-r'); L.appendChild(GP); bx.appendChild(L); bx.appendChild(R); GP.style.display = ''; }
+    drawOv();
+  }
+  function closeOv() {
+    ovId = null; $('h-ov').classList.add('hidden');
+    if (GP && $('h-ov').classList.contains('wide')) { $('h-ov').classList.remove('wide'); $('h-tables').parentNode.insertBefore(GP, $('h-tables')); $('h-ovbox').innerHTML = ''; render(); }
+  }
   function drawOv() {
     var T = S.tables[ovId], b = $('h-ovbox'); if (!T) return closeOv();
+    if (wideOv() && b.querySelector('.ov-r')) b = b.querySelector('.ov-r');
     b.innerHTML = '';
     var hd = el('div', 'row'); hd.style.justifyContent = 'space-between';
     hd.appendChild(el('h2', '', '第 ' + T.no + ' 桌・第 ' + T.round + ' 局')); hd.lastChild.style.margin = '0';
@@ -389,7 +406,7 @@
     el: el, btn: btn,
     open: function (T) { if (T && S.tables[T.id]) openOv(T.id); }
   };
-  if (GAME.hostPanel && !SOLO) { var gp = GAME.hostPanel(API); if (gp) { gp.classList.add('gpanel'); $('h-tables').parentNode.insertBefore(gp, $('h-tables')); } }
+  if (GAME.hostPanel && !SOLO) { var gp = GAME.hostPanel(API); if (gp) { GP = gp; gp.classList.add('gpanel'); $('h-tables').parentNode.insertBefore(gp, $('h-tables')); } }
   $('h-ov').addEventListener('click', function (e) { if (e.target === this) closeOv(); });
   $('h-auto').addEventListener('change', function () { S.auto = this.checked; save(); pair(); });
   (function () {
