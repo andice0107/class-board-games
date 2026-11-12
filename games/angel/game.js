@@ -348,7 +348,7 @@
     return shuffle(deck);
   }
   var mod = {
-    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 28, oneTable: true,
+    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 29, oneTable: true,
     reasons: REASONS,
     opts: [
       { k: 'mode', label: '玩法：', list: [['comp', '🏆 比賽（心情＋星星最高的人贏）'], ['coop', '🤝 合作（大家都在 0 以上才過關）']] },
@@ -989,7 +989,7 @@
       [0, 1, 2, 3, 4, 5].forEach(function (n) { e.appendChild(hbtn(api, n >= 4 ? 'on' : '', n + ' 分', function () { api.act(T, { t: 'rev', id: pd.id, ok: true, pts: n }); api.render(); })); });
     } else {
       e.appendChild(api.el('span', 'ad-q', c.k === 'g' ? '⚡ 用「' + c.e + ' ' + c.n + '」' + (pd.p != null ? '對【' + f.i + f.n + '】' : '') : (c.k === 'a' ? '😇 ' : '😈 ') + '對【' + f.i + f.n + '】：「' + c.t + '」' + (c.s ? '（語氣：' + c.tone + '）' : '')));
-      e.appendChild(hbtn(api, 'on', '✅ 通過', function () { api.act(T, { t: 'rev', id: pd.id, ok: true }); api.render(); }));
+      e.appendChild(hbtn(api, 'on ad-pass', '✅ 通過', function () { api.act(T, { t: 'rev', id: pd.id, ok: true }); api.render(); }));
       if (c.k === 'a') e.appendChild(hbtn(api, '', '🌗 半分通過（天使 +' + c.v + ' 只算 ' + (c.v / 2) + ' 分）', function () { api.act(T, { t: 'rev', id: pd.id, ok: true, half: true }); api.render(); }));
     }
     if (chalOn(g, 'turn') && canTurn(g, pd.s) && c.g !== 7) e.appendChild(api.el('span', 'ad-q', '💡 還要先轉念：「' + C(g.lastDevil.c).r + '」（念到才給先轉念 +1）'));
@@ -1013,7 +1013,6 @@
         out.push(e);
       }
       if (g.help != null) { var a = api.el('div', 'ad-alert help'); a.appendChild(api.el('b', '', '🛑 第 ' + T.no + ' 桌：' + api.name(T, g.help) + ' 需要休息')); a.appendChild(hbtn(api, 'on', '處理好了，繼續', function () { api.act(T, { t: 'resume' }); api.render(); })); out.push(a); }
-      out.forEach(function (x) { if (!x._t && api.open) { x._t = 1; x.appendChild(hbtn(api, '', '打開第 ' + T.no + ' 桌', function () { api.open(T); })); } });
     });
     return out;
   }

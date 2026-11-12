@@ -251,3 +251,4 @@
 @keyframes adRedo { 0%, 100% { box-shadow: 0 0 0 0 #e6510066; } 50% { box-shadow: 0 0 0 8px #e6510044; } }
 .ad-pend.redo .ad-btn { display: block; margin: 10px auto 0; font-size: 1.1em; }
 .ad-hand.ad-dis { opacity: .5; filter: grayscale(.6); }
+.ad-pass { min-width: 150px; font-size: 1.1em; }
