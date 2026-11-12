@@ -385,7 +385,8 @@
     save: save, render: function () { render(); if (ovId) drawOv(); },
     project: function (node) { var o = $('h-proj'); if (!o) { o = el('div', 'proj'); o.id = 'h-proj'; document.body.appendChild(o); } o.innerHTML = ''; o.appendChild(btn('btn small proj-x', '✕ 關閉投影', function () { o.remove(); })); o.appendChild(node); return o; },
     download: function (name, text, type) { var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: type || 'text/csv;charset=utf-8' })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000); },
-    el: el, btn: btn
+    el: el, btn: btn,
+    open: function (T) { if (T && S.tables[T.id]) openOv(T.id); }
   };
   if (GAME.hostPanel && !SOLO) { var gp = GAME.hostPanel(API); if (gp) { gp.classList.add('gpanel'); $('h-tables').parentNode.insertBefore(gp, $('h-tables')); } }
   $('h-ov').addEventListener('click', function (e) { if (e.target === this) closeOv(); });

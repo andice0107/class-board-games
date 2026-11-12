@@ -296,7 +296,7 @@
     return shuffle(deck);
   }
   var mod = {
-    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 12,
+    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 13,
     reasons: REASONS,
     opts: [
       { k: 'mode', label: '玩法：', list: [['comp', '🏆 比賽（心情＋星星最高的人贏）'], ['coop', '🤝 合作（大家都在 0 以上才過關）']] },
@@ -900,15 +900,10 @@
     ts.forEach(function (T) {
       var g = T.g; if (!g) return;
       if (g.help != null) { var a = api.el('div', 'ad-alert help'); a.appendChild(api.el('b', '', '🛑 第 ' + T.no + ' 桌：' + api.name(T, g.help) + ' 需要休息')); a.appendChild(hbtn(api, 'on', '處理好了，繼續', function () { api.act(T, { t: 'resume' }); })); dyn.appendChild(a); }
-      jqBoxes(T, api).forEach(function (x) { dyn.appendChild(x); });
-      if (g.ev && g.cfg.judge === 'teacher') {
-        var e = api.el('div', 'ad-alert ev');
-        e.appendChild(api.el('b', '', '⚡ 第 ' + T.no + ' 桌・' + api.name(T, g.ev.seat) + '・' + (g.ev.k === 'chance' ? '🍀 機會' : '🌀 命運')));
-        e.appendChild(api.el('span', 'ad-q', g.ev.q));
-        [[3, '👍 很棒 +3'], [2, '👌 不錯 +2'], [1, '🤔 再想想 +1']].forEach(function (o) { e.appendChild(hbtn(api, o[0] === 3 ? 'on' : '', o[1], function () { api.act(T, { t: 'evscore', pts: o[0] }); })); });
-        e.appendChild(hbtn(api, '', '跳過', function () { api.act(T, { t: 'evskip' }); }));
-        dyn.appendChild(e);
-      }
+      var need = [];
+      if (g.jq && g.jq.length) need.push('🧠 ' + g.jq.length + ' 張天神牌等你評分');
+      if (g.ev && g.cfg.judge === 'teacher') need.push('⚡ 機會命運等你評分');
+      if (need.length) { var e = api.el('div', 'ad-alert ev'); e.appendChild(api.el('b', '', '第 ' + T.no + ' 桌：' + need.join('、'))); if (api.open) e.appendChild(hbtn(api, 'on', '打開第 ' + T.no + ' 桌評分', function () { api.open(T); })); else e.appendChild(api.el('span', 'ad-q', '請點開那一桌評分')); dyn.appendChild(e); }
     });
     var pz = ts.filter(function (T) { return T.g && T.g.paused; }).length;
     if (pz) dyn.appendChild(api.el('div', 'ad-alert', '⏸️ 有 ' + pz + ' 桌暫停中，按「▶️ 全班繼續」恢復'));
@@ -931,7 +926,26 @@
   }
   mod.hostTable = function (T, api) {
     var g = T.g, w = api.el('div', 'ad-ht');
+    // 機會／命運評分（這一桌）
+    if (g.ev) {
+      var e = api.el('div', 'ad-alert ev');
+      e.appendChild(api.el('b', '', '⚡ 天神時刻・' + api.name(T, g.ev.seat) + '・' + (g.ev.k === 'chance' ? '🍀 機會' : '🌀 命運')));
+      e.appendChild(api.el('span', 'ad-q', g.ev.q));
+      if (g.cfg.judge === 'teacher') [[3, '👍 很棒 +3'], [2, '👌 不錯 +2'], [1, '🤔 再想想 +1']].forEach(function (o) { e.appendChild(hbtn(api, o[0] === 3 ? 'on' : '', o[1], function () { api.act(T, { t: 'evscore', pts: o[0] }); api.render(); })); });
+      else e.appendChild(api.el('span', 'ad-q', '（學生說完按「我說完了」會自動 +2）'));
+      e.appendChild(hbtn(api, '', '跳過', function () { api.act(T, { t: 'evskip' }); api.render(); }));
+      w.appendChild(e);
+    }
     jqBoxes(T, api).forEach(function (x) { w.appendChild(x); });
+    // 這一桌現在的順序和圖像配置（大風吹、換位子之後也會更新）
+    var info = api.el('div', 'ad-hinfo'), seq = g.order.slice(); if (g.dir < 0) seq.reverse();
+    var or = api.el('div', 'ad-hrow'); or.appendChild(api.el('span', 'ad-hl', '🔄 出牌順序' + (g.dir > 0 ? '（➡️）' : '（⬅️ 反方向）') + '：'));
+    seq.forEach(function (s2, k) { var cur = !g.res && s2 === turnSeat(g); var ch = api.el('span', 'ad-hchip' + (cur ? ' cur' : '') + (g.out.indexOf(s2) >= 0 ? ' out' : ''), (cur ? '▶ ' : '') + api.name(T, s2)); ch.style.borderColor = SEATC[s2]; or.appendChild(ch); if (k < seq.length - 1) or.appendChild(api.el('span', 'ad-harr', '→')); });
+    info.appendChild(or);
+    var pr0 = api.el('div', 'ad-hrow'), ow0 = owners(g); pr0.appendChild(api.el('span', 'ad-hl', '🎭 圖像配置：'));
+    g.P.forEach(function (pp, j) { var f = FACES[pp.f]; var ch = api.el('span', 'ad-hchip', f.i + f.n + '＝' + (ow0[j] >= 0 ? api.name(T, ow0[j]) : '沒有人') + '（心情 ' + sgn(pp.m).replace('±0', '0') + (pp.shield ? '・🛡️' : '') + '）'); ch.style.borderColor = f.c; pr0.appendChild(ch); });
+    info.appendChild(pr0);
+    w.appendChild(info);
     // 老師的天神牌
     if (!g.res) {
       var gw = api.el('div', 'ad-hgod'), hg = g.hg || [], ban = hg.length >= 2 && hg[hg.length - 1] === hg[hg.length - 2] ? hg[hg.length - 1] : -1;
