@@ -347,7 +347,7 @@
     return shuffle(deck);
   }
   var mod = {
-    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 22,
+    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 23,
     reasons: REASONS,
     opts: [
       { k: 'mode', label: '玩法：', list: [['comp', '🏆 比賽（心情＋星星最高的人贏）'], ['coop', '🤝 合作（大家都在 0 以上才過關）']] },
@@ -379,17 +379,19 @@
       addCustom(g.cx);
       return { np: g.np, mode: g.mode, len: g.len, cx: g.cx, P: g.P.map(function (p) { return { f: p.f, m: p.m, shield: p.shield, hitAt: p.hitAt, hist: g.res ? p.hist : null, rec: g.res ? p.rec : null, ga: p.ga, gd: p.gd }; }),
         mine: seat >= 0 ? g.own[seat] : -1, owners: g.res ? owners(g) : null, hand: seat >= 0 ? g.hands[seat] : null, swapped: seat >= 0 ? g.swap[seat] : true,
-        stars: g.res ? g.stars : null, sc: g.res ? g.sc : null, myScore: seat >= 0 && (g.res || g.cfg.show !== 'end') ? g.stars[seat] || 0 : null, wait: !!g.wait, solo: !!g.solo, pend: g.pend ? { s: g.pend.s, c: g.pend.c, p: g.pend.p } : null, rev: g.cfg.rev !== 'off' && !g.solo,
+        stars: g.res ? g.stars : null, sc: g.res ? g.sc : null, myScore: seat >= 0 && (g.res || g.cfg.show !== 'end') ? g.stars[seat] || 0 : null, wait: !!g.wait, solo: !!g.solo, pend: g.pend ? { id: g.pend.id, s: g.pend.s, c: g.pend.c, p: g.pend.p, redo: !!g.pend.redo } : null, rev: g.cfg.rev !== 'off' && !g.solo,
         order: g.order, pos: g.pos, dir: g.dir, turn: turnSeat(g), plays: g.plays, limit: g.len * alive(g).length, len: g.len, myPlays: seat >= 0 ? (g.pc || [])[seat] || 0 : 0, deck: g.deck.length, lastDevil: g.lastDevil, log: g.log, logs: g.logs, out: g.out, cnt: g.cnt,
         ev: g.ev, judge: g.cfg.judge, paused: g.paused, help: g.help != null, moodQ: g.moodQ, moodMine: seat >= 0 ? g.moodA[seat] : null,
         chal: g.chal && g.plays < g.chal.until ? g.chal.k : null, timer: g.cfg.timer, left: g.cfg.timer && !blocked(g) ? Math.max(0, g.cfg.timer - (Date.now() - g.turnAt) / 1000) : null };
     },
     act: function (g, seat, d, notify) {
       if (g.res || g.out.indexOf(seat) >= 0) return false;
+      if (g.pend && g.pend.redo && g.pend.s === seat && d.t !== 'reread' && d.t !== 'help') return false;   // 天神請他重念：只能重念
       if (d.t === 'resign') { notify(seat, '你已經認輸，可以繼續觀看'); knock(g, seat, 'resign'); g.cnt++; return true; }
       if (d.t === 'help') { if (g.help != null) return false; g.help = seat; rec(g, { seat: seat, k: 'help' }); g.cnt++; return true; }
       if (d.t === 'mood') { if (!g.moodQ || d.id !== g.moodQ || g.moodA[seat] != null) return false; var mv = d.v | 0; if (mv < 0 || mv > 4) return false; g.moodA[seat] = mv; rec(g, { seat: seat, k: 'mood', v: mv }); g.cnt++; if (!moodWait(g)) g.turnAt = Date.now(); return true; }
       if (d.t === 'evdone') { if (!g.ev || g.ev.seat !== seat || g.cfg.judge !== 'auto') return false; return scoreEv(g, 2, notify); }
+      if (d.t === 'reread') { var q = g.pend; if (!q || !q.redo || q.s !== seat || d.rid !== q.id) return false; q.redo = false; q.at = Date.now(); rec(g, { seat: seat, k: 'reread' }); g.cnt++; return true; }
       if (blocked(g) || turnSeat(g) !== seat || d.n !== g.cnt) return false;
       var h = g.hands[seat], i = d.i | 0, cid = h[i]; if (!cid) return false;
       if (d.t === 'dump') {   // 手上的牌都不能用：換一張新的（不算出牌、不限次數）
@@ -460,8 +462,8 @@
       if (t === 'revset') { g.cfg.rev = d.v === 'off' ? 'off' : 'on'; if (g.cfg.rev === 'off' && g.pend) { var q0 = g.pend; g.pend = null; mod.act(g, q0.s, { t: 'play', i: q0.i, p: q0.p, s: q0.to, n: g.cnt, _ok: REVOK }, notify); } g.cnt++; return true; }
       if (t === 'rev') {   // 天神審查：通過 → 真的出牌；再念一次 → 退回
         var pd = g.pend; if (!pd || pd.id !== d.id) return false;
+        if (!d.ok) { pd.redo = true; g.cnt++; rec(g, { seat: pd.s, k: 'redo' }); notify(pd.s, '🔁 天神請你再念一次（同一張牌、同一個圖像，要照卡片上的話和語氣念）'); return true; }
         g.pend = null;
-        if (!d.ok) { g.cnt++; rec(g, { seat: pd.s, k: 'redo' }); notify(pd.s, '🔁 天神請你再念一次（要照卡片上的話和語氣念）'); return true; }
         g._half = !!d.half;
         try { var okp = g.hands[pd.s] && g.hands[pd.s][pd.i] === pd.c && mod.act(g, pd.s, { t: 'play', i: pd.i, p: pd.p, s: pd.to, n: g.cnt, _ok: REVOK }, notify); } finally { delete g._half; }
         if (!okp) { g.cnt++; notify(pd.s, '牌局改變了，請重新選一張牌'); }
@@ -494,7 +496,7 @@
     },
     hostBadge: function (g) {
       if (g.help != null) return '🛑 有同學需要休息，請過去看看';
-      if (g.pend) return '🗣️ 有人念完了，等你確認';
+      if (g.pend && !g.pend.redo) return '🗣️ 有人念完了，等你確認';
       if (g.jq && g.jq.length) return '🧠 有天神牌等你評分（0～5 分）';
       if (g.ev) return g.cfg.judge === 'teacher' ? '⚡ 等天神評分' : '⚡ 天神時刻進行中';
       if (g.paused) return '⏸️ 暫停中';
@@ -680,6 +682,7 @@
   };
   mod.render = function (box, ctx) {
     var tb = ctx.tb, v = tb.view, seat = tb.seat, out = v.out.indexOf(seat) >= 0;
+    var redoMe = !!(v.pend && v.pend.redo && v.pend.s === seat && !tb.res);
     var hold = v.pend || v.paused || v.help || v.ev || (v.moodQ && v.moodMine == null);
     var myTurn = !tb.res && !out && !hold && v.turn === seat && L.sent !== v.cnt;
     var g = { P: v.P, own: [], np: v.np, plays: v.plays, lastDevil: v.lastDevil, out: v.out, hands: [], chal: v.chal ? { k: v.chal, until: 1e9 } : null };
@@ -694,7 +697,7 @@
     if (tb.res) st.textContent = '這局結束了！大家的圖像翻開囉';
     else if (v.wait) st.textContent = '🧠 牌出完了！等天神評完分就公布結果';
     else if (out) st.textContent = '你已經認輸，正在觀看';
-    else if (hold) st.textContent = v.pend ? (v.pend.s === seat ? '🗣️ 已經告訴天神你念完了，等天神確認…' : '🗣️ ' + who(tb, v.pend.s) + ' 念完了，等天神確認…') : v.ev ? '⚡ 天神時刻！' : v.help ? '有人需要休息一下，請等天神' : v.paused ? '⏸️ 天神暫停了，請看大螢幕' : '請先回答心情快問';
+    else if (hold) st.textContent = v.pend ? (v.pend.s === seat ? (v.pend.redo ? '🔁 請再念一次下面這句話，念完按「我又念完了」' : '🗣️ 已經告訴天神你念完了，等天神確認…') : '🗣️ ' + who(tb, v.pend.s) + ' 念完了，等天神確認…') : v.ev ? '⚡ 天神時刻！' : v.help ? '有人需要休息一下，請等天神' : v.paused ? '⏸️ 天神暫停了，請看大螢幕' : '請先回答心情快問';
     else if (myTurn) { st.className = 'ad-status me'; st.textContent = stuck ? '你的牌現在都不能用，按下面「🔁 換一張新牌」' : !selC ? '輪到你了！選一張牌' : !tg ? '這張牌現在不能用，換一張' : tg.p ? '點一個發光的圖像' : tg.s ? (C(selC).g === 13 ? '選一個人和你交換手牌' : '選下一個出牌的人') : '按下面的按鈕使用這張牌'; }
     else st.textContent = '輪到 ' + who(tb, v.turn) + ' 出牌…';
     if (v.left != null && !tb.res && !hold) {
@@ -745,7 +748,11 @@
       var pc = C(v.pend.c), pb = el('div', 'ad-say ' + (pc.k === 'a' ? 'angel' : 'devil') + ' ad-pend');
       pb.appendChild(el('div', 'ad-say-hd', who(tb, v.pend.s) + ' 對【' + fname(v, v.pend.p) + '】念'));
       pb.appendChild(el('p', 'ad-say-t', '「' + pc.t + '」'));
-      pb.appendChild(el('em', '', '⏳ 等天神確認'));
+      if (v.pend.redo && v.pend.s === seat) {
+        pb.classList.add('redo'); pb.firstChild.textContent = '🔁 天神請你再念一次：還是這張牌、還是對【' + fname(v, v.pend.p) + '】';
+        var rid = v.pend.id, rr = ctx.button('ad-btn go', '🗣️ 我又念完了，請天神確認', function () { ctx.send('reread', { rid: rid }); });
+        pb.appendChild(rr);
+      } else pb.appendChild(el('em', '', v.pend.redo ? '🔁 天神請他再念一次' : '⏳ 等天神確認'));
       wrap.appendChild(pb);
     }
     var sp = tb.res ? null : speech(tb, v, v.log, ctx);
@@ -762,11 +769,12 @@
       pk.addEventListener('pointerdown', on); pk.addEventListener('pointerup', off); pk.addEventListener('pointerleave', off); pk.addEventListener('pointercancel', off);
       pk.addEventListener('contextmenu', function (e) { e.preventDefault(); });
       me.appendChild(pk);
-      var hand = el('div', 'ad-hand');
+      var hand = el('div', 'ad-hand' + (redoMe ? ' ad-dis' : ''));
       v.hand.forEach(function (cid, i) {
         var usable = !!targets(g, seat, cid), b = cardEl(cid, (L.sel === i ? ' sel' : '') + (myTurn && !usable ? ' dim' : ''));
         b.addEventListener('click', function () {
           var c = C(cid);
+          if (redoMe) { ctx.toast('🔁 天神請你先把剛剛那句話再念一次'); return; }
           if (!myTurn) { ctx.toast(c.k === 'g' ? c.n + '：' + c.d : '「' + c.t + '」'); return; }
           L.sel = L.sel === i ? -1 : i; L.pick = null; ctx.snd('tap'); ctx.rerender();
         });
@@ -775,11 +783,14 @@
       me.appendChild(hand);
       wrap.appendChild(me);
       var tools = el('div', 'ad-tools');
+      if (redoMe) { if (!v.help) tools.appendChild(ctx.button('ad-btn help', '🛑 我需要休息', function () { if (confirm('要請天神過來嗎？這一桌會先暫停。')) ctx.send('help', {}); })); }
+      else {
       if (stuck) tools.appendChild(ctx.button('ad-btn go', '🔁 換一張新牌（不算出牌）', function () { var i = L.sel >= 0 ? L.sel : 0; L.sel = -1; ctx.send('dump', { i: i, n: v.cnt }); L.sent = v.cnt; ctx.rerender(); }));
       if (myTurn && tg && tg.now && !L.pick) tools.appendChild(ctx.button('ad-btn go', '⚡ 使用這張牌', function () { L.pick = {}; ctx.rerender(); }));
       if (!v.help && !v.ev) tools.appendChild(ctx.button('ad-btn help', '🛑 我需要休息', function () { if (confirm('要請天神過來嗎？這一桌會先暫停。')) ctx.send('help', {}); }));
       tools.appendChild(ctx.button('ad-btn', '🏳️', function () { if (confirm('確定要認輸嗎？')) ctx.send('resign', {}); }));
       tools.appendChild(ctx.emoteButton('ad-btn'));
+      }
       wrap.appendChild(tools);
     }
     if (myTurn && selC && tg && L.pick) wrap.appendChild(confirmBox(tb, v, selC, L.pick, function () { var d = { i: L.sel }; if (L.pick.p != null) d.p = L.pick.p; if (L.pick.s != null) d.s = L.pick.s; ctx.snd('tap'); send('play', d); }, function () { L.pick = null; ctx.rerender(); }));
@@ -963,7 +974,7 @@
   function pendBox(T, api) {
     var g = T.g, pd = g.pend; if (!pd) return null;
     var c = C(pd.c), f = FACES[g.P[pd.p].f], e = api.el('div', 'ad-alert ev rev');
-    e.appendChild(api.el('b', '', '🗣️ 第 ' + T.no + ' 桌・' + api.name(T, pd.s) + ' 念完了，是否讓他通過？'));
+    e.appendChild(api.el('b', '', pd.redo ? '🔁 第 ' + T.no + ' 桌・已請 ' + api.name(T, pd.s) + ' 再念一次，等他念完（聽完也可以直接按通過）' : '🗣️ 第 ' + T.no + ' 桌・' + api.name(T, pd.s) + ' 念完了，是否讓他通過？'));
     e.appendChild(api.el('span', 'ad-q', (c.k === 'a' ? '😇 ' : '😈 ') + '對【' + f.i + f.n + '】：「' + c.t + '」' + (c.s ? '（語氣：' + c.tone + '）' : '')));
     e.appendChild(hbtn(api, 'on', '✅ 通過', function () { api.act(T, { t: 'rev', id: pd.id, ok: true }); api.render(); }));
     if (c.k === 'a') e.appendChild(hbtn(api, '', '🌗 半分通過（天使 +' + c.v + ' 只算 ' + (c.v / 2) + ' 分）', function () { api.act(T, { t: 'rev', id: pd.id, ok: true, half: true }); api.render(); }));
@@ -974,7 +985,7 @@
     var out = [];
     api.tables().forEach(function (T) {
       var g = T.g; if (!g) return;
-      var pb = pendBox(T, api); if (pb) out.push(pb);
+      var pb = g.pend && !g.pend.redo ? pendBox(T, api) : null; if (pb) out.push(pb);
       jqBoxes(T, api).forEach(function (x) { out.push(x); });
       if (g.ev && g.cfg.judge === 'teacher') {
         var e = api.el('div', 'ad-alert ev');

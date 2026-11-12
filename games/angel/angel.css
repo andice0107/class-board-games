@@ -242,3 +242,7 @@
 .ad-bell.open .ad-drawer { display: flex; }
 .ad-drawer-hd { display: flex; justify-content: space-between; align-items: center; }
 .ad-alert.rev { background: #fff8e1; border-color: #ff9800; }
+.ad-pend.redo { border-color: #e65100 !important; animation: adRedo 1.4s ease-in-out infinite; }
+@keyframes adRedo { 0%, 100% { box-shadow: 0 0 0 0 #e6510066; } 50% { box-shadow: 0 0 0 8px #e6510044; } }
+.ad-pend.redo .ad-btn { display: block; margin: 10px auto 0; font-size: 1.1em; }
+.ad-hand.ad-dis { opacity: .5; filter: grayscale(.6); }
