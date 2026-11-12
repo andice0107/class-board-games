@@ -348,7 +348,7 @@
     return shuffle(deck);
   }
   var mod = {
-    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 26,
+    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 27,
     reasons: REASONS,
     opts: [
       { k: 'mode', label: '玩法：', list: [['comp', '🏆 比賽（心情＋星星最高的人贏）'], ['coop', '🤝 合作（大家都在 0 以上才過關）']] },
@@ -1021,8 +1021,23 @@
     var b = document.getElementById('ad-bell');
     if (!b) {
       b = api.el('div', 'ad-bell'); b.id = 'ad-bell';
-      var btn0 = api.el('button', 'ad-bell-btn'); btn0.type = 'button'; btn0.addEventListener('click', function () { H.bell = !H.bell; bell(api); });
+      var btn0 = api.el('button', 'ad-bell-btn'); btn0.type = 'button'; btn0.title = '按住可以拖到左邊或右邊、上下移動';
       var dr = api.el('div', 'ad-drawer'); b.appendChild(btn0); b.appendChild(dr); document.body.appendChild(b);
+      // 位置：只能貼在左邊或右邊，上下移動（記住上次的位置）
+      var pos = { side: 'R', top: 0.4 }; try { var sv = JSON.parse(localStorage.getItem('ad-bell-pos') || 'null'); if (sv && (sv.side === 'L' || sv.side === 'R')) pos = sv; } catch (e) {}
+      var place = function () { b.classList.toggle('left', pos.side === 'L'); var tp = Math.max(8, Math.min(window.innerHeight - 140, pos.top * window.innerHeight)); b.style.top = tp + 'px'; dr.style.maxHeight = Math.max(200, window.innerHeight - tp - 12) + 'px'; };
+      place(); window.addEventListener('resize', place);
+      var drag = null, moved = false;
+      btn0.addEventListener('pointerdown', function (ev) { drag = { x: ev.clientX, y: ev.clientY, t: b.getBoundingClientRect().top }; moved = false; try { btn0.setPointerCapture(ev.pointerId); } catch (e) {} });
+      btn0.addEventListener('pointermove', function (ev) {
+        if (!drag) return;
+        if (!moved && Math.abs(ev.clientX - drag.x) + Math.abs(ev.clientY - drag.y) < 8) return;
+        moved = true; b.classList.add('drag');
+        pos.top = (drag.t + ev.clientY - drag.y) / window.innerHeight; var sd = ev.clientX < window.innerWidth / 2 ? 'L' : 'R'; if (sd !== pos.side) b._sig = null; pos.side = sd; place();
+      });
+      var end = function () { if (!drag) return; drag = null; b.classList.remove('drag'); if (moved) { try { localStorage.setItem('ad-bell-pos', JSON.stringify(pos)); } catch (e) {} bell(api); } };
+      btn0.addEventListener('pointerup', end); btn0.addEventListener('pointercancel', end);
+      btn0.addEventListener('click', function () { if (moved) { moved = false; return; } H.bell = !H.bell; bell(api); });
     }
     var items = noteList(api), btn = b.firstChild, drw = b.lastChild;
     btn.innerHTML = '🔔<span>' + (items.length ? items.length + ' 件待處理' : '通知') + '</span>';
@@ -1030,7 +1045,7 @@
     var sig = items.map(function (x) { return x.textContent; }).join('|');
     if (b._sig === sig && drw.firstChild) return; b._sig = sig;
     drw.innerHTML = '';
-    var hd = api.el('div', 'ad-drawer-hd'); hd.appendChild(api.el('b', '', '🔔 待處理（' + items.length + '）')); hd.appendChild(hbtn(api, '', '收起 ▶', function () { H.bell = false; bell(api); })); drw.appendChild(hd);
+    var hd = api.el('div', 'ad-drawer-hd'); hd.appendChild(api.el('b', '', '🔔 待處理（' + items.length + '）')); hd.appendChild(hbtn(api, '', b.classList.contains('left') ? '◀ 收起' : '收起 ▶', function () { H.bell = false; bell(api); })); drw.appendChild(hd);
     if (!items.length) drw.appendChild(api.el('p', 'empty', '目前沒有要處理的事。'));
     items.forEach(function (x) { drw.appendChild(x); });
   }

@@ -233,7 +233,12 @@
 .ad-pend { border-style: dashed !important; }
 .ad-pend em { color: #6d4c41; font-style: normal; font-weight: 700; }
 /* 天神通知中心（右側，可收起） */
-.ad-bell { position: fixed; right: 0; top: 40%; z-index: 9999; display: flex; align-items: flex-start; }
+.ad-bell { position: fixed; right: 0; top: 40%; z-index: 9999; display: flex; align-items: flex-start; touch-action: none; }
+.ad-bell.left { right: auto; left: 0; flex-direction: row-reverse; }
+.ad-bell.left .ad-bell-btn { border-radius: 0 16px 16px 0; }
+.ad-bell.left .ad-drawer { border-radius: 0 0 14px 0; }
+.ad-bell-btn { touch-action: none; cursor: grab; }
+.ad-bell.drag .ad-bell-btn { cursor: grabbing; animation: none; opacity: .85; }
 .ad-bell-btn { border: 0; border-radius: 16px 0 0 16px; background: #5e35b1; color: #fff; font-size: 22px; padding: 10px 10px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; box-shadow: 0 4px 14px #0004; }
 .ad-bell-btn span { font-size: 12px; writing-mode: vertical-rl; letter-spacing: 2px; }
 .ad-bell.has .ad-bell-btn { background: #e65100; animation: adBellBlink 1s ease-in-out infinite; }
