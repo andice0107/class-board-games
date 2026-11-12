@@ -210,3 +210,6 @@
 .ad-psn { font-weight: 700; }
 .ad-pss { font-size: 13px; color: #555; }
 .ad-pslog { max-height: 200px; overflow-y: auto; font-size: 13px; width: 100%; display: flex; flex-direction: column; gap: 2px; border-top: 1px dashed #ccc; padding-top: 4px; }
+.ad-step { display: inline-flex; align-items: center; gap: 4px; }
+.ad-step b { min-width: 22px; text-align: center; font-size: 17px; }
+.ad-colon { font-weight: 700; }

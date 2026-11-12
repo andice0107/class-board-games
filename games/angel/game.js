@@ -270,16 +270,28 @@
       }
     return { h: h, jump: jump };
   }
+  /* 牌堆：依老師設定的比例（惡魔：天使：天神，預設 6：3：1）組成約 120 張 */
+  var WDEF = [6, 3, 1], DECKN = 120;
+  function wOf(cfg) { var w = (cfg.w || WDEF).map(function (x) { return Math.max(0, Math.min(10, +x || 0)); }); return w[0] + w[1] + w[2] ? w : WDEF.slice(); }
   function buildDeck(cfg) {
-    var off = cfg.off || [], base = ANGEL.concat(DEVIL).filter(function (c) { return off.indexOf(c.id) < 0; });
-    var deck = base.map(function (c) { return c.id; }).concat(GOD.map(function (c) { return c.id; })).concat(GOD.map(function (c) { return c.id; })).concat(addCustom(cfg.custom));
-    if (cfg.topic && cfg.topic !== 'all') base.forEach(function (c) { if (TOPIC_OF[c.c] === cfg.topic) deck.push(c.id); });   // 本節主題的牌多放一份
-    if (cfg.ratio === 'angel') { var ds = shuffle(deck.filter(function (id) { return C(id).k === 'd' && TOPIC_OF[C(id).c] !== cfg.topic; })).slice(0, 16); ds.forEach(function (id) { deck.splice(deck.indexOf(id), 1); }); }
-    if (cfg.ratio === 'devil') shuffle(DEVIL.filter(function (c) { return off.indexOf(c.id) < 0; })).slice(0, 16).forEach(function (c) { deck.push(c.id); });
+    var off = cfg.off || [], cx = addCustom(cfg.custom), w = wOf(cfg), sum = w[0] + w[1] + w[2];
+    function pool(list, k) {
+      var ids = list.filter(function (c) { return off.indexOf(c.id) < 0; }).map(function (c) { return c.id; });
+      if (cfg.topic && cfg.topic !== 'all') list.forEach(function (c) { if (off.indexOf(c.id) < 0 && TOPIC_OF[c.c] === cfg.topic) ids.push(c.id); });   // 本節主題的牌多放一份
+      return { first: cx.filter(function (id) { return C(id).k === k; }), ids: ids };
+    }
+    function fill(pl, n) {
+      var out = shuffle(pl.first.slice()).slice(0, n), cyc = [];
+      var all = pl.ids.concat(pl.first); if (!all.length) return out;
+      while (out.length < n) { if (!cyc.length) cyc = shuffle(all.slice()); out.push(cyc.pop()); }
+      return out;
+    }
+    var nd = Math.round(DECKN * w[0] / sum), na = Math.round(DECKN * w[1] / sum), ng = DECKN - nd - na;
+    var deck = fill(pool(DEVIL, 'd'), nd).concat(fill(pool(ANGEL, 'a'), na)).concat(fill({ first: [], ids: GOD.map(function (c) { return c.id; }) }, w[2] ? ng : 0));
     return shuffle(deck);
   }
   var mod = {
-    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 7,
+    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 8,
     reasons: REASONS,
     opts: [
       { k: 'mode', label: '玩法：', list: [['comp', '🏆 比賽（心情＋星星最高的人贏）'], ['coop', '🤝 合作（大家都在 0 以上才過關）']] },
@@ -290,7 +302,7 @@
     seatColor: function (i) { return SEATC[i]; },
     init: function (n, o) {
       o = o || {}; n = Math.max(3, Math.min(6, n || 4));
-      var x = o._x || {}, cfg = { topic: x.topic || 'all', ratio: x.ratio || 'even', custom: x.custom || [], off: x.off || [], qs: x.qs || [], godEvery: +x.godEvery || 0, judge: o._solo ? 'auto' : (x.judge || 'teacher'), timer: +x.timer || 0, show: x.show === 'end' ? 'end' : 'self' };
+      var x = o._x || {}, cfg = { topic: x.topic || 'all', w: x.w || WDEF.slice(), custom: x.custom || [], off: x.off || [], qs: x.qs || [], godEvery: +x.godEvery || 0, judge: o._solo ? 'auto' : (x.judge || 'teacher'), timer: +x.timer || 0, show: x.show === 'end' ? 'end' : 'self' };
       var nf = n <= 4 ? n + 1 : n, faces = shuffle(FACES.map(function (f, i) { return i; })).slice(0, nf);
       var hum = []; for (var s = 0; s < n; s++) hum.push(o._bots ? !o._bots[s] : true);
       var g = { np: n, mode: o.mode === 'coop' ? 'coop' : 'comp', len: Math.max(3, Math.min(20, +o.len || 8)), cfg: cfg, cx: cfg.custom, hum: hum,
@@ -387,6 +399,7 @@
         addPts(g, s, 'st', 1, notify, d.r || '老師給的星星'); g.cnt++; return true;
       }
       if (t === 'jscore') return scoreJ(g, d.id, d.pts, notify);
+      if (t === 'show') { g.cfg.show = d.v === 'end' ? 'end' : 'self'; g.cnt++; return true; }
       if (t === 'gcard') {   // 老師（天神）用天神牌：不限次數，但同一張不能連續 3 次
         if (g.res || g.wait) return false;
         var k = d.k | 0, gc = GOD[k]; if (!gc) return false;
@@ -791,10 +804,25 @@
   /* ---------- 老師端：天神控制台 ---------- */
   var H = { moodId: 0, open: false };
   function hbtn(api, cls, txt, fn) { return api.btn('btn small' + (cls ? ' ' + cls : ''), txt, fn); }
-  function opts(api, label, key, list, def, note) {
+  function ratioRow(api) {
+    var cfg = api.cfg(), row = api.el('div', 'ad-hrow ad-ratio'), w = wOf(cfg);
+    row.appendChild(api.el('span', 'ad-hl', '⚖️ 牌的比例（惡魔：天使：天神）：'));
+    var info = api.el('small', 'empty');
+    function upd() { var s = w[0] + w[1] + w[2]; info.textContent = '約 ' + Math.round(DECKN * w[0] / s) + '／' + Math.round(DECKN * w[1] / s) + '／' + (w[2] ? DECKN - Math.round(DECKN * w[0] / s) - Math.round(DECKN * w[1] / s) : 0) + ' 張（一副約 ' + DECKN + ' 張）'; }
+    [['😈 惡魔', 0], ['😇 天使', 1], ['⚡ 天神', 2]].forEach(function (k, n) {
+      var box = api.el('span', 'ad-step'), num = api.el('b', '', String(w[k[1]]));
+      function set(d) { var v = Math.max(0, Math.min(10, w[k[1]] + d)), t = w.slice(); t[k[1]] = v; if (!(t[0] + t[1] + t[2])) return; w = t; cfg.w = w; num.textContent = String(v); upd(); api.save(); }
+      box.appendChild(api.el('span', '', k[0] + ' ')); box.appendChild(hbtn(api, '', '－', function () { set(-1); })); box.appendChild(num); box.appendChild(hbtn(api, '', '＋', function () { set(1); }));
+      row.appendChild(box); if (n < 2) row.appendChild(api.el('span', 'ad-colon', '：'));
+    });
+    row.appendChild(hbtn(api, '', '恢復 6：3：1', function () { w = WDEF.slice(); cfg.w = w; [].forEach.call(row.querySelectorAll('.ad-step b'), function (x, i) { x.textContent = String(w[i]); }); upd(); api.save(); }));
+    upd(); row.appendChild(info);
+    return row;
+  }
+  function opts(api, label, key, list, def, note, onSet) {
     var cfg = api.cfg(), row = api.el('div', 'ad-hrow'); row.appendChild(api.el('span', 'ad-hl', label));
     list.forEach(function (o) {
-      var b = hbtn(api, (cfg[key] == null ? def : cfg[key]) === o[0] ? 'on' : '', o[1], function () { cfg[key] = o[0]; api.save(); [].forEach.call(row.querySelectorAll('button'), function (x) { x.classList.toggle('on', x === b); }); });
+      var b = hbtn(api, (cfg[key] == null ? def : cfg[key]) === o[0] ? 'on' : '', o[1], function () { cfg[key] = o[0]; api.save(); if (onSet) onSet(o[0]); [].forEach.call(row.querySelectorAll('button'), function (x) { x.classList.toggle('on', x === b); }); });
       row.appendChild(b);
     });
     if (note) row.appendChild(api.el('small', 'empty', note));
@@ -809,10 +837,10 @@
     var set = api.el('div', 'ad-set' + (H.open ? '' : ' hidden'));
     set.appendChild(api.el('p', 'empty', '設定在「下一局」或新開的桌才會生效。'));
     set.appendChild(opts(api, '📚 本節主題：', 'topic', TOPICS, 'all', '這個主題的牌會變多，機會／命運題只出這個主題'));
-    set.appendChild(opts(api, '⚖️ 牌的比例：', 'ratio', [['angel', '😇 天使比較多'], ['even', '一樣多'], ['devil', '😈 惡魔比較多']], 'even'));
+    set.appendChild(ratioRow(api));
     set.appendChild(opts(api, '⚡ 天神時刻：', 'godEvery', [[0, '只有老師按才出現'], [2, '每 2 輪自動'], [3, '每 3 輪自動']], 0));
     set.appendChild(opts(api, '⭐ 機會命運評分：', 'judge', [['teacher', '老師評分'], ['auto', '學生說完就自動 +2']], 'teacher'));
-    set.appendChild(opts(api, '👀 學生的實際得分：', 'show', [['self', '看得到自己的'], ['end', '結束才公布']], 'self', '老師隨時都看得到所有人的'));
+    set.appendChild(opts(api, '👀 學生的實際得分：', 'show', [['self', '看得到自己的'], ['end', '結束才公布']], 'self', '隨時可以切換，正在玩的桌也馬上生效；學生只看得到自己的', function (v) { api.actAll({ t: 'show', v: v }); }));
     set.appendChild(opts(api, '⏱️ 出牌倒數：', 'timer', [[0, '關閉'], [30, '30 秒'], [60, '60 秒']], 0, '時間到只會提醒，不會自動出牌'));
     var r2 = api.el('div', 'ad-hrow');
     r2.appendChild(hbtn(api, '', '✏️ 自訂卡片和題目', function () { customEditor(api); }));
@@ -1100,7 +1128,7 @@
     ],
     teacher: [
       { h: '主持流程', html: '<ol><li>首頁「社會技巧/溝通訓練」→「天使與惡魔」。每桌 3～6 人（4～5 人最好）。4 人以下會多放一個沒人拿的圖像，比較不容易猜出誰是誰。</li><li>QR code 上方選<b>玩法</b>（比賽／合作）和<b>每人出牌幾次</b>（每人次數 × 人數＝這一局全桌一共出幾次牌，出完就結束）。建議第一次先玩合作模式。</li><li>老師端就是「天神」：每一桌都看得到每個圖像是誰的（圓點顏色＝玩家），學生看不到。系統會自動擋住學生出牌給自己的圖像。</li><li>上方的「⚡ 天神控制台」有所有老師的功能；點某一桌可以打開那一桌的控制（天神降臨、給星星、教學時刻、分享時刻）。</li></ol>' },
-      { h: '天神控制台', html: '<h4>上課前（⚙️ 上課設定）</h4><ul><li><b>本節主題</b>：稱讚與鼓勵、道歉與原諒、不排擠、聽懂酸言酸語、安慰與關心。這個主題的牌會多一份，機會／命運題只出這個主題。</li><li><b>牌的比例</b>：天使比較多／一樣多／惡魔比較多。第一次建議天使比較多。</li><li><b>自訂卡片和題目</b>：可以加班上真的聽到的話（每句扣掉標點至少 10 個字），也可以自己出機會／命運題。<b>題目不要提到圖像，也不要指定真實的同學</b>。</li><li><b>關掉不適合的句子</b>：班上學生有特別敏感的話，先關掉。</li><li><b>天神時刻</b>自動出現的頻率、<b>評分方式</b>、<b>出牌倒數</b>。</li><li><b>學生的實際得分</b>：看得到自己的／結束才公布。</li></ul><h4>實際得分（比賽模式比這個）</h4><ul><li>只算「助人」，只加不扣：天使 +1、大天使 +2、天神祝福／公平之光 +3、守護天使／冷靜時間 +2、天神挑戰先轉念 +1。</li><li>轉念牌、道歉修復、換位思考：學生出牌後控制台會跳出「🧠 等天神評分」，聽完給 0～5 分。全桌出完牌時如果還沒評完，會等你評完才公布結果。</li><li>機會命運題的分數、給星星也會加進實際得分。</li><li>圖像心情不算分，只用來判斷遊戲結束。</li><li>老師端點某一桌，可以看到「👥 玩家狀況」：每個人的實際得分、得分來源、出了哪些牌、現在的圖像和完整出牌紀錄。</li><li>老師也可以點「⚡ 天神牌」直接用任何一張天神牌，次數不限，但同一張不能連續用 3 次。</li></ul><h4>遊戲中</h4><ul><li><b>⏸️ 全班暫停／▶️ 繼續</b>。</li><li><b>📽️ 教學時刻</b>：點某一桌，點一句剛出的話，會投影到大螢幕並自動暫停全班，附討論問題和轉念答案。</li><li><b>😀 心情快問</b>：每個學生點出自己真正的心情，匿名統計後可以投影。</li><li><b>⚡ 天神降臨</b>：轉盤轉到一位學生回答機會（正向）或命運（危機、狀況）題，老師按 👍+3／👌+2／🤔+1 給星星。轉盤轉的是「人」，不會洩漏他的圖像；星星是祕密的，最後才加進分數。</li><li><b>🎯 天神挑戰</b>：下一輪只能出天使牌、惡魔牌要先轉念、用最溫柔的語氣、一起猜酸言酸語的真正意思、天使牌要加上具體理由。</li><li><b>⭐ 給星星</b>：看到學生做得好，點原因再點學生。原因會記在課後紀錄表。</li><li><b>🛑 學生求救</b>：學生按「我需要休息」，那一桌自動暫停，控制台會亮起來。</li></ul><h4>結束後</h4><ul><li><b>📽️ 分享時刻投影</b>：一次一個圖像，先看心情最高和最低的兩位。</li><li><b>📥 課後紀錄表</b>：用學號整理每位學生的出牌、轉念、道歉、星星原因、機會命運題、心情快問，可以用 Excel 打開，當作 IEP／社會技巧目標紀錄。</li><li><b>📝 天使任務單</b>：每位學生一張回家作業，最後附一張空白的。</li></ul>' },
+      { h: '天神控制台', html: '<h4>上課前（⚙️ 上課設定）</h4><ul><li><b>本節主題</b>：稱讚與鼓勵、道歉與原諒、不排擠、聽懂酸言酸語、安慰與關心。這個主題的牌會多一份，機會／命運題只出這個主題。</li><li><b>牌的比例</b>：惡魔：天使：天神，各 0～10，預設 6：3：1。一副牌約 120 張，照比例組成（同一句可能出現不只一次）。</li><li><b>自訂卡片和題目</b>：可以加班上真的聽到的話（每句扣掉標點至少 10 個字），也可以自己出機會／命運題。<b>題目不要提到圖像，也不要指定真實的同學</b>。</li><li><b>關掉不適合的句子</b>：班上學生有特別敏感的話，先關掉。</li><li><b>天神時刻</b>自動出現的頻率、<b>評分方式</b>、<b>出牌倒數</b>。</li><li><b>學生的實際得分</b>：看得到自己的／結束才公布，隨時可以切換、馬上生效。</li></ul><h4>實際得分（比賽模式比這個）</h4><ul><li>只算「助人」，只加不扣：天使 +1、大天使 +2、天神祝福／公平之光 +3、守護天使／冷靜時間 +2、天神挑戰先轉念 +1。</li><li>轉念牌、道歉修復、換位思考：學生出牌後控制台會跳出「🧠 等天神評分」，聽完給 0～5 分。全桌出完牌時如果還沒評完，會等你評完才公布結果。</li><li>機會命運題的分數、給星星也會加進實際得分。</li><li>圖像心情不算分，只用來判斷遊戲結束。</li><li>老師端點某一桌，可以看到「👥 玩家狀況」：每個人的實際得分、得分來源、出了哪些牌、現在的圖像和完整出牌紀錄。</li><li>老師也可以點「⚡ 天神牌」直接用任何一張天神牌，次數不限，但同一張不能連續用 3 次。</li></ul><h4>遊戲中</h4><ul><li><b>⏸️ 全班暫停／▶️ 繼續</b>。</li><li><b>📽️ 教學時刻</b>：點某一桌，點一句剛出的話，會投影到大螢幕並自動暫停全班，附討論問題和轉念答案。</li><li><b>😀 心情快問</b>：每個學生點出自己真正的心情，匿名統計後可以投影。</li><li><b>⚡ 天神降臨</b>：轉盤轉到一位學生回答機會（正向）或命運（危機、狀況）題，老師按 👍+3／👌+2／🤔+1 給星星。轉盤轉的是「人」，不會洩漏他的圖像；星星是祕密的，最後才加進分數。</li><li><b>🎯 天神挑戰</b>：下一輪只能出天使牌、惡魔牌要先轉念、用最溫柔的語氣、一起猜酸言酸語的真正意思、天使牌要加上具體理由。</li><li><b>⭐ 給星星</b>：看到學生做得好，點原因再點學生。原因會記在課後紀錄表。</li><li><b>🛑 學生求救</b>：學生按「我需要休息」，那一桌自動暫停，控制台會亮起來。</li></ul><h4>結束後</h4><ul><li><b>📽️ 分享時刻投影</b>：一次一個圖像，先看心情最高和最低的兩位。</li><li><b>📥 課後紀錄表</b>：用學號整理每位學生的出牌、轉念、道歉、星星原因、機會命運題、心情快問，可以用 Excel 打開，當作 IEP／社會技巧目標紀錄。</li><li><b>📝 天使任務單</b>：每位學生一張回家作業，最後附一張空白的。</li></ul>' },
       { h: '上課前', html: '<ul><li>先介紹情緒碼錶（超級開心、開心、有點高興、普通、有點難過、很難過、崩潰），讓學生說說自己現在在哪一格。</li><li>和學生一起念：「卡片上的話不是我心裡的話」。</li><li>酸言酸語牌：先示範同一句「你很棒」用真心的語氣說一次、用酸的語氣說一次，讓學生聽出差別。</li><li>圖像大風吹、大家換位子這些牌會讓事情突然改變，先讓學生看過天神牌清單。</li><li>班上有被霸凌經驗的學生，請先用「關掉不適合的句子」處理。</li></ul>' },
       { h: '結束後的分享', html: '<ol><li><b>出戲：</b>每個人對旁邊的真人同學說一句天使牌的話。</li><li><b>分享：</b>請心情最高和最低的兩位先說，可以用句型：<ul>' + TIPS.map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul></li><li><b>討論：</b>不一樣的心情會不會讓我們做出不一樣的事？</li><li><b>本週天使任務：</b>發天使任務單，下次上課回報。</li></ol><p>遊戲設計：andice（社會技巧卡牌構思）。保密圖像是為了不讓特定的人成為被針對的一方，每個人都有一樣的機會被稱讚、也承受批評，體會被攻擊的人心裡的感受。</p>' }
     ]
