@@ -169,7 +169,7 @@
     Object.keys(g.votes).forEach(function (s) { if (g.votes[s].some(function (i) { return C(g.opts[i].c).bad; })) rec(g, { seat: +s, k: 'vbad' }); });
     g.last = { v: v, top: top, ws: ws, bad: top.some(function (i) { return C(g.opts[i].c).bad; }) };
     g.hist.push({ q: g.q, emo: g.emo, r: g.reader, opts: g.opts.map(function (o, i) { return { c: o.c, s: o.s, v: v[i] }; }) });
-    if (g.hist.length > 30) g.hist.shift();
+    if (g.hist.length > 300) g.hist.shift();
     g.opts.forEach(function (o) { g.disc.push(o.c); });
     g.phase = 'show'; g.n++; g.cnt++;
     checkEnd(g);
@@ -241,6 +241,7 @@
         opts: g.opts ? g.opts.map(function (o, i) { return { c: o.c, mine: seat >= 0 && o.s === seat, s: show ? o.s : null, v: show && g.last ? g.last.v[i] : null }; }) : null,
         voted: g.hum.map(function (h, s) { return !!g.votes[s]; }), myVotes: seat >= 0 ? g.votes[seat] || null : null, maxV: seat >= 0 ? maxV(g, seat) : 0,
         last: show ? g.last : null, sc: g.sc, n: g.n, end: g.end, target: g.target, rounds: g.rounds, out: g.out, cnt: g.cnt,
+        hist: g.hist.map(function (h) { var mx = Math.max.apply(null, h.opts.map(function (o) { return o.v; })); return { q: h.q, emo: h.emo, r: h.r, w: mx > 0 ? h.opts.filter(function (o) { return o.v === mx; }).map(function (o) { return { c: o.c, s: o.s }; }) : [] }; }),
         paused: g.paused, help: g.help != null, swapped: seat >= 0 ? g.swap[seat] : true, canNext: seat >= 0 && canNext(g, seat), hum: g.hum };
     },
     act: function (g, seat, d, notify) {
@@ -451,12 +452,29 @@
       }
       if (!v.help) tools.appendChild(ctx.button('sn-btn help', '🛑 我需要休息', function () { if (confirm('要請老師過來嗎？這一桌會先暫停。')) ctx.send('help', {}); }));
       tools.appendChild(ctx.button('sn-btn', '🏳️', function () { if (confirm('確定要認輸嗎？')) ctx.send('resign', {}); }));
+      if (v.hist.length) tools.appendChild(ctx.button('sn-btn', L.hist ? '📜 收起接話紀錄' : '📜 接話紀錄（全部 ' + v.hist.length + ' 題）', function () { L.hist = !L.hist; ctx.rerender(); }));
       tools.appendChild(ctx.emoteButton('sn-btn'));
       wrap.appendChild(tools);
     }
+    if (v.hist.length && (L.hist || tb.res)) wrap.appendChild(histEl(tb, v));
     if (hold && !tb.res) { var po = el('div', 'sn-ov'), pbx = el('div', 'sn-ovb'); pbx.appendChild(el('h3', '', v.help ? '🛑 暫停一下' : '⏸️ 老師暫停了')); pbx.appendChild(el('p', '', v.help ? '有同學需要休息一下，老師馬上過來。大家先等一等。' : '請看大螢幕，聽老師說明。')); po.appendChild(pbx); wrap.appendChild(po); }
     box.appendChild(wrap);
   };
+  /* 全部的接話紀錄（最新的在最上面） */
+  function histEl(tb, v) {
+    var w = el('div', 'sn-box sn-hist'); w.appendChild(el('b', 'sn-hist-h', '📜 接話紀錄（全部 ' + v.hist.length + ' 題，最新的在最上面）'));
+    v.hist.map(function (h, k) { return [h, k]; }).reverse().forEach(function (x) {
+      var h = x[0], q = C(h.q), it = el('div', 'sn-hi');
+      var hd = el('div', 'sn-hi-q'), d = el('i'); d.style.background = SEATC[h.r]; hd.appendChild(d);
+      hd.appendChild(document.createTextNode('第 ' + (x[1] + 1) + ' 題・🎤 ' + who(tb, h.r) + (v.emoOn ? '（' + EMO[h.emo].e + EMO[h.emo].n + '）' : '') + '：「' + (q ? q.t : '') + '」'));
+      it.appendChild(hd);
+      var ok = h.w.filter(function (o) { return o.s >= 0 && C(o.c) && !C(o.c).bad; });
+      if (ok.length) ok.forEach(function (o) { var c = C(o.c); it.appendChild(el('div', 'sn-hi-a', '🏆 ' + who(tb, o.s) + '：' + (c.k === 'm' ? c.i + ' ' + c.t : '「' + c.t + '」'))); });
+      else it.appendChild(el('div', 'sn-hi-a none', h.w.some(function (o) { return C(o.c) && C(o.c).bad; }) ? '🤔 票最多的回應不太合適，沒有人得分' : '這一題沒有人得分'));
+      w.appendChild(it);
+    });
+    return w;
+  }
   function optsEl(tb, v, ctx, out, hold) {
     var show = v.phase === 'show', w = el('div', 'sn-box sn-vote');
     var canVote = !show && !out && !hold && !v.myVotes && v.maxV > 0 && !tb.res;
@@ -582,8 +600,8 @@
     T.seats.forEach(function (id, i) { if (api.isBot(T, i)) return; pr.appendChild(hbtn(api, '', '⭐ ' + api.name(T, i) + '（' + g.sc[i] + ' 分）', function () { if (!api.act(T, { t: 'point', seat: i, r: H.reason })) alert('這局已經結束，不能再加分'); api.render(); })); });
     sr.appendChild(pr); w.appendChild(sr);
     if (g.hist.length) {
-      var tm = api.el('div', 'sn-teach'); tm.appendChild(api.el('b', '', '📽️ 之前的題目：點一題投影到大螢幕，全班一起討論'));
-      g.hist.slice(-4).reverse().forEach(function (h) { var q = C(h.q); if (!q) return; tm.appendChild(api.btn('sn-tline', EMO[h.emo].e + ' ' + q.t, function () { api.actAll({ t: 'pause' }); teachProj(api, h.q, h.emo, h.opts.map(function (o) { return o.c; })); })); });
+      var tm = api.el('div', 'sn-teach'); tm.appendChild(api.el('b', '', '📽️ 這一桌全部 ' + g.hist.length + ' 題（最新的在最上面）：點一題投影到大螢幕，全班一起討論'));
+      g.hist.map(function (h, k) { h.no = k + 1; return h; }).slice().reverse().forEach(function (h) { var q = C(h.q); if (!q) return; var mx = Math.max.apply(null, h.opts.map(function (o) { return o.v; })), win = h.opts.filter(function (o) { return mx > 0 && o.v === mx && o.s >= 0 && !C(o.c).bad; }); tm.appendChild(api.btn('sn-tline', '第 ' + h.no + ' 題・' + api.name(T, h.r).replace(/（.*）/, '') + ' 念 ' + EMO[h.emo].e + ' ' + q.t + '　→ ' + (win.length ? win.map(function (o) { return '🏆' + api.name(T, o.s).replace(/（.*）/, '') + '「' + C(o.c).t + '」'; }).join('、') : '沒有人得分'), function () { api.actAll({ t: 'pause' }); teachProj(api, h.q, h.emo, h.opts.map(function (o) { return o.c; })); })); });
       w.appendChild(tm);
     }
     return w;
