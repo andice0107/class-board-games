@@ -199,17 +199,26 @@
   }
   function allDevil(g, s) { var h = g.hands[s] || []; return h.length > 0 && h.every(function (x) { return C(x) && C(x).k === 'd'; }); }
   /* 新的一回合開始時檢查：手上全是惡魔牌最多連續 2 回合，第 3 回合一定換進一張天使牌 */
+  function takeKind(g, k, list) {   // 從牌堆（沒有就從棄牌堆）拿一張指定種類的牌
+    var j, id = null;
+    for (j = g.deck.length - 1; j >= 0 && !id; j--) if (C(g.deck[j]).k === k) id = g.deck.splice(j, 1)[0];
+    for (j = g.disc.length - 1; j >= 0 && !id; j--) if (C(g.disc[j]).k === k) id = g.disc.splice(j, 1)[0];
+    if (!id) { var off = g.cfg.off || [], ok = list.filter(function (c) { return off.indexOf(c.id) < 0; }); id = (ok.length ? pick(ok) : list[0]).id; }
+    return id;
+  }
+  /* 新的一回合開始時檢查（保底）：
+     手上全是惡魔牌最多連續 2 回合，第 3 回合一定換進一張天使牌；
+     手上完全沒有惡魔牌也最多連續 2 回合，第 3 回合一定換進一張惡魔牌 */
   function ensureTurn(g) {
     if (g.res) return;
     var s = turnSeat(g), key = g.plays + '-' + s; if (g.tk === key) return; g.tk = key;
-    g.dv = g.dv || {};
-    if (!allDevil(g, s)) { g.dv[s] = 0; return; }
-    if ((g.dv[s] || 0) < 2) { g.dv[s] = (g.dv[s] || 0) + 1; return; }
-    var h = g.hands[s], k = Math.floor(Math.random() * h.length), aid = null, j;
-    for (j = g.deck.length - 1; j >= 0 && !aid; j--) if (C(g.deck[j]).k === 'a') aid = g.deck.splice(j, 1)[0];
-    for (j = g.disc.length - 1; j >= 0 && !aid; j--) if (C(g.disc[j]).k === 'a') aid = g.disc.splice(j, 1)[0];
-    if (!aid) { var off = g.cfg.off || [], ok = ANGEL.filter(function (c) { return off.indexOf(c.id) < 0; }); aid = (ok.length ? pick(ok) : ANGEL[0]).id; }
-    g.disc.push(h[k]); h[k] = aid; g.dv[s] = 0; g.cnt++;
+    var h = g.hands[s] || []; if (!h.length) return;
+    g.dv = g.dv || {}; g.nd = g.nd || {};
+    var allD = allDevil(g, s), noD = !h.some(function (x) { return C(x).k === 'd'; });
+    if (allD) { if ((g.dv[s] || 0) >= 2) { var k = Math.floor(Math.random() * h.length); g.disc.push(h[k]); h[k] = takeKind(g, 'a', ANGEL); g.dv[s] = 0; g.cnt++; } else g.dv[s] = (g.dv[s] || 0) + 1; }
+    else g.dv[s] = 0;
+    if (noD) { if ((g.nd[s] || 0) >= 2) { var ks = []; h.forEach(function (x, i) { if (C(x).k !== 'g') ks.push(i); }); if (!ks.length) ks = h.map(function (x, i) { return i; }); var k2 = pick(ks); g.disc.push(h[k2]); h[k2] = takeKind(g, 'd', DEVIL); g.nd[s] = 0; g.cnt++; } else g.nd[s] = (g.nd[s] || 0) + 1; }
+    else g.nd[s] = 0;
   }
   function autoJudge(g, seat) { return g.solo || g.cfg.judge === 'auto' || !g.hum[seat]; }
   function scoreJ(g, id, pts, notify) {
@@ -326,7 +335,7 @@
     return shuffle(deck);
   }
   var mod = {
-    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 17,
+    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 18,
     reasons: REASONS,
     opts: [
       { k: 'mode', label: '玩法：', list: [['comp', '🏆 比賽（心情＋星星最高的人贏）'], ['coop', '🤝 合作（大家都在 0 以上才過關）']] },
@@ -1188,7 +1197,7 @@
     student: [
       { h: '怎麼玩', html: '<ol><li>桌上有一排<b>圖像</b>，每個圖像都有<b>情緒碼錶</b>，一開始都是 0「普通」。心情可以一直往上加（沒有上限），最低是 -10「崩潰」。</li><li>每個人會祕密分到一個圖像。按住「🤫 按住看我的圖像」偷偷看，<b>不要告訴別人</b>你是哪一個！</li><li>每人手上 3 張牌。輪到你時一定要出一張牌（不能 pass），出完自動補到 3 張。</li><li><b>天使牌</b>讓圖像心情變好，<b>惡魔牌</b>讓圖像心情變差。選一個圖像（不能選自己的），<b>看著它大聲念出卡片上的話</b>。</li><li><b>天神牌</b>有特別的功能，例如迴轉、圖像大風吹、守護天使。</li><li><b>⚡ 天神時刻</b>：轉盤會轉到一位玩家回答機會或命運題，答得好可以得到<b>天神星星 ⭐</b>（星星是祕密的）。</li><li>大家都出完規定張數，或有圖像掉到 -10，遊戲就結束，所有人的圖像翻開。</li></ol>' },
       { h: '贏的方法', html: '<p><b>🏆 比賽模式：</b>比的是<b>⭐ 實際得分</b>，最高的人贏。圖像的心情<b>不算分</b>，只用來決定遊戲什麼時候結束（有圖像掉到 -10，或全桌出牌次數到了）。</p><p><b>怎麼得分（只加不扣）：</b>出天使牌 +1、大天使牌 +2；天神祝福、公平之光 +3；守護天使、冷靜時間 +2；轉念牌、道歉修復、換位思考要先想一想再說出自己的話，天神給 0～5 分；機會命運題答得好、天神給的星星也會加分。惡魔牌不扣分，但也不會得分。</p><p><b>🤝 合作模式：</b>結束時，所有人的圖像都在 0 以上，大家一起過關！有圖像掉到 -10 就失敗。</p><table class="g-tbl"><tr><th>結果</th><th>得分</th></tr><tr><td>🏆 贏（或合作過關）</td><td>3 分</td></tr><tr><td>🤝 大家一樣高</td><td>1 分</td></tr><tr><td>💪 其他</td><td>0 分</td></tr></table><p>和電腦玩的不列入總分。</p>' },
-      { h: '天神牌', html: '<table class="g-tbl"><tr><th>牌</th><th>功能</th></tr>' + GOD.map(function (c) { return '<tr><td>' + c.e + ' ' + c.n + '</td><td>' + c.d + '</td></tr>'; }).join('') + '</table><p>手上 3 張全是惡魔牌最多連續 2 回合，第 3 回合系統一定會換進一張天使牌。手上的牌都不能用時，可以換一張新牌。</p>' },
+      { h: '天神牌', html: '<table class="g-tbl"><tr><th>牌</th><th>功能</th></tr>' + GOD.map(function (c) { return '<tr><td>' + c.e + ' ' + c.n + '</td><td>' + c.d + '</td></tr>'; }).join('') + '</table><p>手上 3 張全是惡魔牌最多連續 2 回合，第 3 回合系統一定會換進一張天使牌；手上完全沒有惡魔牌也最多連續 2 回合，第 3 回合會換進一張惡魔牌。手上的牌都不能用時，可以換一張新牌。</p>' },
       { h: '說話的規則', html: '<ul><li>惡魔牌上的話是<b>卡片上的話，不是你心裡的話</b>。</li><li>要<b>照卡片念</b>，不可以自己加詞。</li><li>念惡魔牌時看著<b>圖像</b>，不要看著同學。</li><li><b>酸言酸語牌</b>表面上像在稱讚，其實是在說別人不好。卡片上有寫要用什麼語氣，也有寫「真正的意思」。</li><li>不舒服的時候，按「🛑 我需要休息」，天神會過來。</li></ul>' }
     ],
     teacher: [
