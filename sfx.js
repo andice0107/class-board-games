@@ -57,8 +57,9 @@ window.BGSfx = (function () {
     Object.keys(pool).forEach(function (k) { pool[k].a.forEach(function (a) { a.muted = true; var p = a.play(); if (p && p.then) p.then(function () { a.pause(); a.currentTime = 0; a.muted = false; }).catch(function () { a.muted = false; unlocked = false; }); else { a.pause(); a.muted = false; } }); });
   }
   ['pointerdown', 'touchend', 'keydown'].forEach(function (ev) { document.addEventListener(ev, unlock, { passive: true }); });
+  var forced = null;   // 老師端統一控制學生音效（null = 自己決定）
   function play(k) {
-    if (off) return; build();
+    if (forced === null ? off : !forced) return; build();
     var p = pool[k]; if (!p) return;
     var a = p.a[p.i = (p.i + 1) % p.a.length];
     try { a.currentTime = 0; var r = a.play(); if (r && r.catch) r.catch(function () {}); } catch (e) {}
@@ -71,5 +72,5 @@ window.BGSfx = (function () {
     lbl(); b.addEventListener('click', function () { toggle(); lbl(); });
     return b;
   }
-  return { play: play, toggle: toggle, on: function () { return !off; }, button: button, unlock: unlock };
+  return { play: play, toggle: toggle, on: function () { return !off; }, button: button, unlock: unlock, force: function (v) { forced = v == null ? null : !!v; } };
 })();

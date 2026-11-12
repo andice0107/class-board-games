@@ -46,6 +46,7 @@
           var w = d.tb.res.w; if (w === d.tb.seat) { snd.play('win'); confetti(); } else if (w >= 0) snd.play('lose');
         }
       }
+      if (!SOLO) BGSfx.force(d.snd !== false);
       S = d; me.name = d.name; save(); render();
     } else if (d.t === 'sidtaken') {
       if (joined) return;
@@ -64,7 +65,7 @@
   function topBar() {
     var t = el('div', 'p-top');
     t.innerHTML = '<div class="brand"><div class="logo"><i></i><i></i><i></i><i></i></div><h1>桌遊對戰教室</h1></div><span class="sp"></span>';
-    t.appendChild(BGSfx.button('btn small ghost'));
+    if (SOLO) t.appendChild(BGSfx.button('btn small ghost'));   // 多人時音效由老師端統一開關
     if (joined && S && GAME && GAME.guide) t.appendChild(btn('btn small ghost', '📖 規則', function () { BG.showGuide((BG.meta(S.gid) || {}).title + '・玩法說明', GAME.guide.student); }));
     if (code && !SOLO) t.appendChild(el('span', 'pill', '🔑 ' + code));
     return t;
@@ -86,7 +87,7 @@
     GAME.render(app, ctx());
     fit(app.children[n0]);
     if (S.tb.res) result();
-    if (showEmo) emotes();
+    if (showEmo && (SOLO || !S || S.emo !== false)) emotes();
     placeBubbles();
   }
   /* 遊戲桌自動放大到填滿畫面：找出「整張桌子剛好放得下」的最大倍率。
@@ -140,7 +141,7 @@
   function ctx() {
     var vsBots = S.tb.seats.every(function (x, i) { return i === S.tb.seat || x.bot; });
     return { tb: S.tb, canUndo: vsBots, send: send, toast: toast, snd: function (k) { snd.play(k); }, rerender: render,
-      button: btn, emoteButton: function (cls) { return btn(cls, '💬 說話', function () { showEmo = !showEmo; render(); }); } };
+      button: btn, emoteButton: function (cls) { if (!SOLO && S && S.emo === false) { var x = el('span'); x.style.display = 'none'; return x; } return btn(cls, '💬 說話', function () { showEmo = !showEmo; render(); }); } };
   }
   function dice() { var w = el('div', 'wait-dice'); ['♠', '帥', '●', '★'].forEach(function (t) { w.appendChild(el('span', '', t)); }); return w; }
   function codeForm() {
