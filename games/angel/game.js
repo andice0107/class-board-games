@@ -46,6 +46,40 @@
     ['對啦，你最乾淨、你最乖了啦。', '嘲笑的笑', '你很愛裝乖，我看不順眼。', '謝謝你提醒大家，你很細心。'],
     ['好喔好喔，反正都是你說了算。', '聳肩、嘆氣', '我不同意，但懶得跟你說。', '我的想法不太一樣，我們可以討論嗎？']
   ].forEach(function (a) { DEVIL.push({ id: 'd' + DEVIL.length, k: 'd', s: 1, t: a[0], tone: a[1], mean: a[2], r: a[3], c: '酸言酸語', v: 1 }); });
+  /* 2026-11-12 擴充：天使 50 張、惡魔 50 張（id 接在後面，舊的 id 不變） */
+  [
+    ['你畫的圖好漂亮，可以教我嗎？', '稱讚'], ['謝謝你借我橡皮擦，幫了大忙。', '感謝'], ['你剛剛分享的故事好有趣喔！', '稱讚'],
+    ['你好勇敢，敢上台發表耶！', '鼓勵'], ['沒關係，我們下次再試一次。', '鼓勵'], ['你先選吧，我等一下再選就好。', '尊重'],
+    ['你看起來很累，要不要休息一下？', '關懷'], ['我可以坐你旁邊一起吃午餐嗎？', '接納'], ['你忘了帶的話，我可以分你用。', '分享'],
+    ['你掉的東西，我幫你撿起來了。', '幫助'], ['我知道你很努力，大家都看到了。', '鼓勵'], ['這題我也不會，我們一起問老師。', '協助'],
+    ['你說的話很重要，我想聽完。', '聆聽'], ['剛剛撞到你，對不起，你還好嗎？', '道歉'], ['你願意原諒我，真的謝謝你。', '感謝'],
+    ['我們輪流玩，這樣大家都開心。', '尊重'], ['你生氣的時候，可以跟我說說看。', '關懷'], ['你遇到困難時，記得還有我在。', '支持'],
+    ['你是我們這一組最棒的好隊友！', '稱讚', 2], ['我相信你不是故意的，沒關係。', '體諒', 2], ['被大家笑一定很難受，我懂你的感覺。', '同理', 2],
+    ['有人欺負你的話，我陪你去告訴老師。', '支持', 2], ['不管輸或贏，我都想和你一起玩。', '接納', 2], ['謝謝你一直陪著我，你是我的好朋友。', '感謝', 2]
+  ].forEach(function (a) { ANGEL.push({ id: 'a' + ANGEL.length, k: 'a', t: a[0], c: a[1], v: a[2] || 1 }); });
+  [
+    ['你動作好慢喔，大家都在等你。', '輕視', '不急，我們等你準備好再開始。'], ['你又在亂講了，誰會相信你？', '否定', '你這樣想的原因是什麼呢？'],
+    ['你很愛哭耶，一點小事就哭。', '嘲笑', '你看起來很難過，要不要說說看？'], ['你再碰我的東西，我就告訴大家。', '威脅', '這是我的東西，用之前請先問我。'],
+    ['你的意見不重要，聽我的就好。', '否定', '我們聽聽看每個人的意見吧。'], ['輸了都怪你，你最不會玩了。', '指責', '輸了沒關係，下一局我們再加油。'],
+    ['這是我們的位子，你去別的地方。', '排斥', '這裡還有位子，你可以一起坐。'], ['你又講錯了，真的很丟臉耶。', '嘲笑', '講錯沒關係，再說一次就好。'],
+    ['你畫這什麼東西啊？看不懂啦。', '批評', '你畫的是什麼？可以介紹給我聽嗎？'], ['你那麼慢，不要跟我們同一隊。', '排斥', '我們同一隊，大家一起加油吧！'],
+    ['你自己想辦法，不要來問我。', '排斥', '我現在在忙，等一下再幫你好嗎？'], ['有本事你就去告老師啊！', '挑釁', '有問題我們可以一起去找老師。'],
+    ['你懂不懂規則啊？笨死了。', '輕視', '這個規則我再說一次給你聽。'], ['你每次都要搶，真的很自私。', '指責', '我們輪流來，每個人都有機會。'],
+    ['走開啦，這裡沒有你的事。', '排斥', '你也想參加嗎？我們一起來。'],
+    ['我們都不要理他，假裝沒看到。', '排擠', '他也是我們班的，一起邀請他吧！', 2], ['誰跟他好，就不跟誰做朋友。', '排擠', '每個人都可以和大家做朋友。', 2],
+    ['你再說一次，我就讓你好看！', '威脅', '我很生氣，但我會好好跟你說。', 2], ['你什麼都做不好，真沒用。', '否定', '每個人都有擅長的事，你也有。', 2],
+    ['大家來看，他又出糗了，哈哈！', '嘲笑', '不要笑他，我們一起幫幫他。', 2]
+  ].forEach(function (a) { DEVIL.push({ id: 'd' + DEVIL.length, k: 'd', t: a[0], c: a[1], r: a[2], v: a[3] || 1 }); });
+  [
+    ['喔～你好厲害喔，全世界你最懂。', '拉長音、翻白眼', '你很愛自以為是，我聽了很煩。', '你懂很多，可以多說一點給我聽嗎？'],
+    ['哇，你今天終於準時了耶，好難得。', '誇張的驚訝表情', '你平常都遲到，我在笑你。', '你今天很準時，真是太好了！'],
+    ['好啦好啦，都是我的錯，可以了吧。', '不耐煩、大聲嘆氣', '我不覺得自己錯，只是不想再吵。', '我們都冷靜一下，好好說清楚吧。'],
+    ['隨便啦，反正你什麼都對。', '聳肩、撇嘴', '我不同意你，也不想聽你說。', '我的想法不一樣，可以說給你聽嗎？'],
+    ['哇，你好會整理喔，桌子好乾淨喔。', '看著很亂的桌子冷笑', '你的桌子好亂，真受不了。', '我們一起整理桌子，會更乾淨。'],
+    ['哇，你考得好高喔，一定很辛苦吧。', '語氣酸酸的、斜眼看', '你很愛現，我一點也不佩服。', '你考得很好，我真心替你高興！'],
+    ['是是是，你說的都對，你最大。', '敷衍點頭、不看對方', '我不想跟你講道理，懶得理你。', '我有不同的看法，可以聽聽看嗎？'],
+    ['你真的很會耶，又打翻東西了。', '拍手、偷笑', '你又闖禍了，真的好笨，好麻煩喔。', '沒關係，我幫你一起整理乾淨。']
+  ].forEach(function (a) { DEVIL.push({ id: 'd' + DEVIL.length, k: 'd', s: 1, t: a[0], tone: a[1], mean: a[2], r: a[3], c: '酸言酸語', v: 1 }); });
   var GOD = [
     { n: '重新開始', d: '收回所有人的手牌，洗牌後每人重發 3 張', e: '🔄' },
     { n: '天神點名', d: '指定下一個出牌的人，之後從他往下接', e: '👉' },
@@ -189,18 +223,18 @@
   }
   function buildDeck(cfg) {
     var off = cfg.off || [], base = ANGEL.concat(DEVIL).filter(function (c) { return off.indexOf(c.id) < 0; });
-    var deck = base.map(function (c) { return c.id; }).concat(GOD.map(function (c) { return c.id; })).concat(addCustom(cfg.custom));
+    var deck = base.map(function (c) { return c.id; }).concat(GOD.map(function (c) { return c.id; })).concat(GOD.map(function (c) { return c.id; })).concat(addCustom(cfg.custom));
     if (cfg.topic && cfg.topic !== 'all') base.forEach(function (c) { if (TOPIC_OF[c.c] === cfg.topic) deck.push(c.id); });   // 本節主題的牌多放一份
-    if (cfg.ratio === 'angel') { var ds = shuffle(deck.filter(function (id) { return C(id).k === 'd' && TOPIC_OF[C(id).c] !== cfg.topic; })).slice(0, 8); ds.forEach(function (id) { deck.splice(deck.indexOf(id), 1); }); }
-    if (cfg.ratio === 'devil') shuffle(DEVIL.filter(function (c) { return off.indexOf(c.id) < 0; })).slice(0, 8).forEach(function (c) { deck.push(c.id); });
+    if (cfg.ratio === 'angel') { var ds = shuffle(deck.filter(function (id) { return C(id).k === 'd' && TOPIC_OF[C(id).c] !== cfg.topic; })).slice(0, 16); ds.forEach(function (id) { deck.splice(deck.indexOf(id), 1); }); }
+    if (cfg.ratio === 'devil') shuffle(DEVIL.filter(function (c) { return off.indexOf(c.id) < 0; })).slice(0, 16).forEach(function (c) { deck.push(c.id); });
     return shuffle(deck);
   }
   var mod = {
-    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 4,
+    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 5,
     reasons: REASONS,
     opts: [
       { k: 'mode', label: '玩法：', list: [['comp', '🏆 比賽（心情＋星星最高的人贏）'], ['coop', '🤝 合作（大家都在 0 以上才過關）']] },
-      { k: 'len', label: '每人出幾張牌：', list: [['8', '8 張（約 15 分鐘）'], ['5', '5 張（約 10 分鐘）'], ['12', '12 張（約 20 分鐘）']] }
+      { k: 'len', label: '每人出牌幾次：', list: [['8', '8 次（約 15 分鐘）'], ['5', '5 次（約 10 分鐘）'], ['12', '12 次（約 20 分鐘）'], ['15', '15 次（約 25 分鐘）']] }
     ],
     levelDesc: ['隨便出牌', '比較常說好話', '會想辦法讓自己贏', '很會用天神牌'],
     seatName: function (i) { return '第 ' + (i + 1) + ' 位'; },
@@ -244,6 +278,11 @@
         if (g.swap[seat]) return false;
         g.swap[seat] = true; g.disc.push(cid); h[i] = draw(g); g.cnt++;
         pushLog(g, { k: 'swap', s: seat }); return true;
+      }
+      if (d.t === 'dump') {   // 手上的牌都不能用：換一張新的（不算出牌、不限次數）
+        if (h.some(function (x) { return !!targets(g, seat, x); })) return false;
+        g.disc.push(cid); h[i] = draw(g); g.cnt++;
+        pushLog(g, { k: 'swap', s: seat, dump: 1 }); return true;
       }
       if (d.t !== 'play') return false;
       var c = C(cid), tg = targets(g, seat, cid); if (!tg) { notify(seat, '這張牌現在不能用，換一張吧'); return false; }
@@ -340,7 +379,7 @@
         else opts.push({ i: i, c: C(cid) });
       });
       function A(o) { var a = { t: 'play', i: o.i, n: n }; if (o.p != null) a.p = o.p; if (o.s != null) a.s = o.s; return a; }
-      if (!opts.length) return null;
+      if (!opts.length) return h.length ? { t: 'dump', i: 0, n: n } : null;
       if (lv <= 1) return A(pick(opts));
       var coop = g.mode === 'coop', me = g.P[own].m, ms = g.P.map(function (x) { return x.m; });
       var others = g.P.map(function (x, j) { return j; }).filter(function (j) { return j !== own; });
@@ -375,7 +414,7 @@
       if (g.ev) h += '<div class="ad-hev">' + (g.ev.k === 'chance' ? '🍀 機會' : '🌀 命運') + '：' + esc(g.ev.q) + '</div>';
       return h + '</div>';
     },
-    hostStatus: function (g, nm) { return { t: (g.mode === 'coop' ? '合作・' : '') + '已出 ' + g.plays + '／' + g.len * alive(g).length + ' 張' + (g.chal && g.plays < g.chal.until ? '・挑戰中' : ''), c: '' }; }
+    hostStatus: function (g, nm) { return { t: (g.mode === 'coop' ? '合作・' : '') + '已出牌 ' + g.plays + '／' + g.len * alive(g).length + ' 次' + (g.chal && g.plays < g.chal.until ? '・挑戰中' : ''), c: '' }; }
   };
   function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function knock(g, seat, why) {
@@ -418,7 +457,7 @@
     if (lg.k === 'chal') return '🎯 天神挑戰：' + chalText(lg.ch);
     if (lg.k === 'ev') return '⚡ 天神時刻：' + who(tb, lg.s) + ' 回答了' + (lg.ek === 'chance' ? '機會' : '命運') + '題' + (lg.pts ? '，得到 ' + lg.pts + ' 顆星星' : '');
     var a = who(tb, lg.s), c = lg.c && C(lg.c);
-    if (lg.k === 'swap') return a + ' 換了一張手牌';
+    if (lg.k === 'swap') return a + (lg.dump ? ' 手上的牌都不能用，換了一張新牌' : ' 換了一張手牌');
     var pre = lg.tt ? a + ' 先轉念「' + C(lg.tt.from).r + '」，然後' : a;
     if (lg.k === 'a') return pre + ' 對【' + fname(v, lg.p) + '】說：「' + c.t + '」 ' + sgn(lg.d);
     if (lg.k === 'd') return pre + ' 對【' + fname(v, lg.p) + '】說：「' + c.t + '」 ' + (lg.blocked ? '🛡️ 被守護天使擋下了' : sgn(lg.d));
@@ -491,6 +530,7 @@
     var g = { P: v.P, own: [], np: v.np, plays: v.plays, lastDevil: v.lastDevil, out: v.out, hands: [], chal: v.chal ? { k: v.chal, until: 1e9 } : null };
     g.own[seat] = v.mine; g.hands[seat] = v.hand || [];
     var selC = myTurn && L.sel >= 0 ? v.hand[L.sel] : null, tg = selC ? targets(g, seat, selC) : null;
+    var stuck = myTurn && v.hand && v.hand.length && !v.hand.some(function (x) { return !!targets(g, seat, x); });
     function send(t, d) { d = d || {}; d.n = v.cnt; L.sent = v.cnt; L.sel = -1; L.pick = null; ctx.send(t, d); ctx.rerender(); }
     if (L.tick) { clearInterval(L.tick); L.tick = null; }
     var wrap = el('div', 'ad-table' + (v.mode === 'coop' ? ' coop' : ''));
@@ -499,7 +539,7 @@
     if (tb.res) st.textContent = '這局結束了！大家的圖像翻開囉';
     else if (out) st.textContent = '你已經認輸，正在觀看';
     else if (hold) st.textContent = v.ev ? '⚡ 天神時刻！' : v.help ? '有同學需要休息一下，請等老師' : v.paused ? '⏸️ 老師暫停了，請看大螢幕' : '請先回答心情快問';
-    else if (myTurn) { st.className = 'ad-status me'; st.textContent = !selC ? '輪到你了！選一張牌' : !tg ? '這張牌現在不能用，換一張' : tg.p ? '點一個發光的圖像' : tg.s ? '選下一個出牌的人' : '按下面的按鈕使用這張牌'; }
+    else if (myTurn) { st.className = 'ad-status me'; st.textContent = stuck ? '你的牌現在都不能用，按下面「🔁 換一張新牌」' : !selC ? '輪到你了！選一張牌' : !tg ? '這張牌現在不能用，換一張' : tg.p ? '點一個發光的圖像' : tg.s ? '選下一個出牌的人' : '按下面的按鈕使用這張牌'; }
     else st.textContent = '輪到 ' + who(tb, v.turn) + ' 出牌…';
     if (v.left != null && !tb.res && !hold) {
       var tm = el('span', 'ad-timer'), end = (L.recv || Date.now()) + v.left * 1000;
@@ -523,7 +563,7 @@
     });
     wrap.appendChild(ord);
     if (!tb.res && v.limit) { var left = Math.max(0, v.limit - v.plays), cn = el('div', 'ad-count' + (left <= v.order.length ? ' low' : ''));
-      cn.innerHTML = '🃏 這一局還可以出 <b>' + left + '</b> 張（全桌一起算，已出 ' + v.plays + '／' + v.limit + '）<span>你已經出了 ' + (v.myPlays || 0) + ' 張</span>';
+      cn.innerHTML = '🃏 這一局全桌還可以出牌 <b>' + left + '</b> 次（已出 ' + v.plays + '／' + v.limit + '，出完就結束）<span>你已經出了 ' + (v.myPlays || 0) + ' 次</span>';
       wrap.appendChild(cn); }
     // 圖像
     var grid = el('div', 'ad-faces n' + v.P.length);
@@ -572,7 +612,8 @@
       me.appendChild(hand);
       wrap.appendChild(me);
       var tools = el('div', 'ad-tools');
-      if (myTurn && selC && !v.swapped) tools.appendChild(ctx.button('ad-btn', '🔁 換掉這張（每局 1 次）', function () { if (confirm('把這張牌換成一張新的？換完還是要出牌喔（每局只能換 1 次）')) { var i = L.sel; L.sel = -1; ctx.send('swap', { i: i, n: v.cnt }); L.sent = v.cnt; ctx.rerender(); } }));
+      if (stuck) tools.appendChild(ctx.button('ad-btn go', '🔁 換一張新牌（不算出牌）', function () { var i = L.sel >= 0 ? L.sel : 0; L.sel = -1; ctx.send('dump', { i: i, n: v.cnt }); L.sent = v.cnt; ctx.rerender(); }));
+      if (myTurn && selC && !v.swapped && !stuck) tools.appendChild(ctx.button('ad-btn', '🔁 換掉這張（每局 1 次）', function () { if (confirm('把這張牌換成一張新的？換完還是要出牌喔（每局只能換 1 次）')) { var i = L.sel; L.sel = -1; ctx.send('swap', { i: i, n: v.cnt }); L.sent = v.cnt; ctx.rerender(); } }));
       if (myTurn && tg && tg.now && !L.pick) tools.appendChild(ctx.button('ad-btn go', '⚡ 使用這張牌', function () { L.pick = {}; ctx.rerender(); }));
       if (!v.help && !v.ev) tools.appendChild(ctx.button('ad-btn help', '🛑 我需要休息', function () { if (confirm('要請老師過來嗎？這一桌會先暫停。')) ctx.send('help', {}); }));
       tools.appendChild(ctx.button('ad-btn', '🏳️', function () { if (confirm('確定要認輸嗎？')) ctx.send('resign', {}); }));
@@ -916,7 +957,7 @@
       { h: '說話的規則', html: '<ul><li>惡魔牌上的話是<b>卡片上的話，不是你心裡的話</b>。</li><li>要<b>照卡片念</b>，不可以自己加詞。</li><li>念惡魔牌時看著<b>圖像</b>，不要看著同學。</li><li><b>酸言酸語牌</b>表面上像在稱讚，其實是在說別人不好。卡片上有寫要用什麼語氣，也有寫「真正的意思」。</li><li>不舒服的時候，按「🛑 我需要休息」，老師會過來。</li></ul>' }
     ],
     teacher: [
-      { h: '主持流程', html: '<ol><li>首頁「社會技巧/溝通訓練」→「天使與惡魔」。每桌 3～6 人（4～5 人最好）。4 人以下會多放一個沒人拿的圖像，比較不容易猜出誰是誰。</li><li>QR code 上方選<b>玩法</b>（比賽／合作）和<b>每人出幾張牌</b>。建議第一次先玩合作模式。</li><li>老師端就是「天神」：每一桌都看得到每個圖像是誰的（圓點顏色＝玩家），學生看不到。系統會自動擋住學生出牌給自己的圖像。</li><li>上方的「⚡ 天神控制台」有所有老師的功能；點某一桌可以打開那一桌的控制（天神降臨、給星星、教學時刻、分享時刻）。</li></ol>' },
+      { h: '主持流程', html: '<ol><li>首頁「社會技巧/溝通訓練」→「天使與惡魔」。每桌 3～6 人（4～5 人最好）。4 人以下會多放一個沒人拿的圖像，比較不容易猜出誰是誰。</li><li>QR code 上方選<b>玩法</b>（比賽／合作）和<b>每人出牌幾次</b>（每人次數 × 人數＝這一局全桌一共出幾次牌，出完就結束）。建議第一次先玩合作模式。</li><li>老師端就是「天神」：每一桌都看得到每個圖像是誰的（圓點顏色＝玩家），學生看不到。系統會自動擋住學生出牌給自己的圖像。</li><li>上方的「⚡ 天神控制台」有所有老師的功能；點某一桌可以打開那一桌的控制（天神降臨、給星星、教學時刻、分享時刻）。</li></ol>' },
       { h: '天神控制台', html: '<h4>上課前（⚙️ 上課設定）</h4><ul><li><b>本節主題</b>：稱讚與鼓勵、道歉與原諒、不排擠、聽懂酸言酸語、安慰與關心。這個主題的牌會多一份，機會／命運題只出這個主題。</li><li><b>牌的比例</b>：天使比較多／一樣多／惡魔比較多。第一次建議天使比較多。</li><li><b>自訂卡片和題目</b>：可以加班上真的聽到的話，也可以自己出機會／命運題。<b>題目不要提到圖像，也不要指定真實的同學</b>。</li><li><b>關掉不適合的句子</b>：班上學生有特別敏感的話，先關掉。</li><li><b>天神時刻</b>自動出現的頻率、<b>評分方式</b>、<b>出牌倒數</b>。</li></ul><h4>遊戲中</h4><ul><li><b>⏸️ 全班暫停／▶️ 繼續</b>。</li><li><b>📽️ 教學時刻</b>：點某一桌，點一句剛出的話，會投影到大螢幕並自動暫停全班，附討論問題和轉念答案。</li><li><b>😀 心情快問</b>：每個學生點出自己真正的心情，匿名統計後可以投影。</li><li><b>⚡ 天神降臨</b>：轉盤轉到一位學生回答機會（正向）或命運（危機、狀況）題，老師按 👍+3／👌+2／🤔+1 給星星。轉盤轉的是「人」，不會洩漏他的圖像；星星是祕密的，最後才加進分數。</li><li><b>🎯 天神挑戰</b>：下一輪只能出天使牌、惡魔牌要先轉念、用最溫柔的語氣、一起猜酸言酸語的真正意思、天使牌要加上具體理由。</li><li><b>⭐ 給星星</b>：看到學生做得好，點原因再點學生。原因會記在課後紀錄表。</li><li><b>🛑 學生求救</b>：學生按「我需要休息」，那一桌自動暫停，控制台會亮起來。</li></ul><h4>結束後</h4><ul><li><b>📽️ 分享時刻投影</b>：一次一個圖像，先看心情最高和最低的兩位。</li><li><b>📥 課後紀錄表</b>：用學號整理每位學生的出牌、轉念、道歉、星星原因、機會命運題、心情快問，可以用 Excel 打開，當作 IEP／社會技巧目標紀錄。</li><li><b>📝 天使任務單</b>：每位學生一張回家作業，最後附一張空白的。</li></ul>' },
       { h: '上課前', html: '<ul><li>先介紹情緒碼錶（超級開心、開心、有點高興、普通、有點難過、很難過、崩潰），讓學生說說自己現在在哪一格。</li><li>和學生一起念：「卡片上的話不是我心裡的話」。</li><li>酸言酸語牌：先示範同一句「你很棒」用真心的語氣說一次、用酸的語氣說一次，讓學生聽出差別。</li><li>圖像大風吹、大家換位子這些牌會讓事情突然改變，先讓學生看過天神牌清單。</li><li>班上有被霸凌經驗的學生，請先用「關掉不適合的句子」處理。</li></ul>' },
       { h: '結束後的分享', html: '<ol><li><b>出戲：</b>每個人對旁邊的真人同學說一句天使牌的話。</li><li><b>分享：</b>請心情最高和最低的兩位先說，可以用句型：<ul>' + TIPS.map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul></li><li><b>討論：</b>不一樣的心情會不會讓我們做出不一樣的事？</li><li><b>本週天使任務：</b>發天使任務單，下次上課回報。</li></ol><p>遊戲設計：andice（社會技巧卡牌構思）。保密圖像是為了不讓特定的人成為被針對的一方，每個人都有一樣的機會被稱讚、也承受批評，體會被攻擊的人心裡的感受。</p>' }
