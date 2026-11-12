@@ -140,7 +140,7 @@
   var STAR_R = ['語氣很溫暖', '有耐心等待', '主動道歉', '說出真正的意思', '好好回答問題', '遵守規則', '幫助同學'];
   var MOODS = [['😄', '很開心'], ['🙂', '還不錯'], ['😐', '普通'], ['🙁', '有點難過'], ['😢', '很不舒服']];
   var MOOD = function (m) { return m >= 10 ? '超級開心' : m >= 6 ? '開心' : m >= 1 ? '有點高興' : m === 0 ? '普通' : m >= -5 ? '有點難過' : m >= -9 ? '很難過' : '崩潰'; };
-  var REASONS = { joy: '有圖像的心情到了 +10！', crash: '有圖像的心情掉到 -10，崩潰了…', time: '大家都出完牌了', coop: '所有人的圖像心情都在 0 以上，全體過關！', coopfail: '還有圖像的心情低於 0，下次再一起努力', coopcrash: '有圖像崩潰了，合作失敗', tie: '大家的分數一樣高', resign: '其他人都認輸了', left: '其他人都離開了', teacher: '老師結束這局' };
+  var REASONS = { joy: '有圖像的心情到了 +10！', crash: '有圖像的心情掉到 -10，崩潰了…', time: '大家都出完牌了', coop: '所有人的圖像心情都在 0 以上，全體過關！', coopfail: '還有圖像的心情低於 0，下次再一起努力', coopcrash: '有圖像崩潰了，合作失敗', tie: '大家的實際得分一樣高', resign: '其他人都認輸了', left: '其他人都離開了', teacher: '老師結束這局' };
   function el(t, c, x) { var e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; }
   function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
   function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
@@ -170,7 +170,7 @@
     if (t && chalOn(g, 'angel') && C(cid).k === 'd' && (hand || g.hands[seat]).some(function (x) { return C(x).k !== 'd' && baseTargets(g, seat, x); })) return null;
     return t;
   }
-  function blocked(g) { return !!(g.res || g.paused || g.help != null || g.ev || moodWait(g)); }
+  function blocked(g) { return !!(g.res || g.wait || g.paused || g.help != null || g.ev || moodWait(g)); }
   function moodWait(g) { return !!g.moodQ && g.hum.some(function (h, s) { return h && g.out.indexOf(s) < 0 && g.moodA[s] == null; }); }
   function change(g, i, d, note) {
     var p = g.P[i], before = p.m; p.m = clamp(p.m + d); p.hist.push(p.m);
@@ -179,8 +179,30 @@
   }
   function pushLog(g, lg) { g.log = lg; g.logs.push(lg); if (g.logs.length > 400) g.logs.shift(); }
   function rec(g, e) { g.evq.push(e); }
+  /* 實際得分：只看「助人」，只加不扣；心情只用來判斷遊戲結束 */
+  var HELP = { 3: 3, 6: 2, 9: 3, 11: 2 };     // 直接加分的天神牌：天神祝福、守護天使、公平之光、冷靜時間
+  var JUDGE = { 7: 1, 8: 1, 10: 1 };           // 要有表現、由天神評 0～5 分：轉念牌、道歉修復、換位思考
+  var NEEDP = { 3: 1, 6: 1, 8: 1, 10: 1 };     // 老師用天神牌時要選圖像的
+  function scOf(g, s) { g.sc = g.sc || []; return g.sc[s] = g.sc[s] || { a: 0, g: 0, j: 0, ev: 0, st: 0, t: 0 }; }
+  function addPts(g, s, key, n, notify, why) {
+    if (!n || s < 0) return;
+    scOf(g, s)[key] += n; g.stars[s] = (g.stars[s] || 0) + n;
+    rec(g, { seat: s, k: 'pts', n: n });
+    if (notify && g.cfg.show !== 'end') notify(s, '⭐ 實際得分 +' + n + (why ? '（' + why + '）' : ''));
+  }
+  function autoJudge(g, seat) { return g.solo || g.cfg.judge === 'auto' || !g.hum[seat]; }
+  function scoreJ(g, id, pts, notify) {
+    var q = null; (g.jq || []).forEach(function (x, k) { if (x.id === id) q = k; }); if (q == null) return false;
+    var it = g.jq.splice(q, 1)[0]; pts = Math.max(0, Math.min(5, pts | 0));
+    rec(g, { seat: it.s, k: 'judge', c: it.c, pts: pts });
+    if (pts) addPts(g, it.s, 'j', pts, notify, '天神評分：' + C(it.c).n);
+    else if (notify && g.cfg.show !== 'end') notify(it.s, '天神聽過你的回答了，下次再多想一點喔');
+    g.cnt++;
+    if (g.wait && !g.jq.length) { var w = g.wait; g.wait = null; finish(g, w); }
+    return true;
+  }
   function owners(g) { var o = []; for (var i = 0; i < g.P.length; i++) o.push(g.own.indexOf(i)); return o; }
-  function total(g, s) { return g.P[g.own[s]].m + (g.stars[s] || 0); }
+  function total(g, s) { return g.stars[s] || 0; }   // 比賽模式只比實際得分
   function finish(g, why) {
     var a = alive(g);
     if (g.mode === 'coop') {
@@ -198,8 +220,10 @@
   function checkEnd(g) {
     var hi = false, lo = false;
     g.P.forEach(function (p) { if (p.m <= MIN) lo = true; });
-    if (lo) return finish(g, 'crash'), true;
-    if (g.plays >= g.len * alive(g).length) return finish(g, 'time'), true;
+    var why = lo ? 'crash' : g.plays >= g.len * alive(g).length ? 'time' : null;
+    if (!why) return false;
+    if (g.jq && g.jq.length) { g.wait = why; return true; }   // 還有天神牌等老師評分，評完才公布
+    return finish(g, why), true;
     return false;
   }
   /* 天神降臨：轉盤選一位真人玩家，抽機會或命運 */
@@ -216,12 +240,35 @@
   function scoreEv(g, pts, notify) {
     var e = g.ev; if (!e) return false;
     pts = Math.max(0, Math.min(3, pts | 0));
-    g.stars[e.seat] = (g.stars[e.seat] || 0) + pts;
     rec(g, { seat: e.seat, k: 'ev', kind: e.k, q: e.q, pts: pts });
     pushLog(g, { k: 'ev', s: e.seat, ek: e.k, q: e.q, pts: pts });
-    if (notify && pts) notify(e.seat, '⭐ 天神給你 ' + pts + ' 顆星星！');
+    addPts(g, e.seat, 'ev', pts, notify, e.k === 'chance' ? '機會題' : '命運題');
     g.ev = null; g.turnAt = Date.now(); g.cnt++;
     return true;
+  }
+  /* 天神牌的效果（玩家出牌、老師用天神牌共用；老師 seat = -1） */
+  function godFx(g, seat, c, p, s2, lg, h, i) {
+    var jump = false, cid = c.id;
+    switch (c.g) {
+        case 0: g.hands.forEach(function (hh, s) { if (s !== seat) g.disc = g.disc.concat(hh); }); if (h) g.disc = g.disc.concat(h.filter(function (x, j) { return j !== i; }));
+          g.deck = shuffle(g.deck.concat(g.disc)); g.disc = [];
+          for (var s = 0; s < g.np; s++) g.hands[s] = [];
+          for (var k = 0; k < HAND; k++) for (s = 0; s < g.np; s++) if (g.out.indexOf(s) < 0) g.hands[s].push(draw(g));
+          h = null; break;
+        case 1: g.pos = g.order.indexOf(s2); g.turnAt = Date.now(); jump = true; lg.to = s2; break;
+        case 2: g.dir = -g.dir; break;
+        case 3: lg.d = change(g, p, 3, cid); break;
+        case 4: var fs = shuffle(g.P.map(function (x, j) { return j; })); for (var q = 0; q < g.np; q++) g.own[q] = fs[q]; break;
+        case 5: var cur = seat >= 0 ? seat : turnSeat(g); g.order = shuffle(g.order.slice()); g.pos = g.order.indexOf(cur); break;
+        case 6: g.P[p].shield = true; break;
+        case 7: var L = g.lastDevil; lg.p = L.p; lg.from = L.c; lg.d = change(g, L.p, -L.delta + 1, cid); g.lastDevil = null; if (seat >= 0) rec(g, { seat: seat, k: 'turn' }); break;
+        case 8: lg.d = change(g, p, 2, cid); g.P[p].hitAt = -1; if (seat >= 0) rec(g, { seat: seat, k: 'apo' }); break;
+        case 9: var lo = Math.min.apply(null, g.P.map(function (x) { return x.m; })); lg.ps = [];
+          g.P.forEach(function (x, j) { if (x.m === lo) { change(g, j, 3, cid); lg.ps.push(j); } }); break;
+        case 10: lg.d = change(g, p, 2, cid); break;
+        case 11: lg.ps = []; g.P.forEach(function (x, j) { if (x.m <= -5) { change(g, j, 2, cid); lg.ps.push(j); } }); break;
+      }
+    return { h: h, jump: jump };
   }
   function buildDeck(cfg) {
     var off = cfg.off || [], base = ANGEL.concat(DEVIL).filter(function (c) { return off.indexOf(c.id) < 0; });
@@ -232,7 +279,7 @@
     return shuffle(deck);
   }
   var mod = {
-    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 6,
+    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 7,
     reasons: REASONS,
     opts: [
       { k: 'mode', label: '玩法：', list: [['comp', '🏆 比賽（心情＋星星最高的人贏）'], ['coop', '🤝 合作（大家都在 0 以上才過關）']] },
@@ -243,14 +290,14 @@
     seatColor: function (i) { return SEATC[i]; },
     init: function (n, o) {
       o = o || {}; n = Math.max(3, Math.min(6, n || 4));
-      var x = o._x || {}, cfg = { topic: x.topic || 'all', ratio: x.ratio || 'even', custom: x.custom || [], off: x.off || [], qs: x.qs || [], godEvery: +x.godEvery || 0, judge: o._solo ? 'auto' : (x.judge || 'teacher'), timer: +x.timer || 0 };
+      var x = o._x || {}, cfg = { topic: x.topic || 'all', ratio: x.ratio || 'even', custom: x.custom || [], off: x.off || [], qs: x.qs || [], godEvery: +x.godEvery || 0, judge: o._solo ? 'auto' : (x.judge || 'teacher'), timer: +x.timer || 0, show: x.show === 'end' ? 'end' : 'self' };
       var nf = n <= 4 ? n + 1 : n, faces = shuffle(FACES.map(function (f, i) { return i; })).slice(0, nf);
       var hum = []; for (var s = 0; s < n; s++) hum.push(o._bots ? !o._bots[s] : true);
       var g = { np: n, mode: o.mode === 'coop' ? 'coop' : 'comp', len: Math.max(3, Math.min(20, +o.len || 8)), cfg: cfg, cx: cfg.custom, hum: hum,
         P: faces.map(function (f) { return { f: f, m: 0, hist: [0], rec: [], shield: false, hitAt: -1, ga: 0, gd: 0 }; }),
         own: shuffle(faces.map(function (f, i) { return i; })).slice(0, n),
         order: shuffle(alive({ np: n, out: [] })), pos: 0, dir: 1, deck: buildDeck(cfg), disc: [], hands: [], swap: [], out: [], stars: [],
-        plays: 0, pc: [], cnt: 0, log: null, logs: [], lastDevil: null, res: null, turnAt: Date.now(),
+        plays: 0, pc: [], sc: [], jq: [], jn: 0, hg: [], wait: null, solo: !!o._solo, cnt: 0, log: null, logs: [], lastDevil: null, res: null, turnAt: Date.now(),
         ev: null, evn: 0, used: [], paused: false, help: null, moodQ: 0, moodA: {}, chal: null, evq: [] };
       for (s = 0; s < n; s++) { g.hands.push([]); g.swap.push(false); g.stars.push(0); }
       for (var k = 0; k < HAND; k++) for (s = 0; s < n; s++) g.hands[s].push(draw(g));
@@ -263,7 +310,7 @@
       addCustom(g.cx);
       return { np: g.np, mode: g.mode, len: g.len, cx: g.cx, P: g.P.map(function (p) { return { f: p.f, m: p.m, shield: p.shield, hitAt: p.hitAt, hist: g.res ? p.hist : null, rec: g.res ? p.rec : null, ga: p.ga, gd: p.gd }; }),
         mine: seat >= 0 ? g.own[seat] : -1, owners: g.res ? owners(g) : null, hand: seat >= 0 ? g.hands[seat] : null, swapped: seat >= 0 ? g.swap[seat] : true,
-        stars: g.res ? g.stars : null, myStars: seat >= 0 ? g.stars[seat] : 0,
+        stars: g.res ? g.stars : null, sc: g.res ? g.sc : null, myScore: seat >= 0 && (g.res || g.cfg.show !== 'end') ? g.stars[seat] || 0 : null, wait: !!g.wait, solo: !!g.solo,
         order: g.order, pos: g.pos, dir: g.dir, turn: turnSeat(g), plays: g.plays, limit: g.len * alive(g).length, len: g.len, myPlays: seat >= 0 ? (g.pc || [])[seat] || 0 : 0, deck: g.deck.length, lastDevil: g.lastDevil, log: g.log, logs: g.logs, out: g.out, cnt: g.cnt,
         ev: g.ev, judge: g.cfg.judge, paused: g.paused, help: g.help != null, moodQ: g.moodQ, moodMine: seat >= 0 ? g.moodA[seat] : null,
         chal: g.chal && g.plays < g.chal.until ? g.chal.k : null, timer: g.cfg.timer, left: g.cfg.timer && !blocked(g) ? Math.max(0, g.cfg.timer - (Date.now() - g.turnAt) / 1000) : null };
@@ -300,24 +347,15 @@
         if (P.shield) { P.shield = false; lg.blocked = true; P.rec.push(cid); }
         else { lg.d = change(g, p, -c.v, cid); P.hitAt = g.plays; }
         g.lastDevil = { s: seat, p: p, c: cid, delta: lg.d, at: g.plays };
-      } else switch (c.g) {
-        case 0: g.hands.forEach(function (hh, s) { if (s !== seat) g.disc = g.disc.concat(hh); }); g.disc = g.disc.concat(h.filter(function (x, j) { return j !== i; }));
-          g.deck = shuffle(g.deck.concat(g.disc)); g.disc = [];
-          for (var s = 0; s < g.np; s++) g.hands[s] = [];
-          for (var k = 0; k < HAND; k++) for (s = 0; s < g.np; s++) if (g.out.indexOf(s) < 0) g.hands[s].push(draw(g));
-          h = null; break;
-        case 1: g.pos = g.order.indexOf(s2); g.turnAt = Date.now(); jump = true; lg.to = s2; break;
-        case 2: g.dir = -g.dir; break;
-        case 3: lg.d = change(g, p, 3, cid); break;
-        case 4: var fs = shuffle(g.P.map(function (x, j) { return j; })); for (var q = 0; q < g.np; q++) g.own[q] = fs[q]; break;
-        case 5: g.order = shuffle(g.order.slice()); g.pos = g.order.indexOf(seat); break;
-        case 6: g.P[p].shield = true; break;
-        case 7: var L = g.lastDevil; lg.p = L.p; lg.from = L.c; lg.d = change(g, L.p, -L.delta + 1, cid); g.lastDevil = null; rec(g, { seat: seat, k: 'turn' }); break;
-        case 8: lg.d = change(g, p, 2, cid); g.P[p].hitAt = -1; rec(g, { seat: seat, k: 'apo' }); break;
-        case 9: var lo = Math.min.apply(null, g.P.map(function (x) { return x.m; })); lg.ps = [];
-          g.P.forEach(function (x, j) { if (x.m === lo) { change(g, j, 3, cid); lg.ps.push(j); } }); break;
-        case 10: lg.d = change(g, p, 2, cid); break;
-        case 11: lg.ps = []; g.P.forEach(function (x, j) { if (x.m <= -5) { change(g, j, 2, cid); lg.ps.push(j); } }); break;
+      } else { var fx = godFx(g, seat, c, p, s2, lg, h, i); h = fx.h; jump = fx.jump; }
+      // 實際得分：助人才加分
+      if (lg.tt) addPts(g, seat, 't', 1, notify, '先轉念');
+      if (c.k === 'a') addPts(g, seat, 'a', c.v, notify, '天使牌');
+      else if (c.k === 'g' && HELP[c.g]) addPts(g, seat, 'g', HELP[c.g], notify, c.n);
+      else if (c.k === 'g' && JUDGE[c.g]) {
+        var jit = { id: ++g.jn, s: seat, c: cid, p: lg.p, from: lg.from || null };
+        if (autoJudge(g, seat)) addPts(g, seat, 'j', 3, notify, c.n);
+        else { g.jq = g.jq || []; g.jq.push(jit); }
       }
       if (h) { h.splice(i, 1); h.push(draw(g)); }
       g.disc.push(cid);
@@ -345,13 +383,29 @@
       if (t === 'chal') { if (g.res) return false; g.chal = { k: d.k, until: g.plays + alive(g).length }; pushLog(g, { k: 'chal', ch: d.k, s: -1 }); g.cnt++; return true; }
       if (t === 'star') {
         var s = d.seat | 0; if (s < 0 || s >= g.np) return false;
-        g.stars[s] = (g.stars[s] || 0) + 1; rec(g, { seat: s, k: 'star', r: d.r || '' });
-        notify(s, '⭐ 天神給你一顆星星' + (d.r ? '：' + d.r : '') + '！'); g.cnt++; return true;
+        rec(g, { seat: s, k: 'star', r: d.r || '' });
+        addPts(g, s, 'st', 1, notify, d.r || '老師給的星星'); g.cnt++; return true;
+      }
+      if (t === 'jscore') return scoreJ(g, d.id, d.pts, notify);
+      if (t === 'gcard') {   // 老師（天神）用天神牌：不限次數，但同一張不能連續 3 次
+        if (g.res || g.wait) return false;
+        var k = d.k | 0, gc = GOD[k]; if (!gc) return false;
+        var hg = g.hg = g.hg || [];
+        if (hg.length >= 2 && hg[hg.length - 1] === k && hg[hg.length - 2] === k) return false;
+        var gp = null, gs = null;
+        if (NEEDP[k]) { gp = +d.p; if (!(gp >= 0 && gp < g.P.length)) return false; }
+        if (k === 1) { gs = +d.s; if (!(gs >= 0 && gs < g.np) || g.out.indexOf(gs) >= 0) return false; }
+        if (k === 7 && !g.lastDevil) return false;
+        var glg = { k: 'g', c: gc.id, s: -1, T: 1, p: gp, d: 0 };
+        godFx(g, -1, gc, gp, gs, glg, null, -1);
+        hg.push(k); if (hg.length > 6) hg.shift();
+        g.cnt++; pushLog(g, glg); return true;
       }
       return false;
     },
     hostBadge: function (g) {
       if (g.help != null) return '🛑 有同學需要休息，請過去看看';
+      if (g.jq && g.jq.length) return '🧠 有天神牌等你評分（0～5 分）';
       if (g.ev) return g.cfg.judge === 'teacher' ? '⚡ 等天神評分' : '⚡ 天神時刻進行中';
       if (g.paused) return '⏸️ 暫停中';
       return '';
@@ -360,7 +414,7 @@
     hostRecord: function (gx, e, who) {
       if (!who.sid || who.bot) return;
       gx.rec = gx.rec || {};
-      var r = gx.rec[who.sid] = gx.rec[who.sid] || { sid: who.sid, name: who.name, rounds: 0, wins: 0, a: 0, d: 0, s: 0, g: 0, turn: 0, apo: 0, stars: 0, sr: {}, ev: [], moods: [], help: 0, said: {} };
+      var r = gx.rec[who.sid] = gx.rec[who.sid] || { sid: who.sid, name: who.name, rounds: 0, wins: 0, a: 0, d: 0, s: 0, g: 0, turn: 0, apo: 0, stars: 0, sr: {}, ev: [], moods: [], help: 0, said: {}, pts: 0 };
       r.name = who.name;
       if (e.k === 'play') { r[e.ck] = (r[e.ck] || 0) + 1; }
       else if (e.k === 'turn') r.turn++;
@@ -369,6 +423,7 @@
       else if (e.k === 'ev') { r.stars += e.pts; r.ev.push((e.kind === 'chance' ? '機會' : '命運') + '：' + e.q + '（' + e.pts + ' 星）'); }
       else if (e.k === 'mood') r.moods.push(MOODS[e.v][0] + MOODS[e.v][1]);
       else if (e.k === 'help') r.help++;
+      else if (e.k === 'pts') r.pts = (r.pts || 0) + e.n;
       else if (e.k === 'end') { r.rounds++; if (e.win) r.wins++; }
     },
     botTurn: function (g, seat, lv) {
@@ -401,6 +456,7 @@
           case 0: v = 6; break; case 2: case 5: v = 5; break; case 1: v = 4; break;
         }
         if (lv >= 3 && !coop && c.k === 'd' && m === hiO) v += 15;
+        if (!coop && lv >= 2) v += c.k === 'a' ? 20 + c.v * 6 : c.k === 'g' && HELP[c.g] ? 15 + HELP[c.g] * 5 : c.k === 'g' && JUDGE[c.g] ? 28 : 0;   // 助人會得分
         return v + Math.random() * (lv === 2 ? 20 : lv === 3 ? 10 : 4);
       }
       opts.sort(function (a, b) { return score(b) - score(a); });
@@ -450,7 +506,7 @@
   /* ---------- 學生端 ---------- */
   var L = { sel: -1, pick: null, sent: -1, round: -1, key: -1, peek: false, spin: {}, dec: {}, tick: null };
   function short(tb, i) { var s = tb.seats[i]; return s.bot ? '電腦 ' + (i + 1) : s.name.replace(/（.*）/, ''); }
-  function who(tb, i) { return i === tb.seat ? '你' : short(tb, i); }
+  function who(tb, i) { return i < 0 ? '天神（老師）' : i === tb.seat ? '你' : short(tb, i); }
   function fname(v, i) { var f = FACES[v.P[i].f]; return f.i + f.n; }
   function sgn(d) { return d > 0 ? '+' + d : d < 0 ? '' + d : '±0'; }
   function chalText(k) { for (var i = 0; i < CHAL.length; i++) if (CHAL[i][0] === k) return CHAL[i][1]; return ''; }
@@ -539,6 +595,7 @@
     // 狀態
     var st = el('div', 'ad-status');
     if (tb.res) st.textContent = '這局結束了！大家的圖像翻開囉';
+    else if (v.wait) st.textContent = '🧠 牌出完了！等天神（老師）評完分就公布結果';
     else if (out) st.textContent = '你已經認輸，正在觀看';
     else if (hold) st.textContent = v.ev ? '⚡ 天神時刻！' : v.help ? '有同學需要休息一下，請等老師' : v.paused ? '⏸️ 老師暫停了，請看大螢幕' : '請先回答心情快問';
     else if (myTurn) { st.className = 'ad-status me'; st.textContent = stuck ? '你的牌現在都不能用，按下面「🔁 換一張新牌」' : !selC ? '輪到你了！選一張牌' : !tg ? '這張牌現在不能用，換一張' : tg.p ? '點一個發光的圖像' : tg.s ? '選下一個出牌的人' : '按下面的按鈕使用這張牌'; }
@@ -559,13 +616,13 @@
       var ch = el('span', 'ad-chip' + (s === v.turn && !tb.res ? ' turn' : '') + (v.out.indexOf(s) >= 0 ? ' out' : '') + (tg && tg.s && tg.s.indexOf(s) >= 0 ? ' tg' : ''));
       ch.setAttribute('data-seat', s);
       var d = el('i'); d.style.background = SEATC[s]; ch.appendChild(d); ch.appendChild(document.createTextNode(who(tb, s)));
-      if (tb.res && v.stars && v.stars[s]) ch.appendChild(el('u', '', ' ⭐' + v.stars[s]));
+      if (tb.res && v.stars) ch.appendChild(el('u', '', ' ⭐' + (v.stars[s] || 0)));
       if (tg && tg.s && tg.s.indexOf(s) >= 0) ch.addEventListener('click', function () { ctx.snd('tap'); L.pick = { s: s }; ctx.rerender(); });
       ord.appendChild(ch);
     });
     wrap.appendChild(ord);
     if (!tb.res && v.limit) { var left = Math.max(0, v.limit - v.plays), cn = el('div', 'ad-count' + (left <= v.order.length ? ' low' : ''));
-      cn.innerHTML = '🃏 這一局全桌還可以出牌 <b>' + left + '</b> 次（已出 ' + v.plays + '／' + v.limit + '，出完就結束）<span>你已經出了 ' + (v.myPlays || 0) + ' 次</span>';
+      cn.innerHTML = '🃏 這一局全桌還可以出牌 <b>' + left + '</b> 次（已出 ' + v.plays + '／' + v.limit + '，出完就結束）<span>你已經出了 ' + (v.myPlays || 0) + ' 次</span>' + (v.myScore != null ? '<span class="ad-my">⭐ 我的實際得分 ' + v.myScore + '</span>' : '');
       wrap.appendChild(cn); }
     // 圖像
     var grid = el('div', 'ad-faces n' + v.P.length);
@@ -595,7 +652,7 @@
     if (!tb.res && !out && v.hand) {
       var me = el('div', 'ad-me' + (myTurn ? ' turn' : '')); me.setAttribute('data-seat', seat);
       var pk = el('button', 'ad-peek' + (L.peek ? ' on' : '')); pk.type = 'button';
-      if (L.peek && v.mine >= 0) { var mf = FACES[v.P[v.mine].f]; pk.innerHTML = '<span class="ad-pk-pic">' + faceSVG(v.P[v.mine].f, v.P[v.mine].m) + '</span><b>' + mf.i + mf.n + '</b><small>心情 ' + sgn(v.P[v.mine].m).replace('±0', '0') + (v.myStars ? '・⭐' + v.myStars : '') + '・不要說出來喔！</small>'; }
+      if (L.peek && v.mine >= 0) { var mf = FACES[v.P[v.mine].f]; pk.innerHTML = '<span class="ad-pk-pic">' + faceSVG(v.P[v.mine].f, v.P[v.mine].m) + '</span><b>' + mf.i + mf.n + '</b><small>心情 ' + sgn(v.P[v.mine].m).replace('±0', '0') + '・不要說出來喔！</small>'; }
       else pk.innerHTML = '<span class="ad-pk-q">🤫</span><b>按住看我的圖像</b><small>只有你自己知道</small>';
       var on = function (e) { e.preventDefault(); if (!L.peek) { L.peek = true; ctx.rerender(); } }, off = function () { if (L.peek) { L.peek = false; ctx.rerender(); } };
       pk.addEventListener('pointerdown', on); pk.addEventListener('pointerup', off); pk.addEventListener('pointerleave', off); pk.addEventListener('pointercancel', off);
@@ -678,6 +735,7 @@
     if (v.chal === 'gentle' && line) bx.appendChild(el('p', 'ad-ovtone', '🎵 挑戰：用最溫柔的語氣念'));
     if (v.chal === 'why' && c.k === 'a') bx.appendChild(el('p', 'ad-ovtone', '🌟 挑戰：念完再加一句「因為……」說出具體的理由'));
     if (c.k === 'd') bx.appendChild(el('p', 'ad-ovnote', '這是卡片上的話，不是你心裡的話。照卡片念，不要自己加詞。'));
+    if (c.k === 'g' && JUDGE[c.g]) bx.appendChild(el('p', 'ad-ovnote', v.solo || v.judge === 'auto' ? '想一想再說，說完可以得到 3 分。' : '先想一想再說出自己的話，天神（老師）會依你的回答給 0～5 分。'));
     var row = el('div', 'ad-ovbtns');
     var b1 = el('button', 'ad-btn go', line && c.g !== 11 ? '🗣️ 我念完了，出牌' : c.g === 11 ? '🌬️ 呼吸完了' : '⚡ 確定使用'); b1.type = 'button'; b1.addEventListener('click', ok);
     var b2 = el('button', 'ad-btn', '取消'); b2.type = 'button'; b2.addEventListener('click', cancel);
@@ -688,6 +746,16 @@
   function debrief(tb, v) {
     var w = el('div', 'ad-deb');
     var ms = v.P.map(function (p) { return p.m; }), hi = Math.max.apply(null, ms), lo = Math.min.apply(null, ms);
+    if (v.stars) {
+      var sb = el('div', 'ad-score'); sb.appendChild(el('h3', '', '⭐ 實際得分（做到「助人」的分數）'));
+      var ss = v.order.slice().sort(function (a, b) { return (v.stars[b] || 0) - (v.stars[a] || 0); });
+      ss.forEach(function (s) { var c = (v.sc && v.sc[s]) || {}, r = el('div', 'ad-score-r' + (s === tb.seat ? ' me' : ''));
+        r.appendChild(el('b', '', (s === tb.seat ? '⭐ 你' : short(tb, s)) + '：' + (v.stars[s] || 0) + ' 分'));
+        r.appendChild(el('small', '', '助人牌 ' + ((c.a || 0) + (c.g || 0) + (c.t || 0)) + '・天神評分 ' + (c.j || 0) + '・機會命運 ' + (c.ev || 0) + '・老師星星 ' + (c.st || 0)));
+        sb.appendChild(r); });
+      sb.appendChild(el('p', 'ad-score-n', '圖像的心情不算分：聽到不同的話會有不同的心情，這是很正常的。'));
+      w.appendChild(sb);
+    }
     w.appendChild(el('h3', '', '💬 說說看你的感受'));
     var tips = el('div', 'ad-deb-tips'); TIPS.forEach(function (t) { tips.appendChild(el('p', '', t)); }); w.appendChild(tips);
     var list = el('div', 'ad-deb-list');
@@ -701,7 +769,6 @@
     var top = el('div', 'ad-deb-top'); top.innerHTML = '<span class="ad-deb-pic">' + faceSVG(p.f, p.m) + '</span>';
     top.appendChild(el('b', '', fname(v, i) + '（' + ownerName(ow) + '）'));
     top.appendChild(el('span', 'ad-mood ' + (p.m > 0 ? 'up' : p.m < 0 ? 'dn' : ''), sgn(p.m).replace('±0', '0') + ' ' + MOOD(p.m)));
-    if (ow >= 0 && v.stars && v.stars[ow]) top.appendChild(el('span', 'ad-mood', '⭐' + v.stars[ow]));
     if (p.m === hi && hi !== lo) top.appendChild(el('em', 'tag hi', '心情最高'));
     if (p.m === lo && hi !== lo) top.appendChild(el('em', 'tag lo', '心情最低'));
     r.appendChild(top);
@@ -745,6 +812,7 @@
     set.appendChild(opts(api, '⚖️ 牌的比例：', 'ratio', [['angel', '😇 天使比較多'], ['even', '一樣多'], ['devil', '😈 惡魔比較多']], 'even'));
     set.appendChild(opts(api, '⚡ 天神時刻：', 'godEvery', [[0, '只有老師按才出現'], [2, '每 2 輪自動'], [3, '每 3 輪自動']], 0));
     set.appendChild(opts(api, '⭐ 機會命運評分：', 'judge', [['teacher', '老師評分'], ['auto', '學生說完就自動 +2']], 'teacher'));
+    set.appendChild(opts(api, '👀 學生的實際得分：', 'show', [['self', '看得到自己的'], ['end', '結束才公布']], 'self', '老師隨時都看得到所有人的'));
     set.appendChild(opts(api, '⏱️ 出牌倒數：', 'timer', [[0, '關閉'], [30, '30 秒'], [60, '60 秒']], 0, '時間到只會提醒，不會自動出牌'));
     var r2 = api.el('div', 'ad-hrow');
     r2.appendChild(hbtn(api, '', '✏️ 自訂卡片和題目', function () { customEditor(api); }));
@@ -789,6 +857,7 @@
     ts.forEach(function (T) {
       var g = T.g; if (!g) return;
       if (g.help != null) { var a = api.el('div', 'ad-alert help'); a.appendChild(api.el('b', '', '🛑 第 ' + T.no + ' 桌：' + api.name(T, g.help) + ' 需要休息')); a.appendChild(hbtn(api, 'on', '處理好了，繼續', function () { api.act(T, { t: 'resume' }); })); dyn.appendChild(a); }
+      jqBoxes(T, api).forEach(function (x) { dyn.appendChild(x); });
       if (g.ev && g.cfg.judge === 'teacher') {
         var e = api.el('div', 'ad-alert ev');
         e.appendChild(api.el('b', '', '⚡ 第 ' + T.no + ' 桌・' + api.name(T, g.ev.seat) + '・' + (g.ev.k === 'chance' ? '🍀 機會' : '🌀 命運')));
@@ -801,8 +870,52 @@
     var pz = ts.filter(function (T) { return T.g && T.g.paused; }).length;
     if (pz) dyn.appendChild(api.el('div', 'ad-alert', '⏸️ 有 ' + pz + ' 桌暫停中，按「▶️ 全班繼續」恢復'));
   };
+  function jqBoxes(T, api) {
+    var g = T.g;
+    return (g.jq || []).map(function (q) {
+      var c = C(q.c), e = api.el('div', 'ad-alert ev');
+      e.appendChild(api.el('b', '', '🧠 第 ' + T.no + ' 桌・' + api.name(T, q.s) + ' 用了「' + c.e + ' ' + c.n + '」' + (q.p != null ? '對【' + FACES[g.P[q.p].f].i + FACES[g.P[q.p].f].n + '】' : '')));
+      e.appendChild(api.el('span', 'ad-q', q.from ? '把「' + C(q.from).t + '」轉念。聽他說完，給 0～5 分' : '聽他說完自己的答案，給 0～5 分（只加分、不扣分）'));
+      [0, 1, 2, 3, 4, 5].forEach(function (n) { e.appendChild(hbtn(api, n >= 4 ? 'on' : '', n + ' 分', function () { api.act(T, { t: 'jscore', id: q.id, pts: n }); api.render(); })); });
+      return e;
+    });
+  }
+  function hostTb(T, api) { return { seat: -2, seats: T.seats.map(function (id, i) { return { bot: api.isBot(T, i), name: api.name(T, i) }; }) }; }
+  function pstat(g, s) {
+    var o = { a: 0, A: 0, d: 0, s: 0, g: 0 };
+    (g.logs || []).forEach(function (lg) { if (lg.s !== s || lg.T) return; var c = lg.c && C(lg.c); if (!c) return; if (c.k === 'a') o[c.v === 2 ? 'A' : 'a']++; else if (c.k === 'd') o[c.s ? 's' : 'd']++; else o.g++; });
+    return o;
+  }
   mod.hostTable = function (T, api) {
     var g = T.g, w = api.el('div', 'ad-ht');
+    jqBoxes(T, api).forEach(function (x) { w.appendChild(x); });
+    // 老師的天神牌
+    if (!g.res) {
+      var gw = api.el('div', 'ad-hgod'), hg = g.hg || [], ban = hg.length >= 2 && hg[hg.length - 1] === hg[hg.length - 2] ? hg[hg.length - 1] : -1;
+      gw.appendChild(api.el('b', '', '⚡ 天神牌（老師無限使用，同一張不能連續用 3 次）'));
+      var gr = api.el('div', 'ad-hrow');
+      GOD.forEach(function (c) {
+        var on = H.gsel && H.gsel.no === T.no && H.gsel.k === c.g;
+        var b = hbtn(api, on ? 'on' : '', c.e + ' ' + c.n, function () {
+          if (NEEDP[c.g] || c.g === 1) { H.gsel = on ? null : { no: T.no, k: c.g }; api.render(); return; }
+          if (!api.act(T, { t: 'gcard', k: c.g })) alert('現在不能用這張天神牌'); H.gsel = null; api.render();
+        });
+        if (c.g === ban || (c.g === 7 && !g.lastDevil) || g.wait) { b.disabled = true; b.classList.add('ad-dis'); }
+        b.title = c.d; gr.appendChild(b);
+      });
+      gw.appendChild(gr);
+      if (ban >= 0) gw.appendChild(api.el('small', 'ad-hnote', '「' + GOD[ban].e + ' ' + GOD[ban].n + '」已經連續用了 2 次，下一張請換別的天神牌。'));
+      if (!g.lastDevil) gw.appendChild(api.el('small', 'ad-hnote', '轉念牌要在有人剛出完惡魔牌之後才能用。'));
+      if (H.gsel && H.gsel.no === T.no) {
+        var k = H.gsel.k, pr2 = api.el('div', 'ad-hrow');
+        pr2.appendChild(api.el('span', 'ad-hl', GOD[k].e + ' ' + GOD[k].n + '：' + (k === 1 ? '選下一個出牌的人' : '選一個圖像')));
+        if (k === 1) T.seats.forEach(function (id, i) { if (g.out.indexOf(i) >= 0) return; pr2.appendChild(hbtn(api, '', api.name(T, i), function () { api.act(T, { t: 'gcard', k: 1, s: i }); H.gsel = null; api.render(); })); });
+        else { var ow = owners(g); g.P.forEach(function (pp, j) { var f = FACES[pp.f]; pr2.appendChild(hbtn(api, '', f.i + f.n + '（' + sgn(pp.m).replace('±0', '0') + '・' + (ow[j] >= 0 ? api.name(T, ow[j]) : '沒有人') + '）', function () { if (!api.act(T, { t: 'gcard', k: k, p: j })) alert('現在不能用這張天神牌'); H.gsel = null; api.render(); })); }); }
+        pr2.appendChild(hbtn(api, '', '取消', function () { H.gsel = null; api.render(); }));
+        gw.appendChild(pr2);
+      }
+      w.appendChild(gw);
+    }
     if (!g.res) {
       var r1 = api.el('div', 'ad-hrow');
       r1.appendChild(hbtn(api, '', '⚡ 天神降臨（這一桌）', function () { if (!api.act(T, { t: 'god' })) alert('這一桌現在不能進行（可能已經在進行，或沒有真人玩家）'); api.render(); }));
@@ -820,6 +933,25 @@
     var pr = api.el('div', 'ad-hrow');
     T.seats.forEach(function (id, i) { if (api.isBot(T, i)) return; pr.appendChild(hbtn(api, '', '⭐ ' + api.name(T, i) + (g.stars[i] ? '（' + g.stars[i] + '）' : ''), function () { api.act(T, { t: 'star', seat: i, r: H.reason }); api.render(); })); });
     sr.appendChild(pr); w.appendChild(sr);
+    // 玩家狀況（只有老師看得到）
+    var ps = api.el('div', 'ad-ps'); ps.appendChild(api.el('b', '', '👥 玩家狀況（只有老師看得到）'));
+    var htb = hostTb(T, api), hv = { P: g.P }, own = g.own;
+    T.seats.forEach(function (id, i) {
+      var c = (g.sc || [])[i] || {}, st = pstat(g, i), pp = g.P[own[i]], f = FACES[pp.f], key = T.no + '-' + i, open = H.plog === key;
+      var r = api.el('div', 'ad-psr');
+      r.appendChild(api.el('div', 'ad-psn', api.name(T, i) + (g.out.indexOf(i) >= 0 ? '（已認輸）' : '') + '　⭐ 實際得分 ' + (g.stars[i] || 0)));
+      r.appendChild(api.el('div', 'ad-pss', '得分來源：助人牌 ' + ((c.a || 0) + (c.g || 0) + (c.t || 0)) + '・天神評分 ' + (c.j || 0) + '・機會命運 ' + (c.ev || 0) + '・老師星星 ' + (c.st || 0)));
+      r.appendChild(api.el('div', 'ad-pss', '出牌：天使 ' + st.a + '・大天使 ' + st.A + '・惡魔 ' + st.d + '・酸言酸語 ' + st.s + '・天神 ' + st.g + '　｜現在的圖像：' + f.i + f.n + ' 心情 ' + sgn(pp.m).replace('±0', '0')));
+      r.appendChild(hbtn(api, open ? 'on' : '', open ? '收起出牌紀錄' : '📜 看他的出牌紀錄', function () { H.plog = open ? null : key; api.render(); }));
+      if (open) {
+        var mine = (g.logs || []).filter(function (lg) { return lg.s === i; }).reverse(), ul = api.el('div', 'ad-pslog');
+        if (!mine.length) ul.appendChild(api.el('div', '', '還沒有出牌'));
+        mine.forEach(function (lg) { ul.appendChild(api.el('div', '', logText(htb, hv, lg))); });
+        r.appendChild(ul);
+      }
+      ps.appendChild(r);
+    });
+    w.appendChild(ps);
     // 教學時刻：投影一句話
     var said = (g.logs || []).filter(function (lg) { return (lg.k === 'a' || lg.k === 'd') && C(lg.c); }).reverse();
     if (said.length) {
@@ -935,10 +1067,10 @@
   function report(api) {
     var rec = api.gx().rec || {}, ks = Object.keys(rec).sort();
     if (!ks.length) { alert('還沒有紀錄。學生玩過之後才會有資料。'); return; }
-    var head = ['學號', '名字', '玩了幾局', '贏了幾局', '天使牌', '惡魔牌', '酸言酸語牌', '天神牌', '轉念次數', '道歉修復次數', '天神星星', '星星的原因', '機會命運題', '心情快問', '我需要休息'];
+    var head = ['學號', '名字', '玩了幾局', '贏了幾局', '天使牌', '惡魔牌', '酸言酸語牌', '天神牌', '轉念次數', '道歉修復次數', '天神星星', '實際得分', '星星的原因', '機會命運題', '心情快問', '我需要休息'];
     var rows = [head].concat(ks.map(function (k) {
       var r = rec[k];
-      return [r.sid, r.name, r.rounds, r.wins, r.a || 0, r.d || 0, r.s || 0, r.g || 0, r.turn, r.apo, r.stars, Object.keys(r.sr).map(function (x) { return x + '×' + r.sr[x]; }).join('、'), r.ev.join('；'), r.moods.join(' '), r.help];
+      return [r.sid, r.name, r.rounds, r.wins, r.a || 0, r.d || 0, r.s || 0, r.g || 0, r.turn, r.apo, r.stars, r.pts || 0, Object.keys(r.sr).map(function (x) { return x + '×' + r.sr[x]; }).join('、'), r.ev.join('；'), r.moods.join(' '), r.help];
     }));
     var d = new Date(), name = '天使與惡魔_課後紀錄_' + d.getFullYear() + (d.getMonth() + 1) + d.getDate() + '.csv';
     api.download(name, '﻿' + rows.map(function (r) { return r.map(csvCell).join(','); }).join('\r\n'));
@@ -962,13 +1094,13 @@
   mod.guide = {
     student: [
       { h: '怎麼玩', html: '<ol><li>桌上有一排<b>圖像</b>，每個圖像都有<b>情緒碼錶</b>，一開始都是 0「普通」。心情可以一直往上加（沒有上限），最低是 -10「崩潰」。</li><li>每個人會祕密分到一個圖像。按住「🤫 按住看我的圖像」偷偷看，<b>不要告訴別人</b>你是哪一個！</li><li>每人手上 3 張牌。輪到你時一定要出一張牌（不能 pass），出完自動補到 3 張。</li><li><b>天使牌</b>讓圖像心情變好，<b>惡魔牌</b>讓圖像心情變差。選一個圖像（不能選自己的），<b>看著它大聲念出卡片上的話</b>。</li><li><b>天神牌</b>有特別的功能，例如迴轉、圖像大風吹、守護天使。</li><li><b>⚡ 天神時刻</b>：轉盤會轉到一位同學回答機會或命運題，答得好可以得到<b>天神星星 ⭐</b>（星星是祕密的）。</li><li>大家都出完規定張數，或有圖像掉到 -10，遊戲就結束，所有人的圖像翻開。</li></ol>' },
-      { h: '贏的方法', html: '<p><b>🏆 比賽模式：</b>翻開後，<b>自己圖像的心情＋天神星星</b>最高的人贏。</p><p><b>🤝 合作模式：</b>結束時，所有人的圖像都在 0 以上，大家一起過關！有圖像掉到 -10 就失敗。</p><table class="g-tbl"><tr><th>結果</th><th>得分</th></tr><tr><td>🏆 贏（或合作過關）</td><td>3 分</td></tr><tr><td>🤝 大家一樣高</td><td>1 分</td></tr><tr><td>💪 其他</td><td>0 分</td></tr></table><p>和電腦玩的不列入總分。</p>' },
+      { h: '贏的方法', html: '<p><b>🏆 比賽模式：</b>比的是<b>⭐ 實際得分</b>，最高的人贏。圖像的心情<b>不算分</b>，只用來決定遊戲什麼時候結束（有圖像掉到 -10，或全桌出牌次數到了）。</p><p><b>怎麼得分（只加不扣）：</b>出天使牌 +1、大天使牌 +2；天神祝福、公平之光 +3；守護天使、冷靜時間 +2；轉念牌、道歉修復、換位思考要先想一想再說出自己的話，天神（老師）給 0～5 分；機會命運題答得好、老師給的星星也會加分。惡魔牌不扣分，但也不會得分。</p><p><b>🤝 合作模式：</b>結束時，所有人的圖像都在 0 以上，大家一起過關！有圖像掉到 -10 就失敗。</p><table class="g-tbl"><tr><th>結果</th><th>得分</th></tr><tr><td>🏆 贏（或合作過關）</td><td>3 分</td></tr><tr><td>🤝 大家一樣高</td><td>1 分</td></tr><tr><td>💪 其他</td><td>0 分</td></tr></table><p>和電腦玩的不列入總分。</p>' },
       { h: '天神牌', html: '<table class="g-tbl"><tr><th>牌</th><th>功能</th></tr>' + GOD.map(function (c) { return '<tr><td>' + c.e + ' ' + c.n + '</td><td>' + c.d + '</td></tr>'; }).join('') + '</table><p>每局可以把一張手牌換掉 1 次（換完還是要出牌）。</p>' },
       { h: '說話的規則', html: '<ul><li>惡魔牌上的話是<b>卡片上的話，不是你心裡的話</b>。</li><li>要<b>照卡片念</b>，不可以自己加詞。</li><li>念惡魔牌時看著<b>圖像</b>，不要看著同學。</li><li><b>酸言酸語牌</b>表面上像在稱讚，其實是在說別人不好。卡片上有寫要用什麼語氣，也有寫「真正的意思」。</li><li>不舒服的時候，按「🛑 我需要休息」，老師會過來。</li></ul>' }
     ],
     teacher: [
       { h: '主持流程', html: '<ol><li>首頁「社會技巧/溝通訓練」→「天使與惡魔」。每桌 3～6 人（4～5 人最好）。4 人以下會多放一個沒人拿的圖像，比較不容易猜出誰是誰。</li><li>QR code 上方選<b>玩法</b>（比賽／合作）和<b>每人出牌幾次</b>（每人次數 × 人數＝這一局全桌一共出幾次牌，出完就結束）。建議第一次先玩合作模式。</li><li>老師端就是「天神」：每一桌都看得到每個圖像是誰的（圓點顏色＝玩家），學生看不到。系統會自動擋住學生出牌給自己的圖像。</li><li>上方的「⚡ 天神控制台」有所有老師的功能；點某一桌可以打開那一桌的控制（天神降臨、給星星、教學時刻、分享時刻）。</li></ol>' },
-      { h: '天神控制台', html: '<h4>上課前（⚙️ 上課設定）</h4><ul><li><b>本節主題</b>：稱讚與鼓勵、道歉與原諒、不排擠、聽懂酸言酸語、安慰與關心。這個主題的牌會多一份，機會／命運題只出這個主題。</li><li><b>牌的比例</b>：天使比較多／一樣多／惡魔比較多。第一次建議天使比較多。</li><li><b>自訂卡片和題目</b>：可以加班上真的聽到的話（每句扣掉標點至少 10 個字），也可以自己出機會／命運題。<b>題目不要提到圖像，也不要指定真實的同學</b>。</li><li><b>關掉不適合的句子</b>：班上學生有特別敏感的話，先關掉。</li><li><b>天神時刻</b>自動出現的頻率、<b>評分方式</b>、<b>出牌倒數</b>。</li></ul><h4>遊戲中</h4><ul><li><b>⏸️ 全班暫停／▶️ 繼續</b>。</li><li><b>📽️ 教學時刻</b>：點某一桌，點一句剛出的話，會投影到大螢幕並自動暫停全班，附討論問題和轉念答案。</li><li><b>😀 心情快問</b>：每個學生點出自己真正的心情，匿名統計後可以投影。</li><li><b>⚡ 天神降臨</b>：轉盤轉到一位學生回答機會（正向）或命運（危機、狀況）題，老師按 👍+3／👌+2／🤔+1 給星星。轉盤轉的是「人」，不會洩漏他的圖像；星星是祕密的，最後才加進分數。</li><li><b>🎯 天神挑戰</b>：下一輪只能出天使牌、惡魔牌要先轉念、用最溫柔的語氣、一起猜酸言酸語的真正意思、天使牌要加上具體理由。</li><li><b>⭐ 給星星</b>：看到學生做得好，點原因再點學生。原因會記在課後紀錄表。</li><li><b>🛑 學生求救</b>：學生按「我需要休息」，那一桌自動暫停，控制台會亮起來。</li></ul><h4>結束後</h4><ul><li><b>📽️ 分享時刻投影</b>：一次一個圖像，先看心情最高和最低的兩位。</li><li><b>📥 課後紀錄表</b>：用學號整理每位學生的出牌、轉念、道歉、星星原因、機會命運題、心情快問，可以用 Excel 打開，當作 IEP／社會技巧目標紀錄。</li><li><b>📝 天使任務單</b>：每位學生一張回家作業，最後附一張空白的。</li></ul>' },
+      { h: '天神控制台', html: '<h4>上課前（⚙️ 上課設定）</h4><ul><li><b>本節主題</b>：稱讚與鼓勵、道歉與原諒、不排擠、聽懂酸言酸語、安慰與關心。這個主題的牌會多一份，機會／命運題只出這個主題。</li><li><b>牌的比例</b>：天使比較多／一樣多／惡魔比較多。第一次建議天使比較多。</li><li><b>自訂卡片和題目</b>：可以加班上真的聽到的話（每句扣掉標點至少 10 個字），也可以自己出機會／命運題。<b>題目不要提到圖像，也不要指定真實的同學</b>。</li><li><b>關掉不適合的句子</b>：班上學生有特別敏感的話，先關掉。</li><li><b>天神時刻</b>自動出現的頻率、<b>評分方式</b>、<b>出牌倒數</b>。</li><li><b>學生的實際得分</b>：看得到自己的／結束才公布。</li></ul><h4>實際得分（比賽模式比這個）</h4><ul><li>只算「助人」，只加不扣：天使 +1、大天使 +2、天神祝福／公平之光 +3、守護天使／冷靜時間 +2、天神挑戰先轉念 +1。</li><li>轉念牌、道歉修復、換位思考：學生出牌後控制台會跳出「🧠 等天神評分」，聽完給 0～5 分。全桌出完牌時如果還沒評完，會等你評完才公布結果。</li><li>機會命運題的分數、給星星也會加進實際得分。</li><li>圖像心情不算分，只用來判斷遊戲結束。</li><li>老師端點某一桌，可以看到「👥 玩家狀況」：每個人的實際得分、得分來源、出了哪些牌、現在的圖像和完整出牌紀錄。</li><li>老師也可以點「⚡ 天神牌」直接用任何一張天神牌，次數不限，但同一張不能連續用 3 次。</li></ul><h4>遊戲中</h4><ul><li><b>⏸️ 全班暫停／▶️ 繼續</b>。</li><li><b>📽️ 教學時刻</b>：點某一桌，點一句剛出的話，會投影到大螢幕並自動暫停全班，附討論問題和轉念答案。</li><li><b>😀 心情快問</b>：每個學生點出自己真正的心情，匿名統計後可以投影。</li><li><b>⚡ 天神降臨</b>：轉盤轉到一位學生回答機會（正向）或命運（危機、狀況）題，老師按 👍+3／👌+2／🤔+1 給星星。轉盤轉的是「人」，不會洩漏他的圖像；星星是祕密的，最後才加進分數。</li><li><b>🎯 天神挑戰</b>：下一輪只能出天使牌、惡魔牌要先轉念、用最溫柔的語氣、一起猜酸言酸語的真正意思、天使牌要加上具體理由。</li><li><b>⭐ 給星星</b>：看到學生做得好，點原因再點學生。原因會記在課後紀錄表。</li><li><b>🛑 學生求救</b>：學生按「我需要休息」，那一桌自動暫停，控制台會亮起來。</li></ul><h4>結束後</h4><ul><li><b>📽️ 分享時刻投影</b>：一次一個圖像，先看心情最高和最低的兩位。</li><li><b>📥 課後紀錄表</b>：用學號整理每位學生的出牌、轉念、道歉、星星原因、機會命運題、心情快問，可以用 Excel 打開，當作 IEP／社會技巧目標紀錄。</li><li><b>📝 天使任務單</b>：每位學生一張回家作業，最後附一張空白的。</li></ul>' },
       { h: '上課前', html: '<ul><li>先介紹情緒碼錶（超級開心、開心、有點高興、普通、有點難過、很難過、崩潰），讓學生說說自己現在在哪一格。</li><li>和學生一起念：「卡片上的話不是我心裡的話」。</li><li>酸言酸語牌：先示範同一句「你很棒」用真心的語氣說一次、用酸的語氣說一次，讓學生聽出差別。</li><li>圖像大風吹、大家換位子這些牌會讓事情突然改變，先讓學生看過天神牌清單。</li><li>班上有被霸凌經驗的學生，請先用「關掉不適合的句子」處理。</li></ul>' },
       { h: '結束後的分享', html: '<ol><li><b>出戲：</b>每個人對旁邊的真人同學說一句天使牌的話。</li><li><b>分享：</b>請心情最高和最低的兩位先說，可以用句型：<ul>' + TIPS.map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul></li><li><b>討論：</b>不一樣的心情會不會讓我們做出不一樣的事？</li><li><b>本週天使任務：</b>發天使任務單，下次上課回報。</li></ol><p>遊戲設計：andice（社會技巧卡牌構思）。保密圖像是為了不讓特定的人成為被針對的一方，每個人都有一樣的機會被稱讚、也承受批評，體會被攻擊的人心裡的感受。</p>' }
     ]

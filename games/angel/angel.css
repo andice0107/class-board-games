@@ -193,3 +193,20 @@
 .ad-pj-tips { margin: 16px auto; max-width: 900px; text-align: left; font-size: 22px; font-weight: 700; color: #ffe082; }
 .ad-pj-tips p { margin: 4px 0; }
 .ad-proj > .btn { display: block; margin: 6px auto; }
+
+/* 實際得分、老師天神牌、玩家狀況 */
+.ad-count .ad-my { color: #e65100; font-weight: 700; }
+.ad-score { background: #fff8e1; border-radius: 14px; padding: 8px 12px; margin-bottom: 8px; }
+.ad-score h3 { margin: 0 0 6px; font-size: 17px; }
+.ad-score-r { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; padding: 4px 0; border-bottom: 1px dashed #e0d3a8; }
+.ad-score-r.me b { color: #e65100; }
+.ad-score-r small { color: #6d6d80; }
+.ad-score-n { font-size: 13px; color: #6d6d80; margin: 6px 0 0; }
+.ad-hgod { background: #e8f4fd; border-radius: 12px; padding: 8px; margin: 6px 0; display: flex; flex-direction: column; gap: 4px; }
+.ad-hgod .ad-dis { opacity: .4; cursor: not-allowed; }
+.ad-hnote { color: #c62828; font-size: 13px; }
+.ad-ps { background: #f3f0ff; border-radius: 12px; padding: 8px; margin: 6px 0; display: flex; flex-direction: column; gap: 6px; }
+.ad-psr { background: #fff; border-radius: 10px; padding: 6px 8px; display: flex; flex-direction: column; gap: 2px; align-items: flex-start; }
+.ad-psn { font-weight: 700; }
+.ad-pss { font-size: 13px; color: #555; }
+.ad-pslog { max-height: 200px; overflow-y: auto; font-size: 13px; width: 100%; display: flex; flex-direction: column; gap: 2px; border-top: 1px dashed #ccc; padding-top: 4px; }
