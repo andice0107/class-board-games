@@ -188,6 +188,7 @@
   function scOf(g, s) { g.sc = g.sc || []; return g.sc[s] = g.sc[s] || { a: 0, g: 0, j: 0, ev: 0, st: 0, t: 0 }; }
   function addPts(g, s, key, n, notify, why) {
     if (!n || s < 0) return;
+    if (g._half) { n = n / 2; why = (why || '') + '・天神給一半'; }
     scOf(g, s)[key] += n; g.stars[s] = (g.stars[s] || 0) + n;
     rec(g, { seat: s, k: 'pts', n: n });
     if (notify && g.cfg.show !== 'end') notify(s, '⭐ 實際得分 +' + n + (why ? '（' + why + '）' : ''));
@@ -346,7 +347,7 @@
     return shuffle(deck);
   }
   var mod = {
-    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 21,
+    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 22,
     reasons: REASONS,
     opts: [
       { k: 'mode', label: '玩法：', list: [['comp', '🏆 比賽（心情＋星星最高的人贏）'], ['coop', '🤝 合作（大家都在 0 以上才過關）']] },
@@ -461,7 +462,8 @@
         var pd = g.pend; if (!pd || pd.id !== d.id) return false;
         g.pend = null;
         if (!d.ok) { g.cnt++; rec(g, { seat: pd.s, k: 'redo' }); notify(pd.s, '🔁 天神請你再念一次（要照卡片上的話和語氣念）'); return true; }
-        var okp = g.hands[pd.s] && g.hands[pd.s][pd.i] === pd.c && mod.act(g, pd.s, { t: 'play', i: pd.i, p: pd.p, s: pd.to, n: g.cnt, _ok: REVOK }, notify);
+        g._half = !!d.half;
+        try { var okp = g.hands[pd.s] && g.hands[pd.s][pd.i] === pd.c && mod.act(g, pd.s, { t: 'play', i: pd.i, p: pd.p, s: pd.to, n: g.cnt, _ok: REVOK }, notify); } finally { delete g._half; }
         if (!okp) { g.cnt++; notify(pd.s, '牌局改變了，請重新選一張牌'); }
         return true;
       }
@@ -964,6 +966,7 @@
     e.appendChild(api.el('b', '', '🗣️ 第 ' + T.no + ' 桌・' + api.name(T, pd.s) + ' 念完了，是否讓他通過？'));
     e.appendChild(api.el('span', 'ad-q', (c.k === 'a' ? '😇 ' : '😈 ') + '對【' + f.i + f.n + '】：「' + c.t + '」' + (c.s ? '（語氣：' + c.tone + '）' : '')));
     e.appendChild(hbtn(api, 'on', '✅ 通過', function () { api.act(T, { t: 'rev', id: pd.id, ok: true }); api.render(); }));
+    if (c.k === 'a') e.appendChild(hbtn(api, '', '🌗 半分通過（天使 +' + c.v + ' 只算 ' + (c.v / 2) + ' 分）', function () { api.act(T, { t: 'rev', id: pd.id, ok: true, half: true }); api.render(); }));
     e.appendChild(hbtn(api, '', '🔁 請他再念一次', function () { api.act(T, { t: 'rev', id: pd.id, ok: false }); api.render(); }));
     return e;
   }
