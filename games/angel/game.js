@@ -348,7 +348,7 @@
     return shuffle(deck);
   }
   var mod = {
-    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 25,
+    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 26,
     reasons: REASONS,
     opts: [
       { k: 'mode', label: '玩法：', list: [['comp', '🏆 比賽（心情＋星星最高的人贏）'], ['coop', '🤝 合作（大家都在 0 以上才過關）']] },
@@ -359,7 +359,7 @@
     seatColor: function (i) { return SEATC[i]; },
     init: function (n, o) {
       o = o || {}; n = Math.max(3, Math.min(6, n || 4));
-      var x = o._x || {}, cfg = { topic: x.topic || 'all', w: x.w || WDEF.slice(), custom: x.custom || [], off: x.off || [], qs: x.qs || [], godEvery: +x.godEvery || 0, judge: o._solo ? 'auto' : 'teacher', timer: +x.timer || 0, show: x.show === 'end' ? 'end' : 'self', rev: 'on' };   // 多人：凡是要念、要說的，一律天神審查
+      var x = o._x || {}, cfg = { topic: x.topic || 'all', w: x.w || WDEF.slice(), custom: x.custom || [], off: x.off || [], qs: x.qs || [], godEvery: x.godEvery == null ? (o._solo ? 0 : 2) : +x.godEvery || 0, judge: o._solo ? 'auto' : 'teacher', timer: +x.timer || 0, show: x.show === 'self' || (x.show == null && o._solo) ? 'self' : 'end', rev: 'on' };   // 多人：凡是要念、要說的，一律天神審查
       var nf = n <= 4 ? n + 1 : n, faces = shuffle(FACES.map(function (f, i) { return i; })).slice(0, nf);
       var hum = []; for (var s = 0; s < n; s++) hum.push(o._bots ? !o._bots[s] : true);
       var g = { np: n, mode: o.mode === 'coop' ? 'coop' : 'comp', len: Math.max(3, Math.min(20, +o.len || 8)), cfg: cfg, cx: cfg.custom, hum: hum,
@@ -950,8 +950,8 @@
     set.appendChild(api.el('p', 'empty', '設定在「下一局」或新開的桌才會生效。'));
     set.appendChild(opts(api, '📚 本節主題：', 'topic', TOPICS, 'all', '這個主題的牌會變多，機會／命運題只出這個主題'));
     set.appendChild(ratioRow(api));
-    set.appendChild(opts(api, '⚡ 天神時刻：', 'godEvery', [[0, '只有老師按才出現'], [2, '每 2 輪自動'], [3, '每 3 輪自動']], 0));
-    set.appendChild(opts(api, '👀 學生的實際得分：', 'show', [['self', '看得到自己的'], ['end', '結束才公布']], 'self', '隨時可以切換，正在玩的桌也馬上生效；學生只看得到自己的', function (v) { api.actAll({ t: 'show', v: v }); }));
+    set.appendChild(opts(api, '⚡ 天神時刻：', 'godEvery', [[0, '只有老師按才出現'], [2, '每 2 輪自動'], [3, '每 3 輪自動']], 2));
+    set.appendChild(opts(api, '👀 學生的實際得分：', 'show', [['self', '看得到自己的'], ['end', '結束才公布']], 'end', '隨時可以切換，正在玩的桌也馬上生效；學生只看得到自己的', function (v) { api.actAll({ t: 'show', v: v }); }));
     set.appendChild(opts(api, '⏱️ 出牌倒數：', 'timer', [[0, '關閉'], [30, '30 秒'], [60, '60 秒']], 0, '時間到只會提醒，不會自動出牌'));
     var r2 = api.el('div', 'ad-hrow');
     r2.appendChild(hbtn(api, '', '✏️ 自訂卡片和題目', function () { customEditor(api); }));
