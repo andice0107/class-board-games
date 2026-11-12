@@ -104,7 +104,7 @@
       var t = String(x.t || '').trim().slice(0, 40); if (!t || wlen(t) < MINW || (x.k !== 'a' && x.k !== 'd')) return;
       var h = 0, s = x.k + t; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
       var id = 'x' + h.toString(36);
-      CARD[id] = { id: id, k: x.k, t: t, c: '老師自訂', v: x.v === 2 ? 2 : 1, r: x.k === 'd' ? (String(x.r || '').trim().slice(0, 40) || '（想一想可以怎麼好好說）') : null, custom: 1 };
+      CARD[id] = { id: id, k: x.k, t: t, c: '天神自訂', v: x.v === 2 ? 2 : 1, r: x.k === 'd' ? (String(x.r || '').trim().slice(0, 40) || '（想一想可以怎麼好好說）') : null, custom: 1 };
       ids.push(id);
     });
     return ids;
@@ -140,7 +140,7 @@
   var STAR_R = ['語氣很溫暖', '有耐心等待', '主動道歉', '說出真正的意思', '好好回答問題', '遵守規則', '幫助同學'];
   var MOODS = [['😄', '很開心'], ['🙂', '還不錯'], ['😐', '普通'], ['🙁', '有點難過'], ['😢', '很不舒服']];
   var MOOD = function (m) { return m >= 10 ? '超級開心' : m >= 6 ? '開心' : m >= 1 ? '有點高興' : m === 0 ? '普通' : m >= -5 ? '有點難過' : m >= -9 ? '很難過' : '崩潰'; };
-  var REASONS = { joy: '有圖像的心情到了 +10！', crash: '有圖像的心情掉到 -10，崩潰了…', time: '大家都出完牌了', coop: '所有人的圖像心情都在 0 以上，全體過關！', coopfail: '還有圖像的心情低於 0，下次再一起努力', coopcrash: '有圖像崩潰了，合作失敗', tie: '大家的實際得分一樣高', resign: '其他人都認輸了', left: '其他人都離開了', teacher: '老師結束這局' };
+  var REASONS = { joy: '有圖像的心情到了 +10！', crash: '有圖像的心情掉到 -10，崩潰了…', time: '大家都出完牌了', coop: '所有人的圖像心情都在 0 以上，全體過關！', coopfail: '還有圖像的心情低於 0，下次再一起努力', coopcrash: '有圖像崩潰了，合作失敗', tie: '大家的實際得分一樣高', resign: '其他人都認輸了', left: '其他人都離開了', teacher: '天神結束這局' };
   function el(t, c, x) { var e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; }
   function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
   function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
@@ -189,6 +189,11 @@
     scOf(g, s)[key] += n; g.stars[s] = (g.stars[s] || 0) + n;
     rec(g, { seat: s, k: 'pts', n: n });
     if (notify && g.cfg.show !== 'end') notify(s, '⭐ 實際得分 +' + n + (why ? '（' + why + '）' : ''));
+  }
+  function hostGodOK(g) {   // 老師現在能用的天神牌：同一張不能連續 3 次；轉念牌要有人剛出過惡魔牌
+    if (g.res || g.wait) return [];
+    var hg = g.hg || [], ban = hg.length >= 2 && hg[hg.length - 1] === hg[hg.length - 2] ? hg[hg.length - 1] : -1;
+    return GOD.map(function (c) { return c.g; }).filter(function (k) { return k !== ban && !(k === 7 && !g.lastDevil); });
   }
   function autoJudge(g, seat) { return g.solo || g.cfg.judge === 'auto' || !g.hum[seat]; }
   function scoreJ(g, id, pts, notify) {
@@ -291,7 +296,7 @@
     return shuffle(deck);
   }
   var mod = {
-    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 9,
+    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 10,
     reasons: REASONS,
     opts: [
       { k: 'mode', label: '玩法：', list: [['comp', '🏆 比賽（心情＋星星最高的人贏）'], ['coop', '🤝 合作（大家都在 0 以上才過關）']] },
@@ -396,19 +401,24 @@
       if (t === 'star') {
         var s = d.seat | 0; if (s < 0 || s >= g.np) return false;
         rec(g, { seat: s, k: 'star', r: d.r || '' });
-        addPts(g, s, 'st', 1, notify, d.r || '老師給的星星'); g.cnt++; return true;
+        addPts(g, s, 'st', 1, notify, d.r || '天神給的星星'); g.cnt++; return true;
       }
       if (t === 'jscore') return scoreJ(g, d.id, d.pts, notify);
       if (t === 'show') { g.cfg.show = d.v === 'end' ? 'end' : 'self'; g.cnt++; return true; }
+      if (t === 'grand') {   // 天神隨性點：從現在能用的天神牌裡隨機挑一張，目標也隨機
+        var ok = hostGodOK(g); if (!ok.length) return false;
+        var rk = pick(ok), rd = { t: 'gcard', k: rk };
+        if (NEEDP[rk]) rd.p = Math.floor(Math.random() * g.P.length);
+        if (rk === 1) { var cand = alive(g).filter(function (x) { return x !== turnSeat(g); }); rd.s = cand.length ? pick(cand) : turnSeat(g); }
+        d = rd; t = 'gcard';
+      }
       if (t === 'gcard') {   // 老師（天神）用天神牌：不限次數，但同一張不能連續 3 次
         if (g.res || g.wait) return false;
-        var k = d.k | 0, gc = GOD[k]; if (!gc) return false;
+        var k = d.k | 0, gc = GOD[k]; if (!gc || hostGodOK(g).indexOf(k) < 0) return false;
         var hg = g.hg = g.hg || [];
-        if (hg.length >= 2 && hg[hg.length - 1] === k && hg[hg.length - 2] === k) return false;
         var gp = null, gs = null;
         if (NEEDP[k]) { gp = +d.p; if (!(gp >= 0 && gp < g.P.length)) return false; }
         if (k === 1) { gs = +d.s; if (!(gs >= 0 && gs < g.np) || g.out.indexOf(gs) >= 0) return false; }
-        if (k === 7 && !g.lastDevil) return false;
         var glg = { k: 'g', c: gc.id, s: -1, T: 1, p: gp, d: 0 };
         godFx(g, -1, gc, gp, gs, glg, null, -1);
         hg.push(k); if (hg.length > 6) hg.shift();
@@ -519,7 +529,7 @@
   /* ---------- 學生端 ---------- */
   var L = { sel: -1, pick: null, sent: -1, round: -1, key: -1, peek: false, spin: {}, dec: {}, tick: null };
   function short(tb, i) { var s = tb.seats[i]; return s.bot ? '電腦 ' + (i + 1) : s.name.replace(/（.*）/, ''); }
-  function who(tb, i) { return i < 0 ? '天神（老師）' : i === tb.seat ? '你' : short(tb, i); }
+  function who(tb, i) { return i < 0 ? '天神' : i === tb.seat ? '你' : short(tb, i); }
   function fname(v, i) { var f = FACES[v.P[i].f]; return f.i + f.n; }
   function sgn(d) { return d > 0 ? '+' + d : d < 0 ? '' + d : '±0'; }
   function chalText(k) { for (var i = 0; i < CHAL.length; i++) if (CHAL[i][0] === k) return CHAL[i][1]; return ''; }
@@ -589,7 +599,7 @@
       if (c && c.k === 'g' && c.g === 4 && lg.s !== tb.seat && !lg.T) fx.toast('🌪️ 圖像大風吹！按住「我的圖像」看看你現在是誰');
       if (lg.T && c) {   // 老師（天神）臨時出天神牌：取消正在選的牌，提醒大家
         var mid = L.sel >= 0 || L.pick; L.sel = -1; L.pick = null;
-        fx.toast('⚡ 天神（老師）用了「' + c.e + ' ' + c.n + '」！' + (c.g === 4 ? '按住「我的圖像」看看你現在是誰。' : '') + (v.turn === tb.seat && !tb.res ? (mid ? '剛剛選的牌取消了，請重新選一張。' : '輪到你出牌。') : ''));
+        fx.toast('⚡ 天神用了「' + c.e + ' ' + c.n + '」！' + (c.g === 4 ? '按住「我的圖像」看看你現在是誰。' : '') + (v.turn === tb.seat && !tb.res ? (mid ? '剛剛選的牌取消了，請重新選一張。' : '輪到你出牌。') : ''));
       }
       if (v.turn === tb.seat && !tb.res && !v.ev) setTimeout(function () { fx.snd('turn'); }, 500);
     }
@@ -612,9 +622,9 @@
     // 狀態
     var st = el('div', 'ad-status');
     if (tb.res) st.textContent = '這局結束了！大家的圖像翻開囉';
-    else if (v.wait) st.textContent = '🧠 牌出完了！等天神（老師）評完分就公布結果';
+    else if (v.wait) st.textContent = '🧠 牌出完了！等天神評完分就公布結果';
     else if (out) st.textContent = '你已經認輸，正在觀看';
-    else if (hold) st.textContent = v.ev ? '⚡ 天神時刻！' : v.help ? '有同學需要休息一下，請等老師' : v.paused ? '⏸️ 老師暫停了，請看大螢幕' : '請先回答心情快問';
+    else if (hold) st.textContent = v.ev ? '⚡ 天神時刻！' : v.help ? '有人需要休息一下，請等天神' : v.paused ? '⏸️ 天神暫停了，請看大螢幕' : '請先回答心情快問';
     else if (myTurn) { st.className = 'ad-status me'; st.textContent = stuck ? '你的牌現在都不能用，按下面「🔁 換一張新牌」' : !selC ? '輪到你了！選一張牌' : !tg ? '這張牌現在不能用，換一張' : tg.p ? '點一個發光的圖像' : tg.s ? '選下一個出牌的人' : '按下面的按鈕使用這張牌'; }
     else st.textContent = '輪到 ' + who(tb, v.turn) + ' 出牌…';
     if (v.left != null && !tb.res && !hold) {
@@ -691,7 +701,7 @@
       if (stuck) tools.appendChild(ctx.button('ad-btn go', '🔁 換一張新牌（不算出牌）', function () { var i = L.sel >= 0 ? L.sel : 0; L.sel = -1; ctx.send('dump', { i: i, n: v.cnt }); L.sent = v.cnt; ctx.rerender(); }));
       if (myTurn && selC && !v.swapped && !stuck) tools.appendChild(ctx.button('ad-btn', '🔁 換掉這張（每局 1 次）', function () { if (confirm('把這張牌換成一張新的？換完還是要出牌喔（每局只能換 1 次）')) { var i = L.sel; L.sel = -1; ctx.send('swap', { i: i, n: v.cnt }); L.sent = v.cnt; ctx.rerender(); } }));
       if (myTurn && tg && tg.now && !L.pick) tools.appendChild(ctx.button('ad-btn go', '⚡ 使用這張牌', function () { L.pick = {}; ctx.rerender(); }));
-      if (!v.help && !v.ev) tools.appendChild(ctx.button('ad-btn help', '🛑 我需要休息', function () { if (confirm('要請老師過來嗎？這一桌會先暫停。')) ctx.send('help', {}); }));
+      if (!v.help && !v.ev) tools.appendChild(ctx.button('ad-btn help', '🛑 我需要休息', function () { if (confirm('要請天神過來嗎？這一桌會先暫停。')) ctx.send('help', {}); }));
       tools.appendChild(ctx.button('ad-btn', '🏳️', function () { if (confirm('確定要認輸嗎？')) ctx.send('resign', {}); }));
       tools.appendChild(ctx.emoteButton('ad-btn'));
       wrap.appendChild(tools);
@@ -701,7 +711,7 @@
     if (!tb.res) {
       if (v.ev) wrap.appendChild(evBox(tb, v, ctx));
       else if (v.moodQ && v.moodMine == null && !out) wrap.appendChild(moodBox(v, ctx));
-      else if (v.help || v.paused) { var po = el('div', 'ad-ov soft'), pb = el('div', 'ad-ovb god'); pb.appendChild(el('div', 'ad-ovh', v.help ? '🛑 暫停一下' : '⏸️ 老師暫停了')); pb.appendChild(el('p', 'ad-ovhelp', v.help ? '有同學需要休息一下，老師馬上過來。大家先等一等。' : '請看大螢幕，聽老師說明。')); po.appendChild(pb); wrap.appendChild(po); }
+      else if (v.help || v.paused) { var po = el('div', 'ad-ov soft'), pb = el('div', 'ad-ovb god'); pb.appendChild(el('div', 'ad-ovh', v.help ? '🛑 暫停一下' : '⏸️ 天神暫停了')); pb.appendChild(el('p', 'ad-ovhelp', v.help ? '有人需要休息一下，天神馬上過來。大家先等一等。' : '請看大螢幕，聽天神說明。')); po.appendChild(pb); wrap.appendChild(po); }
     }
     box.appendChild(wrap);
     // 出牌紀錄：一次剛好看得到 5 則，其他的用捲軸往下看
@@ -722,7 +732,7 @@
       bx.appendChild(el('div', 'ad-ev-k ' + e.k, e.k === 'chance' ? '🍀 機會' : '🌀 命運'));
       bx.appendChild(el('p', 'ad-ovhelp', mine ? '轉到你了！不用出牌，請大聲回答：' : '轉到 ' + who(tb, e.seat) + '！請聽他回答：'));
       bx.appendChild(el('p', 'ad-ovline', e.q));
-      bx.appendChild(el('p', 'ad-ovnote', v.judge === 'auto' ? '說完之後按「我說完了」，可以得到天神星星 ⭐' : '說完之後，天神（老師）會給星星 ⭐。星星是祕密的，最後才會加進分數。'));
+      bx.appendChild(el('p', 'ad-ovnote', v.judge === 'auto' ? '說完之後按「我說完了」，可以得到天神星星 ⭐' : '說完之後，天神會給星星 ⭐。星星是祕密的，最後才會加進分數。'));
       if (mine && v.judge === 'auto') { var row = el('div', 'ad-ovbtns'); var b = el('button', 'ad-btn go', '🗣️ 我說完了'); b.type = 'button'; b.addEventListener('click', function () { ctx.send('evdone', {}); }); row.appendChild(b); bx.appendChild(row); }
     }
     ov.appendChild(bx); return ov;
@@ -730,7 +740,7 @@
   function moodBox(v, ctx) {
     var ov = el('div', 'ad-ov'), bx = el('div', 'ad-ovb god');
     bx.appendChild(el('div', 'ad-ovh', '😀 心情快問'));
-    bx.appendChild(el('p', 'ad-ovhelp', '不是圖像的心情，是「你自己」現在真正的心情。只有老師看得到，同學看不到。'));
+    bx.appendChild(el('p', 'ad-ovhelp', '不是圖像的心情，是「你自己」現在真正的心情。只有天神看得到，其他人看不到。'));
     var row = el('div', 'ad-moods');
     MOODS.forEach(function (m, i) { var b = el('button', 'ad-moodb'); b.type = 'button'; b.innerHTML = '<span>' + m[0] + '</span><small>' + m[1] + '</small>'; b.addEventListener('click', function () { ctx.snd('tap'); ctx.send('mood', { v: i, id: v.moodQ }); }); row.appendChild(b); });
     bx.appendChild(row); ov.appendChild(bx); return ov;
@@ -752,7 +762,7 @@
     if (v.chal === 'gentle' && line) bx.appendChild(el('p', 'ad-ovtone', '🎵 挑戰：用最溫柔的語氣念'));
     if (v.chal === 'why' && c.k === 'a') bx.appendChild(el('p', 'ad-ovtone', '🌟 挑戰：念完再加一句「因為……」說出具體的理由'));
     if (c.k === 'd') bx.appendChild(el('p', 'ad-ovnote', '這是卡片上的話，不是你心裡的話。照卡片念，不要自己加詞。'));
-    if (c.k === 'g' && JUDGE[c.g]) bx.appendChild(el('p', 'ad-ovnote', v.solo || v.judge === 'auto' ? '想一想再說，說完可以得到 3 分。' : '先想一想再說出自己的話，天神（老師）會依你的回答給 0～5 分。'));
+    if (c.k === 'g' && JUDGE[c.g]) bx.appendChild(el('p', 'ad-ovnote', v.solo || v.judge === 'auto' ? '想一想再說，說完可以得到 3 分。' : '先想一想再說出自己的話，天神會依你的回答給 0～5 分。'));
     var row = el('div', 'ad-ovbtns');
     var b1 = el('button', 'ad-btn go', line && c.g !== 11 ? '🗣️ 我念完了，出牌' : c.g === 11 ? '🌬️ 呼吸完了' : '⚡ 確定使用'); b1.type = 'button'; b1.addEventListener('click', ok);
     var b2 = el('button', 'ad-btn', '取消'); b2.type = 'button'; b2.addEventListener('click', cancel);
@@ -768,7 +778,7 @@
       var ss = v.order.slice().sort(function (a, b) { return (v.stars[b] || 0) - (v.stars[a] || 0); });
       ss.forEach(function (s) { var c = (v.sc && v.sc[s]) || {}, r = el('div', 'ad-score-r' + (s === tb.seat ? ' me' : ''));
         r.appendChild(el('b', '', (s === tb.seat ? '⭐ 你' : short(tb, s)) + '：' + (v.stars[s] || 0) + ' 分'));
-        r.appendChild(el('small', '', '助人牌 ' + ((c.a || 0) + (c.g || 0) + (c.t || 0)) + '・天神評分 ' + (c.j || 0) + '・機會命運 ' + (c.ev || 0) + '・老師星星 ' + (c.st || 0)));
+        r.appendChild(el('small', '', '助人牌 ' + ((c.a || 0) + (c.g || 0) + (c.t || 0)) + '・天神評分 ' + (c.j || 0) + '・機會命運 ' + (c.ev || 0) + '・天神星星 ' + (c.st || 0)));
         sb.appendChild(r); });
       sb.appendChild(el('p', 'ad-score-n', '圖像的心情不算分：聽到不同的話會有不同的心情，這是很正常的。'));
       w.appendChild(sb);
@@ -856,6 +866,7 @@
     live.appendChild(hbtn(api, '', '⏸️ 全班暫停', function () { api.actAll({ t: 'pause' }); api.render(); }));
     live.appendChild(hbtn(api, '', '▶️ 全班繼續', function () { api.actAll({ t: 'resume' }); api.render(); }));
     live.appendChild(hbtn(api, '', '😀 心情快問', function () { H.moodId = Date.now() % 1e9; api.gx().moodId = H.moodId; api.actAll({ t: 'mood', id: H.moodId }); api.render(); moodProj(api); }));
+    live.appendChild(hbtn(api, '', '🎲 天神隨性點（每桌各隨機一張天神牌）', function () { var n = api.actAll({ t: 'grand' }); if (!n) alert('目前沒有可以用天神牌的桌'); api.render(); }));
     live.appendChild(hbtn(api, '', '⚡ 天神降臨（每桌各一位）', function () { var n = api.actAll({ t: 'god' }); if (!n) alert('目前沒有可以進行天神時刻的桌（可能已經在進行或已結束）'); }));
     p.appendChild(live);
     var ch = api.el('div', 'ad-hrow'); ch.appendChild(api.el('span', 'ad-hl', '🎯 天神挑戰（下一輪）：'));
@@ -925,6 +936,11 @@
     if (!g.res) {
       var gw = api.el('div', 'ad-hgod'), hg = g.hg || [], ban = hg.length >= 2 && hg[hg.length - 1] === hg[hg.length - 2] ? hg[hg.length - 1] : -1;
       gw.appendChild(api.el('b', '', '⚡ 天神牌（老師無限使用，同一張不能連續用 3 次）'));
+      var rr0 = api.el('div', 'ad-hrow');
+      rr0.appendChild(hbtn(api, 'on', '🎲 天神隨性點（隨機用一張）', function () { H.gsel = null; if (!api.act(T, { t: 'grand' })) alert('這一桌現在不能用天神牌'); api.render(); }));
+      var lastT = null; (g.logs || []).forEach(function (lg) { if (lg.T) lastT = lg; });
+      if (lastT) rr0.appendChild(api.el('small', 'ad-hl', '上一次天神用了：' + logText(hostTb(T, api), { P: g.P }, lastT).replace(/^⚡ 天神 用了天神牌/, '')));
+      gw.appendChild(rr0);
       var gr = api.el('div', 'ad-hrow');
       GOD.forEach(function (c) {
         var on = H.gsel && H.gsel.no === T.no && H.gsel.k === c.g;
@@ -1125,10 +1141,10 @@
 
   mod.guide = {
     student: [
-      { h: '怎麼玩', html: '<ol><li>桌上有一排<b>圖像</b>，每個圖像都有<b>情緒碼錶</b>，一開始都是 0「普通」。心情可以一直往上加（沒有上限），最低是 -10「崩潰」。</li><li>每個人會祕密分到一個圖像。按住「🤫 按住看我的圖像」偷偷看，<b>不要告訴別人</b>你是哪一個！</li><li>每人手上 3 張牌。輪到你時一定要出一張牌（不能 pass），出完自動補到 3 張。</li><li><b>天使牌</b>讓圖像心情變好，<b>惡魔牌</b>讓圖像心情變差。選一個圖像（不能選自己的），<b>看著它大聲念出卡片上的話</b>。</li><li><b>天神牌</b>有特別的功能，例如迴轉、圖像大風吹、守護天使。</li><li><b>⚡ 天神時刻</b>：轉盤會轉到一位同學回答機會或命運題，答得好可以得到<b>天神星星 ⭐</b>（星星是祕密的）。</li><li>大家都出完規定張數，或有圖像掉到 -10，遊戲就結束，所有人的圖像翻開。</li></ol>' },
-      { h: '贏的方法', html: '<p><b>🏆 比賽模式：</b>比的是<b>⭐ 實際得分</b>，最高的人贏。圖像的心情<b>不算分</b>，只用來決定遊戲什麼時候結束（有圖像掉到 -10，或全桌出牌次數到了）。</p><p><b>怎麼得分（只加不扣）：</b>出天使牌 +1、大天使牌 +2；天神祝福、公平之光 +3；守護天使、冷靜時間 +2；轉念牌、道歉修復、換位思考要先想一想再說出自己的話，天神（老師）給 0～5 分；機會命運題答得好、老師給的星星也會加分。惡魔牌不扣分，但也不會得分。</p><p><b>🤝 合作模式：</b>結束時，所有人的圖像都在 0 以上，大家一起過關！有圖像掉到 -10 就失敗。</p><table class="g-tbl"><tr><th>結果</th><th>得分</th></tr><tr><td>🏆 贏（或合作過關）</td><td>3 分</td></tr><tr><td>🤝 大家一樣高</td><td>1 分</td></tr><tr><td>💪 其他</td><td>0 分</td></tr></table><p>和電腦玩的不列入總分。</p>' },
+      { h: '怎麼玩', html: '<ol><li>桌上有一排<b>圖像</b>，每個圖像都有<b>情緒碼錶</b>，一開始都是 0「普通」。心情可以一直往上加（沒有上限），最低是 -10「崩潰」。</li><li>每個人會祕密分到一個圖像。按住「🤫 按住看我的圖像」偷偷看，<b>不要告訴別人</b>你是哪一個！</li><li>每人手上 3 張牌。輪到你時一定要出一張牌（不能 pass），出完自動補到 3 張。</li><li><b>天使牌</b>讓圖像心情變好，<b>惡魔牌</b>讓圖像心情變差。選一個圖像（不能選自己的），<b>看著它大聲念出卡片上的話</b>。</li><li><b>天神牌</b>有特別的功能，例如迴轉、圖像大風吹、守護天使。</li><li><b>⚡ 天神時刻</b>：轉盤會轉到一位玩家回答機會或命運題，答得好可以得到<b>天神星星 ⭐</b>（星星是祕密的）。</li><li>大家都出完規定張數，或有圖像掉到 -10，遊戲就結束，所有人的圖像翻開。</li></ol>' },
+      { h: '贏的方法', html: '<p><b>🏆 比賽模式：</b>比的是<b>⭐ 實際得分</b>，最高的人贏。圖像的心情<b>不算分</b>，只用來決定遊戲什麼時候結束（有圖像掉到 -10，或全桌出牌次數到了）。</p><p><b>怎麼得分（只加不扣）：</b>出天使牌 +1、大天使牌 +2；天神祝福、公平之光 +3；守護天使、冷靜時間 +2；轉念牌、道歉修復、換位思考要先想一想再說出自己的話，天神給 0～5 分；機會命運題答得好、天神給的星星也會加分。惡魔牌不扣分，但也不會得分。</p><p><b>🤝 合作模式：</b>結束時，所有人的圖像都在 0 以上，大家一起過關！有圖像掉到 -10 就失敗。</p><table class="g-tbl"><tr><th>結果</th><th>得分</th></tr><tr><td>🏆 贏（或合作過關）</td><td>3 分</td></tr><tr><td>🤝 大家一樣高</td><td>1 分</td></tr><tr><td>💪 其他</td><td>0 分</td></tr></table><p>和電腦玩的不列入總分。</p>' },
       { h: '天神牌', html: '<table class="g-tbl"><tr><th>牌</th><th>功能</th></tr>' + GOD.map(function (c) { return '<tr><td>' + c.e + ' ' + c.n + '</td><td>' + c.d + '</td></tr>'; }).join('') + '</table><p>每局可以把一張手牌換掉 1 次（換完還是要出牌）。</p>' },
-      { h: '說話的規則', html: '<ul><li>惡魔牌上的話是<b>卡片上的話，不是你心裡的話</b>。</li><li>要<b>照卡片念</b>，不可以自己加詞。</li><li>念惡魔牌時看著<b>圖像</b>，不要看著同學。</li><li><b>酸言酸語牌</b>表面上像在稱讚，其實是在說別人不好。卡片上有寫要用什麼語氣，也有寫「真正的意思」。</li><li>不舒服的時候，按「🛑 我需要休息」，老師會過來。</li></ul>' }
+      { h: '說話的規則', html: '<ul><li>惡魔牌上的話是<b>卡片上的話，不是你心裡的話</b>。</li><li>要<b>照卡片念</b>，不可以自己加詞。</li><li>念惡魔牌時看著<b>圖像</b>，不要看著同學。</li><li><b>酸言酸語牌</b>表面上像在稱讚，其實是在說別人不好。卡片上有寫要用什麼語氣，也有寫「真正的意思」。</li><li>不舒服的時候，按「🛑 我需要休息」，天神會過來。</li></ul>' }
     ],
     teacher: [
       { h: '主持流程', html: '<ol><li>首頁「社會技巧/溝通訓練」→「天使與惡魔」。每桌 3～6 人（4～5 人最好）。4 人以下會多放一個沒人拿的圖像，比較不容易猜出誰是誰。</li><li>QR code 上方選<b>玩法</b>（比賽／合作）和<b>每人出牌幾次</b>（每人次數 × 人數＝這一局全桌一共出幾次牌，出完就結束）。建議第一次先玩合作模式。</li><li>老師端就是「天神」：每一桌都看得到每個圖像是誰的（圓點顏色＝玩家），學生看不到。系統會自動擋住學生出牌給自己的圖像。</li><li>上方的「⚡ 天神控制台」有所有老師的功能；點某一桌可以打開那一桌的控制（天神降臨、給星星、教學時刻、分享時刻）。</li></ol>' },
