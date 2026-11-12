@@ -296,7 +296,7 @@
     return shuffle(deck);
   }
   var mod = {
-    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 11,
+    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 12,
     reasons: REASONS,
     opts: [
       { k: 'mode', label: '玩法：', list: [['comp', '🏆 比賽（心情＋星星最高的人贏）'], ['coop', '🤝 合作（大家都在 0 以上才過關）']] },
@@ -640,7 +640,7 @@
     ord.appendChild(el('span', 'ad-dir', v.dir > 0 ? '順序 ➡️' : '順序 ⬅️'));
     var seq = v.order.slice(); if (v.dir < 0) seq.reverse();
     seq.forEach(function (s) {
-      var ch = el('span', 'ad-chip' + (s === v.turn && !tb.res ? ' turn' : '') + (v.out.indexOf(s) >= 0 ? ' out' : '') + (tg && tg.s && tg.s.indexOf(s) >= 0 ? ' tg' : ''));
+      var ch = el('span', 'ad-chip' + (s === v.turn && !tb.res ? ' turn' + (s === seat && myTurn ? ' myturn' : '') : '') + (v.out.indexOf(s) >= 0 ? ' out' : '') + (tg && tg.s && tg.s.indexOf(s) >= 0 ? ' tg' : ''));
       ch.setAttribute('data-seat', s);
       var d = el('i'); d.style.background = SEATC[s]; ch.appendChild(d); ch.appendChild(document.createTextNode(s === tb.seat && !v.solo ? '你【' + short(tb, s) + '】' : who(tb, s)));   // 自己的暱稱只有自己看得到
       if (tb.res && v.stars) ch.appendChild(el('u', '', ' ⭐' + (v.stars[s] || 0)));

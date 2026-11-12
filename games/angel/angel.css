@@ -213,3 +213,9 @@
 .ad-step { display: inline-flex; align-items: center; gap: 4px; }
 .ad-step b { min-width: 22px; text-align: center; font-size: 17px; }
 .ad-colon { font-weight: 700; }
+
+/* 輪到自己：持續的動態提醒，直到出完牌 */
+@keyframes adMyPulse { 0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 152, 0, .55); } 50% { transform: scale(1.04); box-shadow: 0 0 0 8px rgba(255, 152, 0, 0); } }
+@keyframes adGlow { 0%, 100% { background: #ffd54f; } 50% { background: #ffb300; } }
+.ad-status.me { animation: adMyPulse 1.2s ease-in-out infinite, adGlow 1.2s ease-in-out infinite; }
+.ad-chip.myturn { animation: adMyPulse 1.2s ease-in-out infinite; background: #fff3c4; font-weight: 800; }
