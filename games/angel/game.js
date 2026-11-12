@@ -296,7 +296,7 @@
     return shuffle(deck);
   }
   var mod = {
-    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 13,
+    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 14,
     reasons: REASONS,
     opts: [
       { k: 'mode', label: '玩法：', list: [['comp', '🏆 比賽（心情＋星星最高的人贏）'], ['coop', '🤝 合作（大家都在 0 以上才過關）']] },
@@ -730,9 +730,10 @@
     } else {
       var mine = e.seat === tb.seat;
       bx.appendChild(el('div', 'ad-ev-k ' + e.k, e.k === 'chance' ? '🍀 機會' : '🌀 命運'));
-      bx.appendChild(el('p', 'ad-ovhelp', mine ? '轉到你了！不用出牌，請大聲回答：' : '轉到 ' + who(tb, e.seat) + '！請聽他回答：'));
+      if (mine) { bx.classList.add('ad-evmine'); bx.appendChild(el('div', 'ad-evme', '🎯 轉到你了！')); }
+      bx.appendChild(el('p', 'ad-ovhelp', mine ? '不用出牌，請大聲回答：' : '轉到 ' + who(tb, e.seat) + '！請聽他回答：'));
       bx.appendChild(el('p', 'ad-ovline', e.q));
-      bx.appendChild(el('p', 'ad-ovnote', v.judge === 'auto' ? '說完之後按「我說完了」，可以得到天神星星 ⭐' : '說完之後，天神會給星星 ⭐。星星是祕密的，最後才會加進分數。'));
+      bx.appendChild(el('p', 'ad-ovnote', v.judge === 'auto' ? '說完之後按「我說完了」，可以得到 2 分 ⭐' : '說完之後，天神會給分，加進實際得分 ⭐。'));
       if (mine && v.judge === 'auto') { var row = el('div', 'ad-ovbtns'); var b = el('button', 'ad-btn go', '🗣️ 我說完了'); b.type = 'button'; b.addEventListener('click', function () { ctx.send('evdone', {}); }); row.appendChild(b); bx.appendChild(row); }
     }
     ov.appendChild(bx); return ov;
