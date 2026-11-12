@@ -142,3 +142,8 @@
 .cast-stage .sn-pj-q { font-size: 30px; }
 .cast-stage .sn-pj-o { font-size: 26px; }
 body:has(#h-proj) .sn-bell .sn-drawer { display: none !important; }   /* 投影時先把鈴鐺抽屜收起來，不擋投影畫面 */
+/* ⏱️ 倒數 */
+.sn-timer { align-self: center; margin: 4px auto; padding: 4px 16px; border-radius: 999px; background: #e3f2fd; color: #0d47a1; font-weight: 800; font-size: 18px; }
+.sn-timer.hurry { background: #ffebee; color: #c62828; animation: snRedo .6s ease-in-out infinite; }
+.sn-htm { align-self: center; padding: 4px 10px; border-radius: 999px; background: #e3f2fd; color: #0d47a1; font-size: 14px; }
+.sn-alert.nx { border-color: #43a047; background: #e8f5e9; }
