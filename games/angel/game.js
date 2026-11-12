@@ -96,10 +96,12 @@
   ].map(function (o, k) { o.id = 'g' + k; o.k = 'g'; o.g = k; return o; });
   var CARD = {}; ANGEL.concat(DEVIL, GOD).forEach(function (c) { CARD[c.id] = c; });
   function C(cid) { return CARD[cid]; }
+  function wlen(t) { return String(t || '').replace(/[^\u4e00-\u9fffA-Za-z0-9]/g, '').length; }   // 不含標點符號的字數
+  var MINW = 10;
   function addCustom(list) {   // 老師自訂的句子：id 由內容決定，所以老師端、學生端算出來都一樣
     var ids = [];
     (list || []).forEach(function (x) {
-      var t = String(x.t || '').trim().slice(0, 40); if (!t || (x.k !== 'a' && x.k !== 'd')) return;
+      var t = String(x.t || '').trim().slice(0, 40); if (!t || wlen(t) < MINW || (x.k !== 'a' && x.k !== 'd')) return;
       var h = 0, s = x.k + t; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
       var id = 'x' + h.toString(36);
       CARD[id] = { id: id, k: x.k, t: t, c: '老師自訂', v: x.v === 2 ? 2 : 1, r: x.k === 'd' ? (String(x.r || '').trim().slice(0, 40) || '（想一想可以怎麼好好說）') : null, custom: 1 };
@@ -230,7 +232,7 @@
     return shuffle(deck);
   }
   var mod = {
-    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 5,
+    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 6,
     reasons: REASONS,
     opts: [
       { k: 'mode', label: '玩法：', list: [['comp', '🏆 比賽（心情＋星星最高的人贏）'], ['coop', '🤝 合作（大家都在 0 以上才過關）']] },
@@ -882,18 +884,18 @@
     var hd = api.el('div', 'row'); hd.style.justifyContent = 'space-between'; hd.appendChild(api.el('h2', '', title)); hd.lastChild.style.margin = '0';
     hd.appendChild(api.btn('btn small', '✕ 關閉', function () { ov.remove(); })); bx.appendChild(hd);
     bx.appendChild(body);
-    var r = api.el('div', 'row c'); r.appendChild(api.btn('btn btn-sun', '💾 儲存', function () { onSave(); api.save(); ov.remove(); })); bx.appendChild(r);
+    var r = api.el('div', 'row c'); r.appendChild(api.btn('btn btn-sun', '💾 儲存', function () { if (onSave() === false) return; api.save(); ov.remove(); })); bx.appendChild(r);
     document.body.appendChild(ov);
   }
   function customEditor(api) {
     var cfg = api.cfg(), b = api.el('div', 'ad-edit');
-    b.appendChild(api.el('p', 'empty', '一行一句。可以放班上最近真的聽到的話。請不要寫真實同學的名字。'));
+    b.appendChild(api.el('p', 'empty', '一行一句。可以放班上最近真的聽到的話。請不要寫真實同學的名字。每一句（包括轉念的說法）扣掉標點符號，至少要 10 個字，最多 40 個字。'));
     function area(label, val, ph) { b.appendChild(api.el('h4', '', label)); var t = api.el('textarea'); t.rows = 4; t.value = val; t.placeholder = ph; b.appendChild(t); return t; }
     var cu = cfg.custom || [];
     var ta = area('😇 天使的話（+1）', cu.filter(function (x) { return x.k === 'a' && x.v !== 2; }).map(function (x) { return x.t; }).join('\n'), '例如：你今天排隊排得好整齊！');
     var ta2 = area('😇 大天使的話（+2）', cu.filter(function (x) { return x.k === 'a' && x.v === 2; }).map(function (x) { return x.t; }).join('\n'), '例如：有你在我們這一組真好。');
-    b.appendChild(api.el('p', 'empty', '惡魔的話：用「｜」把轉念說法寫在後面，例如：你很慢耶｜慢慢來，我等你。'));
-    var td = area('😈 惡魔的話（-1）', cu.filter(function (x) { return x.k === 'd'; }).map(function (x) { return x.t + (x.r ? '｜' + x.r : ''); }).join('\n'), '例如：你很慢耶｜慢慢來，我等你。');
+    b.appendChild(api.el('p', 'empty', '惡魔的話：用「｜」把轉念說法寫在後面，例如：你動作很慢耶，大家都在等你｜慢慢來沒關係，我們會等你。'));
+    var td = area('😈 惡魔的話（-1）', cu.filter(function (x) { return x.k === 'd'; }).map(function (x) { return x.t + (x.r ? '｜' + x.r : ''); }).join('\n'), '例如：你動作很慢耶，大家都在等你｜慢慢來沒關係，我們會等你。');
     b.appendChild(api.el('p', 'empty', '機會／命運題：不要提到圖像，也不要指定真實的同學（避免洩漏身分或針對某個人）。'));
     var qs = cfg.qs || [];
     var qc = area('🍀 機會題（正向）', qs.filter(function (x) { return x.k === 'chance'; }).map(function (x) { return x.t; }).join('\n'), '例如：說出一個你最近學會的新本領。');
@@ -904,7 +906,15 @@
       lines(ta).forEach(function (t) { out.push({ k: 'a', t: t, v: 1 }); });
       lines(ta2).forEach(function (t) { out.push({ k: 'a', t: t, v: 2 }); });
       lines(td).forEach(function (t) { var p = t.split(/[｜|]/); out.push({ k: 'd', t: p[0].trim(), r: (p[1] || '').trim(), v: 1 }); });
-      cfg.custom = out.filter(function (x) { return x.t; });
+      out = out.filter(function (x) { return x.t; });
+      var bad = [];
+      out.forEach(function (x) {
+        if (wlen(x.t) < MINW) bad.push('「' + x.t + '」只有 ' + wlen(x.t) + ' 個字');
+        if (x.k === 'd' && !x.r) bad.push('「' + x.t + '」後面要用「｜」加上轉念的說法');
+        else if (x.k === 'd' && wlen(x.r) < MINW) bad.push('轉念「' + x.r + '」只有 ' + wlen(x.r) + ' 個字');
+      });
+      if (bad.length) { alert('下面這些句子太短了，扣掉標點符號至少要 10 個字，請改長一點再儲存：\n\n' + bad.slice(0, 12).join('\n') + (bad.length > 12 ? '\n……還有 ' + (bad.length - 12) + ' 句' : '')); return false; }
+      cfg.custom = out;
       cfg.qs = lines(qc).map(function (t) { return { k: 'chance', t: t }; }).concat(lines(qf).map(function (t) { return { k: 'fate', t: t }; }));
     });
   }
@@ -958,7 +968,7 @@
     ],
     teacher: [
       { h: '主持流程', html: '<ol><li>首頁「社會技巧/溝通訓練」→「天使與惡魔」。每桌 3～6 人（4～5 人最好）。4 人以下會多放一個沒人拿的圖像，比較不容易猜出誰是誰。</li><li>QR code 上方選<b>玩法</b>（比賽／合作）和<b>每人出牌幾次</b>（每人次數 × 人數＝這一局全桌一共出幾次牌，出完就結束）。建議第一次先玩合作模式。</li><li>老師端就是「天神」：每一桌都看得到每個圖像是誰的（圓點顏色＝玩家），學生看不到。系統會自動擋住學生出牌給自己的圖像。</li><li>上方的「⚡ 天神控制台」有所有老師的功能；點某一桌可以打開那一桌的控制（天神降臨、給星星、教學時刻、分享時刻）。</li></ol>' },
-      { h: '天神控制台', html: '<h4>上課前（⚙️ 上課設定）</h4><ul><li><b>本節主題</b>：稱讚與鼓勵、道歉與原諒、不排擠、聽懂酸言酸語、安慰與關心。這個主題的牌會多一份，機會／命運題只出這個主題。</li><li><b>牌的比例</b>：天使比較多／一樣多／惡魔比較多。第一次建議天使比較多。</li><li><b>自訂卡片和題目</b>：可以加班上真的聽到的話，也可以自己出機會／命運題。<b>題目不要提到圖像，也不要指定真實的同學</b>。</li><li><b>關掉不適合的句子</b>：班上學生有特別敏感的話，先關掉。</li><li><b>天神時刻</b>自動出現的頻率、<b>評分方式</b>、<b>出牌倒數</b>。</li></ul><h4>遊戲中</h4><ul><li><b>⏸️ 全班暫停／▶️ 繼續</b>。</li><li><b>📽️ 教學時刻</b>：點某一桌，點一句剛出的話，會投影到大螢幕並自動暫停全班，附討論問題和轉念答案。</li><li><b>😀 心情快問</b>：每個學生點出自己真正的心情，匿名統計後可以投影。</li><li><b>⚡ 天神降臨</b>：轉盤轉到一位學生回答機會（正向）或命運（危機、狀況）題，老師按 👍+3／👌+2／🤔+1 給星星。轉盤轉的是「人」，不會洩漏他的圖像；星星是祕密的，最後才加進分數。</li><li><b>🎯 天神挑戰</b>：下一輪只能出天使牌、惡魔牌要先轉念、用最溫柔的語氣、一起猜酸言酸語的真正意思、天使牌要加上具體理由。</li><li><b>⭐ 給星星</b>：看到學生做得好，點原因再點學生。原因會記在課後紀錄表。</li><li><b>🛑 學生求救</b>：學生按「我需要休息」，那一桌自動暫停，控制台會亮起來。</li></ul><h4>結束後</h4><ul><li><b>📽️ 分享時刻投影</b>：一次一個圖像，先看心情最高和最低的兩位。</li><li><b>📥 課後紀錄表</b>：用學號整理每位學生的出牌、轉念、道歉、星星原因、機會命運題、心情快問，可以用 Excel 打開，當作 IEP／社會技巧目標紀錄。</li><li><b>📝 天使任務單</b>：每位學生一張回家作業，最後附一張空白的。</li></ul>' },
+      { h: '天神控制台', html: '<h4>上課前（⚙️ 上課設定）</h4><ul><li><b>本節主題</b>：稱讚與鼓勵、道歉與原諒、不排擠、聽懂酸言酸語、安慰與關心。這個主題的牌會多一份，機會／命運題只出這個主題。</li><li><b>牌的比例</b>：天使比較多／一樣多／惡魔比較多。第一次建議天使比較多。</li><li><b>自訂卡片和題目</b>：可以加班上真的聽到的話（每句扣掉標點至少 10 個字），也可以自己出機會／命運題。<b>題目不要提到圖像，也不要指定真實的同學</b>。</li><li><b>關掉不適合的句子</b>：班上學生有特別敏感的話，先關掉。</li><li><b>天神時刻</b>自動出現的頻率、<b>評分方式</b>、<b>出牌倒數</b>。</li></ul><h4>遊戲中</h4><ul><li><b>⏸️ 全班暫停／▶️ 繼續</b>。</li><li><b>📽️ 教學時刻</b>：點某一桌，點一句剛出的話，會投影到大螢幕並自動暫停全班，附討論問題和轉念答案。</li><li><b>😀 心情快問</b>：每個學生點出自己真正的心情，匿名統計後可以投影。</li><li><b>⚡ 天神降臨</b>：轉盤轉到一位學生回答機會（正向）或命運（危機、狀況）題，老師按 👍+3／👌+2／🤔+1 給星星。轉盤轉的是「人」，不會洩漏他的圖像；星星是祕密的，最後才加進分數。</li><li><b>🎯 天神挑戰</b>：下一輪只能出天使牌、惡魔牌要先轉念、用最溫柔的語氣、一起猜酸言酸語的真正意思、天使牌要加上具體理由。</li><li><b>⭐ 給星星</b>：看到學生做得好，點原因再點學生。原因會記在課後紀錄表。</li><li><b>🛑 學生求救</b>：學生按「我需要休息」，那一桌自動暫停，控制台會亮起來。</li></ul><h4>結束後</h4><ul><li><b>📽️ 分享時刻投影</b>：一次一個圖像，先看心情最高和最低的兩位。</li><li><b>📥 課後紀錄表</b>：用學號整理每位學生的出牌、轉念、道歉、星星原因、機會命運題、心情快問，可以用 Excel 打開，當作 IEP／社會技巧目標紀錄。</li><li><b>📝 天使任務單</b>：每位學生一張回家作業，最後附一張空白的。</li></ul>' },
       { h: '上課前', html: '<ul><li>先介紹情緒碼錶（超級開心、開心、有點高興、普通、有點難過、很難過、崩潰），讓學生說說自己現在在哪一格。</li><li>和學生一起念：「卡片上的話不是我心裡的話」。</li><li>酸言酸語牌：先示範同一句「你很棒」用真心的語氣說一次、用酸的語氣說一次，讓學生聽出差別。</li><li>圖像大風吹、大家換位子這些牌會讓事情突然改變，先讓學生看過天神牌清單。</li><li>班上有被霸凌經驗的學生，請先用「關掉不適合的句子」處理。</li></ul>' },
       { h: '結束後的分享', html: '<ol><li><b>出戲：</b>每個人對旁邊的真人同學說一句天使牌的話。</li><li><b>分享：</b>請心情最高和最低的兩位先說，可以用句型：<ul>' + TIPS.map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul></li><li><b>討論：</b>不一樣的心情會不會讓我們做出不一樣的事？</li><li><b>本週天使任務：</b>發天使任務單，下次上課回報。</li></ol><p>遊戲設計：andice（社會技巧卡牌構思）。保密圖像是為了不讓特定的人成為被針對的一方，每個人都有一樣的機會被稱讚、也承受批評，體會被攻擊的人心裡的感受。</p>' }
     ]
