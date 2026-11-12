@@ -103,3 +103,42 @@
 .sn-hi-q i { flex: none; width: 9px; height: 9px; border-radius: 50%; margin-top: 6px; }
 .sn-hi-a { font-size: 14px; color: #8a4b12; margin-left: 15px; line-height: 1.45; } .sn-hi-a.none { color: #6b7280; }
 .sn-teach { max-height: 340px; overflow: auto; }
+/* 老師審查 */
+.sn-say { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.sn-say p { margin: 0; }
+.sn-say em { font-style: normal; font-weight: 800; font-size: 14px; color: #6b4b2a; }
+.sn-say em.ok { color: #fff; background: #2a9d5c; border-radius: 999px; padding: 2px 12px; }
+.sn-say.redo, .sn-box.redo { box-shadow: 0 0 0 3px #e65100; animation: snRedo 1.4s ease-in-out infinite; }
+@keyframes snRedo { 0%, 100% { box-shadow: 0 0 0 3px #e65100; } 50% { box-shadow: 0 0 0 8px #e6510055; } }
+.sn-redo { margin: 0; font-size: 17px; font-weight: 900; color: #e65100; }
+.sn-chip.me { border-color: #ffb300; background: #fff3c4; animation: snChip 1.2s ease-in-out infinite; }
+@keyframes snChip { 50% { transform: scale(1.08); box-shadow: 0 0 0 4px #ffe08a; } }
+.sn-alert { font-size: 14px; border: 2px solid #ffb300; }
+.sn-alert.rev { background: #fff8e1; border-color: #ff9800; }
+.sn-alert.rev.wait { background: #f8fafc; border-color: #cbd5e1; }
+.sn-alert.help { background: #ffebee; border-color: #e53935; }
+.sn-alert .sn-q { flex: 0 0 100%; font-size: 15px; font-weight: 700; color: #3b2a1a; }
+.sn-pass { min-width: 150px; font-size: 1.1em; }
+.sn-pendw { background: #fff3e0; border-radius: 12px; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+.sn-pstat { background: #f8fafc; border-radius: 12px; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.sn-prow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; background: #fff; border-radius: 10px; padding: 6px 8px; }
+.sn-prow i { width: 10px; height: 10px; border-radius: 50%; }
+.sn-prow small { color: #555; } .sn-plist { flex: 0 0 100%; font-size: 13px; color: #374151; line-height: 1.6; }
+.sn-bell { position: fixed; right: 0; top: 40%; z-index: 9999; display: flex; align-items: flex-start; touch-action: none; }
+.sn-bell.left { right: auto; left: 0; flex-direction: row-reverse; }
+.sn-bell.left .sn-bell-btn { border-radius: 0 16px 16px 0; }
+.sn-bell.left .sn-drawer { border-radius: 0 0 14px 0; }
+.sn-bell-btn { border: 0; border-radius: 16px 0 0 16px; background: #c2571a; color: #fff; font-size: 22px; padding: 10px 10px; cursor: grab; display: flex; flex-direction: column; align-items: center; gap: 2px; box-shadow: 0 4px 14px #0004; touch-action: none; }
+.sn-bell-btn span { font-size: 12px; writing-mode: vertical-rl; letter-spacing: 2px; }
+.sn-bell.drag .sn-bell-btn { cursor: grabbing; animation: none; opacity: .85; }
+.sn-bell.has .sn-bell-btn { background: #e65100; animation: snBellBlink 1s ease-in-out infinite; }
+@keyframes snBellBlink { 0%, 100% { filter: brightness(1); transform: scale(1); } 50% { filter: brightness(1.35); transform: scale(1.08); } }
+.sn-drawer { display: none; width: min(420px, 86vw); max-height: 80vh; overflow-y: auto; background: #fff; border-radius: 0 0 0 14px; box-shadow: 0 6px 24px #0005; padding: 10px; flex-direction: column; gap: 8px; color: #2d2a32; }
+.sn-bell.open .sn-drawer { display: flex; }
+.sn-drawer-hd { display: flex; justify-content: space-between; align-items: center; }
+/* 同步投影舞台固定 1600x900，字級不能用 vw */
+.cast-stage .sn-proj { width: 1400px; }
+.cast-stage .sn-pj-line { font-size: 64px; }
+.cast-stage .sn-pj-q { font-size: 30px; }
+.cast-stage .sn-pj-o { font-size: 26px; }
+body:has(#h-proj) .sn-bell .sn-drawer { display: none !important; }   /* 投影時先把鈴鐺抽屜收起來，不擋投影畫面 */

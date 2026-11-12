@@ -121,7 +121,22 @@
   /* ---------- 規則 ---------- */
   function alive(g) { var a = []; for (var s = 0; s < g.np; s++) if (g.out.indexOf(s) < 0) a.push(s); return a; }
   function draw(g) { if (!g.deck.length) { g.deck = shuffle(g.disc); g.disc = []; } return g.deck.pop(); }
-  function fill(g) { alive(g).forEach(function (s) { while (g.hands[s].length < HAND && (g.deck.length || g.disc.length)) g.hands[s].push(draw(g)); }); }
+  function nBad(h) { return h.filter(function (id) { return C(id) && C(id).bad; }).length; }
+  /* 手牌保證：手上「不太合適」的牌最多 2 張；連續 2 題手上都沒有的話，補牌時補 1 張。只控制補進來的牌，不換掉手上原本的牌 */
+  function drawKind(g, want) {   // want: 'bad'、'good' 或 null
+    if (!want) return draw(g);
+    function find(a) { for (var j = a.length - 1; j >= 0; j--) if (!!C(a[j]).bad === (want === 'bad')) return j; return -1; }
+    var k = find(g.deck); if (k >= 0) return g.deck.splice(k, 1)[0];
+    k = find(g.disc); if (k >= 0) return g.disc.splice(k, 1)[0];
+    return draw(g);
+  }
+  function drawFor(g, s) {
+    var h = g.hands[s], nb = nBad(h);
+    if (nb >= 2) return drawKind(g, 'good');
+    if (nb === 0 && g.cfg.bad !== 'off' && (g.nob[s] || 0) >= 2) return drawKind(g, 'bad');
+    return draw(g);
+  }
+  function fill(g) { alive(g).forEach(function (s) { while (g.hands[s].length < HAND && (g.deck.length || g.disc.length)) g.hands[s].push(drawFor(g, s)); g.nob[s] = nBad(g.hands[s]) ? 0 : (g.nob[s] || 0) + 1; }); }
   function players(g) { return alive(g).filter(function (s) { return s !== g.reader; }); }
   function blocked(g) { return !!(g.res || g.paused || g.help != null); }
   function rec(g, e) { g.evq.push(e); }
@@ -139,7 +154,7 @@
     var q = C(g.qdeck.pop()), em = q.e.split('');
     var te = TOPIC_EMO[g.cfg.topic];
     g.q = q.id; g.emo = te && em.indexOf(te) >= 0 ? te : g.cfg.emo === 'off' ? em[0] : pick(em);
-    g.phase = 'read'; g.plays = {}; g.opts = null; g.votes = {}; g.last = null;
+    g.phase = 'read'; g.plays = {}; g.opts = null; g.votes = {}; g.last = null; g.rv = null; g.say = {};
     fill(g); g.cnt++;
   }
   /* 每人可以投幾票：可以投的選項有 4 個以上時投 2 票，比較少時投 1 票（才不會每個都被迫投到） */
@@ -160,7 +175,8 @@
     Object.keys(g.votes).forEach(function (s) { g.votes[s].forEach(function (i) { v[i]++; }); });
     var mx = Math.max.apply(null, v), top = [], ws = [];
     if (mx > 0) v.forEach(function (n, i) { if (n === mx) top.push(i); });
-    top.forEach(function (i) { var o = g.opts[i]; if (o.s >= 0 && !C(o.c).bad && ws.indexOf(o.s) < 0) { ws.push(o.s); g.sc[o.s]++; rec(g, { seat: o.s, k: 'best' }); } });
+    g.say = {};
+    top.forEach(function (i) { var o = g.opts[i]; if (o.s >= 0 && !C(o.c).bad && ws.indexOf(o.s) < 0) { ws.push(o.s); rec(g, { seat: o.s, k: 'best' }); g.say[o.s] = { c: o.c, st: 'todo' }; } });
     g.opts.forEach(function (o, i) {
       if (o.s < 0) return;
       var c = C(o.c);
@@ -172,7 +188,18 @@
     if (g.hist.length > 300) g.hist.shift();
     g.opts.forEach(function (o) { g.disc.push(o.c); });
     g.phase = 'show'; g.n++; g.cnt++;
-    checkEnd(g);
+    // 得票最多的人要真的說一次：老師審查通過才給分（電腦和單人練習自動通過）
+    ws.forEach(function (s0) { if (!g.hum[s0]) sayOk(g, s0, 2, null); });
+    if (sayDone(g)) checkEnd(g);
+  }
+  function sayDone(g) { return Object.keys(g.say || {}).every(function (k) { var x = g.say[k]; return x.st === 'ok' || g.out.indexOf(+k) >= 0; }); }
+  function sayOk(g, s0, pts, notify) {
+    var x = g.say[s0]; if (!x || x.st === 'ok') return false;
+    x.st = 'ok'; x.pts = pts; g.sc[s0] += pts; rec(g, { seat: s0, k: 'say', pts: pts });
+    if (notify) notify(s0, pts >= 2 ? '✅ 老師通過了！+2 分' : '🌗 老師讓你通過了，+1 分');
+    g.cnt++;
+    if (sayDone(g)) checkEnd(g);
+    return true;
   }
   function checkEnd(g) {
     var a = alive(g);
@@ -201,17 +228,18 @@
     if (a.length <= 1) { g.res = a.length ? { w: a[0], why: why } : { w: -1, why: why }; return; }
     if (a.length < 3) { finish(g, why); return; }   // 剩兩個人沒辦法好好投票：用目前的分數結束
     if (g.reader === seat && g.phase !== 'show') { unplay(g); nextReader(g); newPrompt(g); return; }
+    if (g.phase === 'show' && g.say && g.say[seat] && sayDone(g)) checkEnd(g);
     if (g.phase === 'play' && players(g).every(function (s) { return g.plays[s]; })) startVote(g);
     else if (g.phase === 'vote' && alive(g).every(function (s) { return g.votes[s] || !maxV(g, s); })) reveal(g);
   }
-  function canNext(g, seat) { return g.phase === 'show' && !g.res && (g.hum[g.reader] && g.out.indexOf(g.reader) < 0 ? seat === g.reader : g.hum[seat]); }
+  function canNext(g, seat) { return g.phase === 'show' && !g.res && sayDone(g) && (g.hum[g.reader] && g.out.indexOf(g.reader) < 0 ? seat === g.reader : g.hum[seat]); }
 
   var mod = {
-    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 1600, ver: 1,
+    seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 1600, ver: 2, oneTable: true,
     reasons: REASONS,
     opts: [
       { k: 'end', label: '什麼時候結束：', list: [['both', '分數或回合，先到就結束'], ['score', '只看分數'], ['rounds', '只看回合數']] },
-      { k: 'target', label: '目標分數：', list: [['5', '先到 5 分'], ['3', '3 分'], ['7', '7 分'], ['10', '10 分']] },
+      { k: 'target', label: '目標分數：', list: [['10', '先到 10 分'], ['6', '6 分'], ['14', '14 分'], ['20', '20 分']], note: '被選為最佳回應、老師通過 +2 分（半分通過 +1）' },
       { k: 'rounds', label: '回合數：', list: [['2', '每人念 2 題'], ['1', '每人念 1 題'], ['3', '每人念 3 題'], ['4', '每人念 4 題']] }
     ],
     levelDesc: ['隨便出牌、隨便投', '大多會挑合適的話', '很會挑合適的話', '幾乎都挑最合適的話'],
@@ -223,9 +251,9 @@
       var cu = addCustom(cfg.cx), hum = [];
       for (var s = 0; s < n; s++) hum.push(o._bots && o._bots.length ? !o._bots[s] : true);
       var g = { np: n, hum: hum, out: [], cfg: cfg, cx: cfg.cx, end: { both: 'both', score: 'score', rounds: 'rounds' }[o.end] || 'both',
-        target: Math.max(1, Math.min(20, +o.target || 5)), rounds: Math.max(1, Math.min(6, +o.rounds || 2)),
+        target: Math.max(2, Math.min(40, +o.target || 10)), rounds: Math.max(1, Math.min(6, +o.rounds || 2)),
         deck: buildDeck(cfg, cu), disc: [], qdeck: buildQ(cfg, cu), hands: [], sc: [], swap: [], reader: Math.floor(Math.random() * n),
-        phase: 'read', q: null, emo: 'h', plays: {}, opts: null, votes: {}, last: null, n: 0, cnt: 0, res: null, paused: false, help: null, evq: [], hist: [] };
+        phase: 'read', q: null, emo: 'h', plays: {}, opts: null, votes: {}, last: null, n: 0, cnt: 0, res: null, paused: false, help: null, evq: [], hist: [], nob: [], rv: null, say: {}, solo: !!o._solo };
       for (s = 0; s < n; s++) { g.hands.push([]); g.sc.push(0); g.swap.push(false); }
       newPrompt(g);
       return g;
@@ -242,6 +270,7 @@
         voted: g.hum.map(function (h, s) { return !!g.votes[s]; }), myVotes: seat >= 0 ? g.votes[seat] || null : null, maxV: seat >= 0 ? maxV(g, seat) : 0,
         last: show ? g.last : null, sc: g.sc, n: g.n, end: g.end, target: g.target, rounds: g.rounds, out: g.out, cnt: g.cnt,
         hist: g.hist.map(function (h) { var mx = Math.max.apply(null, h.opts.map(function (o) { return o.v; })); return { q: h.q, emo: h.emo, r: h.r, w: mx > 0 ? h.opts.filter(function (o) { return o.v === mx; }).map(function (o) { return { c: o.c, s: o.s }; }) : [] }; }),
+        rv: g.rv, say: g.say, solo: g.solo,
         paused: g.paused, help: g.help != null, swapped: seat >= 0 ? g.swap[seat] : true, canNext: seat >= 0 && canNext(g, seat), hum: g.hum };
     },
     act: function (g, seat, d, notify) {
@@ -250,13 +279,19 @@
       if (d.t === 'help') { if (g.help != null) return false; g.help = seat; rec(g, { seat: seat, k: 'help' }); g.cnt++; return true; }
       if (blocked(g)) return false;
       if (d.t === 'read') {
-        if (g.phase !== 'read' || seat !== g.reader || d.n !== g.cnt) return false;
-        rec(g, { seat: seat, k: 'read' }); g.phase = 'play'; g.cnt++; return true;
+        if (g.phase !== 'read' || seat !== g.reader || d.n !== g.cnt || g.rv === 'pend') return false;
+        if (g.solo || !g.hum[seat]) { rec(g, { seat: seat, k: 'read' }); g.phase = 'play'; g.cnt++; return true; }
+        g.rv = 'pend'; g.cnt++; return true;   // 念完要老師確認，才進到出牌
+      }
+      if (d.t === 'said') {   // 得分的人說完了，請老師確認
+        var sx = g.say && g.say[seat]; if (g.phase !== 'show' || !sx || sx.st === 'ok' || sx.st === 'pend') return false;
+        if (g.solo) return sayOk(g, seat, 2, notify);
+        sx.st = 'pend'; g.cnt++; return true;
       }
       if (d.t === 'swap') {
         if (g.phase !== 'play' || seat === g.reader || g.plays[seat] || g.swap[seat]) return false;
         var si = d.i | 0, h0 = g.hands[seat]; if (!h0[si]) return false;
-        g.swap[seat] = true; g.disc.push(h0[si]); h0[si] = draw(g); g.cnt++; return true;
+        g.swap[seat] = true; g.disc.push(h0[si]); h0.splice(si, 1); h0.splice(si, 0, drawFor(g, seat)); g.cnt++; return true;
       }
       if (d.t === 'play') {
         if (g.phase !== 'play' || seat === g.reader || g.plays[seat]) return false;
@@ -286,6 +321,10 @@
       if (t === 'resume') { if (!g.paused && g.help == null) return false; g.paused = false; g.help = null; g.cnt++; return true; }
       if (t === 'pause') { if (g.res || g.paused) return false; g.paused = true; g.cnt++; return true; }
       if (t === 'skip') { if (g.res || g.phase === 'show') return false; unplay(g); g.votes = {}; newPrompt(g); return true; }
+      if (t === 'rdok') { if (g.res || g.phase !== 'read') return false; rec(g, { seat: g.reader, k: 'read' }); g.rv = null; g.phase = 'play'; g.cnt++; return true; }
+      if (t === 'rdredo') { if (g.res || g.phase !== 'read' || g.rv !== 'pend') return false; g.rv = 'redo'; rec(g, { seat: g.reader, k: 'redo', w: 'read' }); notify(g.reader, '🔁 老師請你再念一次'); g.cnt++; return true; }
+      if (t === 'sayok') { if (g.res || g.phase !== 'show') return false; return sayOk(g, d.seat | 0, d.half ? 1 : 2, notify); }
+      if (t === 'sayredo') { var sy = g.say && g.say[d.seat | 0]; if (g.res || !sy || sy.st !== 'pend') return false; sy.st = 'redo'; rec(g, { seat: d.seat | 0, k: 'redo', w: 'say' }); notify(d.seat | 0, '🔁 老師請你再說一次'); g.cnt++; return true; }
       if (t === 'point') {
         var s = d.seat | 0; if (s < 0 || s >= g.np || g.res) return false;
         g.sc[s]++; rec(g, { seat: s, k: 'pt', r: d.r || '' });
@@ -293,12 +332,13 @@
       }
       return false;
     },
-    hostBadge: function (g) { if (g.help != null) return '🛑 有同學需要休息，請過去看看'; if (g.paused) return '⏸️ 暫停中'; return ''; },
+    hostBadge: function (g) { if (g.rv === 'pend') return '🗣️ 念完了，等你確認'; if (Object.keys(g.say || {}).some(function (k) { return g.say[k].st === 'pend'; })) return '🗣️ 說完了，等你確認得分'; if (g.help != null) return '🛑 有同學需要休息，請過去看看'; if (g.paused) return '⏸️ 暫停中'; return ''; },
     drain: function (g) { var e = g.evq || []; g.evq = []; return e; },
     hostRecord: function (gx, e, who) {
       if (!who.sid || who.bot) return;
       gx.rec = gx.rec || {};
-      var r = gx.rec[who.sid] = gx.rec[who.sid] || { sid: who.sid, name: who.name, rounds: 0, wins: 0, read: 0, play: 0, good: 0, act: 0, bad: 0, votes: 0, best: 0, vbad: 0, pts: 0, pr: {}, badT: [], help: 0 };
+      var r = gx.rec[who.sid] = gx.rec[who.sid] || { sid: who.sid, name: who.name, rounds: 0, wins: 0, read: 0, play: 0, good: 0, act: 0, bad: 0, votes: 0, best: 0, vbad: 0, pts: 0, pr: {}, badT: [], help: 0, s2: 0, s1: 0, rr: 0, rs: 0, sp: 0 };
+      ['s2', 's1', 'rr', 'rs', 'sp'].forEach(function (k) { r[k] = r[k] || 0; });
       r.name = who.name;
       if (e.k === 'read') r.read++;
       else if (e.k === 'play') { r.play++; if (e.f >= 2) r.good++; if (e.act) r.act++; if (e.bad) { r.bad++; if (r.badT.indexOf(e.t) < 0) r.badT.push(e.t); } r.votes += e.v || 0; }
@@ -306,12 +346,14 @@
       else if (e.k === 'vbad') r.vbad++;
       else if (e.k === 'pt') { r.pts++; if (e.r) r.pr[e.r] = (r.pr[e.r] || 0) + 1; }
       else if (e.k === 'help') r.help++;
+      else if (e.k === 'say') { r.sp += e.pts; if (e.pts >= 2) r.s2++; else r.s1++; }
+      else if (e.k === 'redo') { if (e.w === 'read') r.rr++; else r.rs++; }
       else if (e.k === 'end') { r.rounds++; if (e.win) r.wins++; }
     },
     botTurn: function (g, seat, lv) {
       if (blocked(g) || g.out.indexOf(seat) >= 0) return null;
       var noise = [0, 4, 1.6, .8, .3][lv] || 1;
-      if (g.phase === 'read') return seat === g.reader ? { t: 'read', n: g.cnt } : null;
+      if (g.phase === 'read') return seat === g.reader && g.rv !== 'pend' ? { t: 'read', n: g.cnt } : null;
       if (g.phase === 'play') {
         if (seat === g.reader || g.plays[seat]) return null;
         var h = g.hands[seat], best = 0, bv = -99;
@@ -334,7 +376,8 @@
       return h + '</div>';
     },
     hostStatus: function (g) {
-      var p = { read: '念題中', play: '大家在挑回應（' + Object.keys(g.plays).length + '／' + players(g).length + '）', vote: '投票中（' + Object.keys(g.votes).length + '／' + alive(g).length + '）', show: '看結果' }[g.phase];
+      var p = { read: '念題中', play: '大家在挑回應（' + Object.keys(g.plays).length + '／' + players(g).length + '）', vote: '投票中（' + Object.keys(g.votes).length + '／' + alive(g).length + '）', show: Object.keys(g.say || {}).some(function (k) { return g.say[k].st !== 'ok'; }) ? '等得分的人說給老師聽' : '看結果' }[g.phase];
+      if (g.phase === 'read' && g.rv) p = g.rv === 'pend' ? '念完了，等老師確認' : '請他再念一次';
       return { t: '第 ' + (g.n + (g.phase === 'show' ? 0 : 1)) + ' 題・' + p, c: '' };
     }
   };
@@ -382,10 +425,14 @@
     if (tb.res) st.textContent = '這局結束了！';
     else if (out) st.textContent = '你已經認輸，正在觀看';
     else if (hold) st.textContent = v.help ? '有同學需要休息，請等老師' : '⏸️ 老師暫停了，請看大螢幕';
-    else if (v.phase === 'read') { st.textContent = isReader ? '輪到你念題目！' : '請聽 ' + who(tb, v.reader) + ' 念題目 👂'; need2 = isReader; }
+    else if (v.phase === 'read') { st.textContent = v.rv === 'pend' ? (isReader ? '🗣️ 已經告訴老師你念完了，等老師確認…' : '🗣️ ' + who(tb, v.reader) + ' 念完了，等老師確認…') : v.rv === 'redo' ? (isReader ? '🔁 老師請你再念一次，念完按「我又念完了」' : '🔁 老師請 ' + who(tb, v.reader) + ' 再念一次') : isReader ? '輪到你念題目！' : '請聽 ' + who(tb, v.reader) + ' 念題目 👂'; need2 = isReader && v.rv !== 'pend'; }
     else if (v.phase === 'play') { st.textContent = isReader ? '大家正在想怎麼回應你…' : v.myPlay ? '你已經出牌了，等其他人…' : '選一張最適合回應的牌'; need2 = !isReader && !v.myPlay; }
     else if (v.phase === 'vote') { st.textContent = v.myVotes || !v.maxV ? '你投好了，等其他人…' : '投票！選 ' + v.maxV + ' 個你覺得最適合的回應'; need2 = !v.myVotes && v.maxV > 0; }
-    else st.textContent = v.last && v.last.ws.length ? '🎉 ' + v.last.ws.map(function (s) { return who(tb, s); }).join('、') + ' 得 1 分！' : '這一題沒有人得分';
+    else {
+      var my = v.say && v.say[seat];
+      if (my && my.st !== 'ok') { st.textContent = my.st === 'pend' ? '🗣️ 已經告訴老師你說完了，等老師確認…' : my.st === 'redo' ? '🔁 老師請你再說一次，說完按「我又說完了」' : '🎉 你的回應票最多！請真的說給 ' + who(tb, v.reader) + ' 聽'; need2 = my.st !== 'pend'; }
+      else st.textContent = v.last && v.last.ws.length ? '🎉 票最多：' + v.last.ws.map(function (s) { return who(tb, s); }).join('、') + (Object.keys(v.say || {}).every(function (k) { return v.say[k].st === 'ok'; }) ? '' : '，說給老師聽通過才得分') : '這一題沒有人得分';
+    }
     if (need2) st.classList.add('me');
     wrap.appendChild(st);
     // 分數
@@ -394,7 +441,8 @@
       var ch = el('span', 'sn-chip' + (s === v.reader ? ' rd' : '') + (v.out.indexOf(s) >= 0 ? ' out' : ''));
       ch.setAttribute('data-seat', s);
       var d = el('i'); d.style.background = SEATC[s]; ch.appendChild(d);
-      ch.appendChild(document.createTextNode((s === v.reader ? '🎤 ' : '') + who(tb, s)));
+      if (s === seat && need2 && !tb.res) ch.classList.add('me');
+      ch.appendChild(document.createTextNode((s === v.reader ? '🎤 ' : '') + (s === seat && !v.solo ? '你【' + short(tb, s) + '】' : who(tb, s))));
       ch.appendChild(el('b', '', v.sc[s] + ''));
       var done = v.phase === 'play' ? v.played[s] : v.phase === 'vote' ? v.voted[s] : false;
       if (done && !tb.res) ch.appendChild(el('em', '', '✓'));
@@ -410,7 +458,9 @@
       if (isReader && !out) {
         rb.appendChild(el('p', 'sn-big', v.emoOn ? '用「' + EMO[v.emo].e + ' ' + EMO[v.emo].n + '」的語氣，大聲念出上面的話' : '大聲把上面的話念出來'));
         if (v.emoOn) rb.appendChild(el('p', 'sn-tip', '提示：' + ({ h: '聲音高高的、笑著說', s: '聲音小小的、慢慢說', a: '皺眉頭、聲音比較重', u: '眼睛睜大、聲音往上揚', w: '聲音有點抖、眉頭皺起來' })[v.emo]));
-        rb.appendChild(ctx.button('sn-btn go', '🗣️ 我念完了', function () { if (L.sent === v.cnt) return; L.sent = v.cnt; ctx.send('read', { n: v.cnt }); }));
+        if (v.rv === 'redo') { rb.classList.add('redo'); rb.insertBefore(el('p', 'sn-redo', '🔁 老師請你再念一次（題目和語氣都一樣）'), rb.firstChild); }
+        if (v.rv === 'pend') rb.appendChild(el('p', 'sn-tip', '🗣️ 已經告訴老師你念完了，等老師確認…'));
+        else rb.appendChild(ctx.button('sn-btn go', v.rv === 'redo' ? '🗣️ 我又念完了，請老師確認' : v.solo ? '🗣️ 我念完了' : '🗣️ 我念完了，請老師確認', function () { if (L.sent === v.cnt) return; L.sent = v.cnt; ctx.send('read', { n: v.cnt }); }));
       } else rb.appendChild(el('p', 'sn-tip', v.emoOn ? '聽聽看他的語氣，他現在的心情是「' + EMO[v.emo].n + '」。想一想：你會怎麼回應他？' : '想一想：你會怎麼回應他？'));
       wrap.appendChild(rb);
     }
@@ -451,9 +501,10 @@
         if (!v.swapped) tools.appendChild(ctx.button('sn-btn', '🔁 換掉這張（每局 1 次）', function () { if (confirm('把這張牌換成一張新的？（每局只能換 1 次）')) { var i = L.sel; L.sel = -1; ctx.send('swap', { i: i }); } }));
       }
       if (!v.help) tools.appendChild(ctx.button('sn-btn help', '🛑 我需要休息', function () { if (confirm('要請老師過來嗎？這一桌會先暫停。')) ctx.send('help', {}); }));
-      tools.appendChild(ctx.button('sn-btn', '🏳️', function () { if (confirm('確定要認輸嗎？')) ctx.send('resign', {}); }));
+      var redoMe = (v.phase === 'read' && isReader && v.rv) || (v.phase === 'show' && v.say && v.say[seat] && v.say[seat].st !== 'ok' && v.say[seat].st !== 'todo');
+      if (!redoMe) tools.appendChild(ctx.button('sn-btn', '🏳️', function () { if (confirm('確定要認輸嗎？')) ctx.send('resign', {}); }));
       if (v.hist.length) tools.appendChild(ctx.button('sn-btn', L.hist ? '📜 收起接話紀錄' : '📜 接話紀錄（全部 ' + v.hist.length + ' 題）', function () { L.hist = !L.hist; ctx.rerender(); }));
-      tools.appendChild(ctx.emoteButton('sn-btn'));
+      if (!redoMe) tools.appendChild(ctx.emoteButton('sn-btn'));
       wrap.appendChild(tools);
     }
     if (v.hist.length && (L.hist || tb.res)) wrap.appendChild(histEl(tb, v));
@@ -497,7 +548,7 @@
       if (show) {
         info.appendChild(el('b', 'sn-votes', '🗳️ ' + o.v + ' 票'));
         info.appendChild(el('span', 'sn-owner', o.s < 0 ? '🎲 系統加的神秘回應' : who(tb, o.s) + ' 出的'));
-        if (top && !c.bad && o.s >= 0) info.appendChild(el('em', 'win', '🏆 +1 分'));
+        if (top && !c.bad && o.s >= 0) info.appendChild(el('em', 'win', '🏆 票最多'));
         if (c.bad) { info.appendChild(el('em', 'bad', '🤔 不太合適（' + c.why + '）')); }
         else if (!c.custom) { var f = fit(o.c, v.q, v.emo); info.appendChild(el('em', 'cat f' + f, fitLabel(f) + '（' + c.cats.map(function (k) { return CAT[k]; }).join('・') + '）')); }
       }
@@ -523,12 +574,19 @@
     if (show && v.last) {
       var win = v.last.top.filter(function (i) { var o = v.opts[i]; return o.s >= 0 && !C(o.c).bad; });
       if (win.length) win.forEach(function (i) {
-        var o = v.opts[i], c = C(o.c);
-        w.appendChild(el('p', 'sn-say', '🗣️ 請 ' + who(tb, o.s) + ' 看著 ' + who(tb, v.reader) + '，' + (c.k === 'm' ? '真的做出這個動作：' + c.i + ' ' + c.t : '真心地說一次：「' + c.t + '」')));
+        var o = v.opts[i], c = C(o.c), x = (v.say || {})[o.s] || { st: 'ok', pts: 2 }, mine = o.s === tb.seat, act = c.k === 'm';
+        var box = el('div', 'sn-say' + (x.st === 'redo' ? ' redo' : '') + (x.st === 'ok' ? ' ok' : ''));
+        box.appendChild(el('p', '', (x.st === 'redo' ? '🔁 老師請 ' + who(tb, o.s) + ' 再' + (act ? '做' : '說') + '一次：' : '🗣️ 請 ' + who(tb, o.s) + ' 看著 ' + who(tb, v.reader) + '，') + (act ? '真的做出這個動作：' + c.i + ' ' + c.t : '真心地說一次：「' + c.t + '」')));
+        if (x.st === 'ok') box.appendChild(el('em', 'ok', x.pts >= 2 ? '✅ ' + (v.solo || !v.hum[o.s] ? '' : '老師') + '通過，+2 分' : '🌗 老師半分通過，+1 分'));
+        else if (x.st === 'pend') box.appendChild(el('em', '', '⏳ ' + (mine ? '等老師確認…' : '說完了，等老師確認…')));
+        else if (mine && !out) box.appendChild(ctx.button('sn-btn go', (x.st === 'redo' ? (act ? '🙌 我又做完了' : '🗣️ 我又說完了') : (act ? '🙌 我做完了' : '🗣️ 我說完了')) + (v.solo ? '' : '，請老師確認'), function () { if (L.sent === v.cnt) return; L.sent = v.cnt; ctx.send('said', {}); }));
+        else box.appendChild(el('em', '', '👂 請聽他' + (act ? '做' : '說')));
+        w.appendChild(box);
       });
       else if (v.last.bad) w.appendChild(el('p', 'sn-say', '🤔 票最多的回應不太合適，所以這一題沒有人得分。大家想一想，可以怎麼說比較好？'));
       if (!tb.res) {
         if (v.canNext) w.appendChild(ctx.button('sn-btn go', '➡️ 下一題', function () { if (L.sent === v.cnt) return; L.sent = v.cnt; ctx.send('next', { n: v.cnt }); }));
+        else if (!Object.keys(v.say || {}).every(function (k) { return v.say[k].st === 'ok' || v.out.indexOf(+k) >= 0; })) w.appendChild(el('p', 'sn-tip', v.solo ? '說完之後按「我說完了」，就可以到下一題。' : '等老師確認得分的人說的話，才會到下一題…'));
         else w.appendChild(el('p', 'sn-tip', '等 ' + (v.hum[v.reader] ? who(tb, v.reader) : '同學') + ' 按「下一題」…'));
       }
     }
@@ -548,6 +606,8 @@
     return row;
   }
   mod.hostPanel = function (api) {
+    // 多人上課不放電腦玩家（只有學生自己單人練習才有電腦）：只在這款遊戲的老師頁把那個選項關掉、藏起來
+    var hb = document.getElementById('h-bot'); if (hb) { hb.checked = false; if (api.state().allowBot) { api.state().allowBot = false; api.save(); } if (hb.parentNode) hb.parentNode.style.display = 'none'; }
     var p = api.el('div', 'panel sn-gp');
     var hd = api.el('div', 'sn-gp-hd'); hd.appendChild(api.el('h3', '', '🗣️ 你說我接・老師控制台'));
     hd.appendChild(hbtn(api, '', '⚙️ 上課設定', function () { H.open = !H.open; set.classList.toggle('hidden', !H.open); }));
@@ -571,7 +631,86 @@
     p.appendChild(after);
     return p;
   };
+  /* ---------- 老師審查：念題、得分的人說給老師聽 ---------- */
+  function pendBoxes(T, api, all) {   // all：連「還沒說完」的也列出來（桌子畫面用）
+    var g = T.g, out = []; if (!g || g.res) return out;
+    var q = C(g.q), e = EMO[g.emo];
+    if (g.phase === 'read' && (g.rv === 'pend' || (all && g.hum[g.reader]))) {
+      var a = api.el('div', 'sn-alert rev' + (g.rv === 'pend' ? '' : ' wait'));
+      a.appendChild(api.el('b', '', g.rv === 'pend' ? '🗣️ 第 ' + T.no + ' 桌・' + api.name(T, g.reader) + ' 念完了，有沒有用對語氣、念清楚？' : g.rv === 'redo' ? '🔁 第 ' + T.no + ' 桌・已請 ' + api.name(T, g.reader) + ' 再念一次（聽完也可以直接通過）' : '🎤 第 ' + T.no + ' 桌・' + api.name(T, g.reader) + ' 正在念題目（念完會通知你）'));
+      a.appendChild(api.el('span', 'sn-q', (g.cfg.emo !== 'off' ? '用「' + e.e + ' ' + e.n + '」的語氣：' : '') + '「' + (q ? q.t : '') + '」'));
+      a.appendChild(hbtn(api, 'on sn-pass', '✅ 通過', function () { api.act(T, { t: 'rdok' }); api.render(); }));
+      if (g.rv === 'pend') a.appendChild(hbtn(api, '', '🔁 請他再念一次', function () { api.act(T, { t: 'rdredo' }); api.render(); }));
+      out.push(a);
+    }
+    if (g.phase === 'show') Object.keys(g.say || {}).forEach(function (k) {
+      var x = g.say[k], s0 = +k, c = C(x.c); if (x.st === 'ok' || g.out.indexOf(s0) >= 0 || (!all && x.st !== 'pend')) return;
+      var act = c.k === 'm', b = api.el('div', 'sn-alert rev' + (x.st === 'pend' ? '' : ' wait'));
+      b.appendChild(api.el('b', '', x.st === 'pend' ? '🗣️ 第 ' + T.no + ' 桌・' + api.name(T, s0) + (act ? ' 做完了' : ' 說完了') + '，有沒有看著對方、真心地' + (act ? '做' : '說') + '？' : x.st === 'redo' ? '🔁 第 ' + T.no + ' 桌・已請 ' + api.name(T, s0) + ' 再' + (act ? '做' : '說') + '一次（聽完也可以直接給分）' : '🏆 第 ' + T.no + ' 桌・' + api.name(T, s0) + ' 票最多，正要' + (act ? '做給' : '說給') + api.name(T, g.reader).replace(/（.*）/, '') + (act ? '看' : '聽')));
+      b.appendChild(api.el('span', 'sn-q', act ? '🙌 ' + c.i + ' ' + c.t : '💬「' + c.t + '」'));
+      b.appendChild(hbtn(api, 'on sn-pass', '✅ 通過 +2 分', function () { api.act(T, { t: 'sayok', seat: s0 }); api.render(); }));
+      b.appendChild(hbtn(api, '', '🌗 半分通過 +1 分', function () { api.act(T, { t: 'sayok', seat: s0, half: true }); api.render(); }));
+      if (x.st === 'pend') b.appendChild(hbtn(api, '', '🔁 請他再' + (act ? '做' : '說') + '一次', function () { api.act(T, { t: 'sayredo', seat: s0 }); api.render(); }));
+      out.push(b);
+    });
+    return out;
+  }
+  function noteList(api) {
+    var out = [];
+    api.tables().forEach(function (T) {
+      var g = T.g; if (!g) return;
+      pendBoxes(T, api, false).forEach(function (x) { out.push(x); });
+      if (g.help != null) { var a = api.el('div', 'sn-alert help'); a.appendChild(api.el('b', '', '🛑 第 ' + T.no + ' 桌：' + api.name(T, g.help) + ' 需要休息')); a.appendChild(hbtn(api, 'on', '處理好了，繼續', function () { api.act(T, { t: 'resume' }); api.render(); })); out.push(a); }
+    });
+    return out;
+  }
+  /* 🔔 通知鈴：固定在畫面左邊或右邊，可以拖曳上下移動（記住位置） */
+  function bell(api) {
+    var b = document.getElementById('sn-bell');
+    if (!b) {
+      b = api.el('div', 'sn-bell'); b.id = 'sn-bell';
+      var btn0 = api.el('button', 'sn-bell-btn'); btn0.type = 'button'; btn0.title = '按住可以拖到左邊或右邊、上下移動';
+      var dr = api.el('div', 'sn-drawer'); b.appendChild(btn0); b.appendChild(dr); document.body.appendChild(b);
+      var pos = { side: 'R', top: 0.4 }; try { var sv = JSON.parse(localStorage.getItem('sn-bell-pos') || 'null'); if (sv && (sv.side === 'L' || sv.side === 'R')) pos = sv; } catch (e) {}
+      var place = function () { b.classList.toggle('left', pos.side === 'L'); var tp = Math.max(8, Math.min(window.innerHeight - 140, pos.top * window.innerHeight)); b.style.top = tp + 'px'; dr.style.maxHeight = Math.max(200, window.innerHeight - tp - 12) + 'px'; };
+      place(); window.addEventListener('resize', place);
+      var drag = null, moved = false;
+      btn0.addEventListener('pointerdown', function (ev) { drag = { x: ev.clientX, y: ev.clientY, t: b.getBoundingClientRect().top }; moved = false; try { btn0.setPointerCapture(ev.pointerId); } catch (e) {} });
+      btn0.addEventListener('pointermove', function (ev) {
+        if (!drag) return;
+        if (!moved && Math.abs(ev.clientX - drag.x) + Math.abs(ev.clientY - drag.y) < 8) return;
+        moved = true; b.classList.add('drag');
+        pos.top = (drag.t + ev.clientY - drag.y) / window.innerHeight; var sd = ev.clientX < window.innerWidth / 2 ? 'L' : 'R'; if (sd !== pos.side) b._sig = null; pos.side = sd; place();
+      });
+      var end = function () { if (!drag) return; drag = null; b.classList.remove('drag'); if (moved) { try { localStorage.setItem('sn-bell-pos', JSON.stringify(pos)); } catch (e) {} bell(api); } };
+      btn0.addEventListener('pointerup', end); btn0.addEventListener('pointercancel', end);
+      btn0.addEventListener('click', function () { if (moved) { moved = false; return; } H.bell = !H.bell; bell(api); });
+    }
+    var items = noteList(api), bt = b.firstChild, drw = b.lastChild;
+    bt.innerHTML = '🔔<span>' + (items.length ? items.length + ' 件待處理' : '通知') + '</span>';
+    b.classList.toggle('has', items.length > 0); b.classList.toggle('open', !!H.bell);
+    var sig = items.map(function (x) { return x.textContent; }).join('|');
+    if (b._sig === sig && drw.firstChild) return; b._sig = sig;   // 內容沒變就不重畫，才不會吃掉點擊
+    drw.innerHTML = '';
+    var hd = api.el('div', 'sn-drawer-hd'); hd.appendChild(api.el('b', '', '🔔 待處理（' + items.length + '）')); hd.appendChild(hbtn(api, '', b.classList.contains('left') ? '◀ 收起' : '收起 ▶', function () { H.bell = false; bell(api); })); drw.appendChild(hd);
+    if (!items.length) drw.appendChild(api.el('p', 'empty', '目前沒有要處理的事。'));
+    items.forEach(function (x) { drw.appendChild(x); });
+  }
+  function playerStat(T, api) {
+    var g = T.g, w = api.el('div', 'sn-pstat'); w.appendChild(api.el('b', '', '👥 玩家狀況'));
+    T.seats.forEach(function (id, i) {
+      var mine = g.hist.filter(function (h) { return h.opts.some(function (o) { return o.s === i; }); }), bad = 0, votes = 0, best = 0;
+      var row = api.el('div', 'sn-prow'), d = api.el('i'); d.style.background = SEATC[i]; row.appendChild(d);
+      var lines = mine.map(function (h) { var o = h.opts.filter(function (x) { return x.s === i; })[0], c = C(o.c), mx = Math.max.apply(null, h.opts.map(function (x) { return x.v; })); votes += o.v; if (c.bad) bad++; var top = mx > 0 && o.v === mx && !c.bad; if (top) best++; return (top ? '🏆' : c.bad ? '🤔' : '・') + (c.k === 'm' ? c.i + c.t : '「' + c.t + '」') + ' ' + o.v + '票'; });
+      row.appendChild(api.el('b', '', api.name(T, i) + (i === g.reader && !g.res ? ' 🎤' : '') + '：' + g.sc[i] + ' 分'));
+      row.appendChild(api.el('small', '', '得票 ' + votes + '・最佳 ' + best + ' 次・不太合適 ' + bad + ' 次・手上不太合適的牌 ' + nBad(g.hands[i] || []) + ' 張'));
+      if (lines.length) row.appendChild(api.el('div', 'sn-plist', lines.slice().reverse().join('　')));
+      w.appendChild(row);
+    });
+    return w;
+  }
   mod.hostPanelUpdate = function (api) {
+    if (!api.solo) bell(api);
     var dyn = document.getElementById('sn-dyn'); if (!dyn) return;
     dyn.innerHTML = '';
     var ts = api.tables();
@@ -585,6 +724,8 @@
   mod.hostTable = function (T, api) {
     var g = T.g, w = api.el('div', 'sn-ht');
     addCustom(g.cx);
+    var pbs = pendBoxes(T, api, true);
+    if (pbs.length) { var pw = api.el('div', 'sn-pendw'); pw.appendChild(api.el('b', '', '🗣️ 待審查')); pbs.forEach(function (x) { pw.appendChild(x); }); w.appendChild(pw); }
     if (!g.res) {
       var r1 = api.el('div', 'sn-hrow');
       r1.appendChild(hbtn(api, '', g.paused ? '▶️ 繼續' : '⏸️ 暫停', function () { api.act(T, { t: g.paused ? 'resume' : 'pause' }); api.render(); }));
@@ -604,6 +745,7 @@
       g.hist.map(function (h, k) { h.no = k + 1; return h; }).slice().reverse().forEach(function (h) { var q = C(h.q); if (!q) return; var mx = Math.max.apply(null, h.opts.map(function (o) { return o.v; })), win = h.opts.filter(function (o) { return mx > 0 && o.v === mx && o.s >= 0 && !C(o.c).bad; }); tm.appendChild(api.btn('sn-tline', '第 ' + h.no + ' 題・' + api.name(T, h.r).replace(/（.*）/, '') + ' 念 ' + EMO[h.emo].e + ' ' + q.t + '　→ ' + (win.length ? win.map(function (o) { return '🏆' + api.name(T, o.s).replace(/（.*）/, '') + '「' + C(o.c).t + '」'; }).join('、') : '沒有人得分'), function () { api.actAll({ t: 'pause' }); teachProj(api, h.q, h.emo, h.opts.map(function (o) { return o.c; })); })); });
       w.appendChild(tm);
     }
+    w.appendChild(playerStat(T, api));
     return w;
   };
   function teachProj(api, qid, emo, opts) {
@@ -622,7 +764,7 @@
     d.appendChild(api.btn('btn', '揭曉參考答案', function () { ans.classList.remove('hidden'); [].forEach.call(d.querySelectorAll('.sn-pj-a'), function (x) { x.classList.remove('hidden'); }); this.remove(); }));
     d.appendChild(ans);
     d.appendChild(api.el('p', 'sn-pj-sub', '各桌已經暫停，討論完請按「▶️ 全班繼續」'));
-    api.project(d);
+    api.project(d, { cast: true });
   }
   function customEditor(api) {
     var cfg = api.cfg(), cx = cfg.cx || { q: [], r: [] }, b = api.el('div', 'sn-edit');
@@ -642,10 +784,10 @@
   function report(api) {
     var rec = api.gx().rec || {}, ks = Object.keys(rec).sort();
     if (!ks.length) { alert('還沒有紀錄。學生玩過之後才會有資料。'); return; }
-    var head = ['學號', '名字', '玩了幾局', '贏了幾局', '念題次數', '出牌次數', '出了合適的回應', '用動作回應', '出了不太合適的牌', '不太合適的句子', '投給不太合適的牌', '總共得到幾票', '被選為最佳回應', '老師加分', '加分原因', '我需要休息'];
+    var head = ['學號', '名字', '玩了幾局', '贏了幾局', '念題次數', '出牌次數', '出了合適的回應', '用動作回應', '出了不太合適的牌', '不太合適的句子', '投給不太合適的牌', '總共得到幾票', '被選為最佳回應', '說給老師聽通過(+2)', '半分通過(+1)', '念題被請重念', '說話被請重說', '老師另外加分', '加分原因', '我需要休息'];
     var rows = [head].concat(ks.map(function (k) {
       var r = rec[k];
-      return [r.sid, r.name, r.rounds, r.wins, r.read, r.play, r.good, r.act, r.bad, r.badT.join('、'), r.vbad, r.votes, r.best, r.pts, Object.keys(r.pr).map(function (x) { return x + '×' + r.pr[x]; }).join('、'), r.help];
+      return [r.sid, r.name, r.rounds, r.wins, r.read, r.play, r.good, r.act, r.bad, r.badT.join('、'), r.vbad, r.votes, r.best, r.s2 || 0, r.s1 || 0, r.rr || 0, r.rs || 0, r.pts, Object.keys(r.pr).map(function (x) { return x + '×' + r.pr[x]; }).join('、'), r.help];
     }));
     var d = new Date(), name = '你說我接_課後紀錄_' + d.getFullYear() + (d.getMonth() + 1) + d.getDate() + '.csv';
     api.download(name, '﻿' + rows.map(function (r) { return r.map(csvCell).join(','); }).join('\r\n'));
@@ -653,15 +795,15 @@
 
   mod.guide = {
     student: [
-      { h: '怎麼玩', html: '<ol><li>每個人手上有 <b>5 張回應牌</b>：💬「說」的牌是一句話，🙌「動作」牌是一個動作。</li><li>每一題有一位<b>🎤 念題的人</b>（大家輪流當）。系統抽一張題目卡，還有一個<b>情緒</b>（😄開心、😢難過、😠生氣、😲驚訝、😟擔心）。</li><li>念題的人要<b>用那個情緒的語氣</b>，大聲把題目念出來，再按「我念完了」。</li><li>其他人從手牌挑一張<b>最適合回應他</b>的牌，按「出這張」。大家看不到是誰出的。</li><li>所有回應翻開來（只有 A、B、C…，沒有名字）。每個人投票給最適合的回應（念題的人也要投），<b>不能投給自己出的</b>。可以選的回應有 4 個以上時投 <b>2 票</b>，比較少時投 <b>1 票</b>。</li><li>票最多的回應得 <b>1 分</b>。得分的人要<b>真的</b>看著念題的人，把那句話說一次，或做出那個動作。</li><li>念題的人按「下一題」，換下一位念題。</li></ol>' },
-      { h: '怎麼贏', html: '<p>先拿到老師設定的分數，或大家都念完規定的題數時，<b>分數最高的人贏</b>。</p><table class="g-tbl"><tr><th>結果</th><th>積分榜</th></tr><tr><td>🏆 分數最高</td><td>3 分</td></tr><tr><td>🤝 大家一樣高</td><td>1 分</td></tr><tr><td>💪 其他</td><td>0 分</td></tr></table><p>回應不到 4 個的時候（3～4 個人玩），系統會加入<b>🎲 神秘回應</b>湊到 4 個，讓大家有得選，也比較猜不出是誰出的。神秘回應得票最多時，沒有人得分。和電腦玩的不列入總分。</p>' },
-      { h: '不太合適的牌', html: '<p>牌堆裡有一些<b>不太合適</b>的回應，例如「那又怎樣？」「我比你更厲害。」。它們在手牌裡看起來和一般的牌一樣，要靠你自己判斷。</p><p>投票結果出來時，系統會標出 <b>🤔 不太合適</b>，還會說<b>為什麼不合適、可以改成怎麼說</b>。</p><p><b>不太合適的牌就算票最多也不能得分</b>，所以投票時要想清楚：如果你是念題的人，你最想聽到哪一句？</p>' },
+      { h: '怎麼玩', html: '<ol><li>每個人手上有 <b>5 張回應牌</b>：💬「說」的牌是一句話，🙌「動作」牌是一個動作。</li><li>每一題有一位<b>🎤 念題的人</b>（大家輪流當）。系統抽一張題目卡，還有一個<b>情緒</b>（😄開心、😢難過、😠生氣、😲驚訝、😟擔心）。</li><li>念題的人要<b>用那個情緒的語氣</b>，大聲把題目念出來，再按「我念完了，請老師確認」。<b>老師聽過、按通過</b>才會開始出牌；老師覺得還要再練，會請你再念一次（題目和情緒不會換）。念題不加分。</li><li>其他人從手牌挑一張<b>最適合回應他</b>的牌，按「出這張」。大家看不到是誰出的。</li><li>所有回應翻開來（只有 A、B、C…，沒有名字）。每個人投票給最適合的回應（念題的人也要投），<b>不能投給自己出的</b>。可以選的回應有 4 個以上時投 <b>2 票</b>，比較少時投 <b>1 票</b>。</li><li>票最多的回應的主人要<b>真的</b>看著念題的人，把那句話說一次，或做出那個動作，再按「我說完了，請老師確認」。老師按 <b>✅ 通過得 2 分</b>、<b>🌗 半分通過得 1 分</b>，或請你再說一次。</li><li>老師確認完所有得分的人之後，念題的人按「下一題」，換下一位念題。</li></ol><p>手牌一直維持 <b>5 張</b>。</p>' },
+      { h: '怎麼贏', html: '<p>先拿到老師設定的分數（預設 10 分，也可以選 6、14、20 分），或大家都念完規定的題數時，<b>分數最高的人贏</b>。</p><table class="g-tbl"><tr><th>結果</th><th>積分榜</th></tr><tr><td>🏆 分數最高</td><td>3 分</td></tr><tr><td>🤝 大家一樣高</td><td>1 分</td></tr><tr><td>💪 其他</td><td>0 分</td></tr></table><p>回應不到 4 個的時候（3～4 個人玩），系統會加入<b>🎲 神秘回應</b>湊到 4 個，讓大家有得選，也比較猜不出是誰出的。神秘回應得票最多時，沒有人得分。一個人和電腦練習時，說完按鈕就直接得 2 分；和電腦玩的不列入總分。</p>' },
+      { h: '不太合適的牌', html: '<p>牌堆裡有一些<b>不太合適</b>的回應，例如「那又怎樣？」「我比你更厲害。」。它們在手牌裡看起來和一般的牌一樣，要靠你自己判斷。</p><p>投票結果出來時，系統會標出 <b>🤔 不太合適</b>，還會說<b>為什麼不合適、可以改成怎麼說</b>。</p><p>你的手牌裡<b>最多只會有 2 張</b>不太合適的牌；如果連續 2 題都沒有，下一次補牌會補到 1 張，讓你練習分辨。</p><p><b>不太合適的牌就算票最多也不能得分</b>，所以投票時要想清楚：如果你是念題的人，你最想聽到哪一句？</p>' },
       { h: '小提醒', html: '<ul><li>先看情緒：開心的事就替他開心；難過的事就安慰、關心；生氣的時候先陪他冷靜；擔心的時候幫他加油。</li><li>不知道說什麼時，可以先問：「然後呢？」「你現在覺得怎麼樣？」</li><li>每局可以把一張手牌換掉 1 次。</li><li>不舒服的時候，按「🛑 我需要休息」，老師會過來。</li></ul>' }
     ],
     teacher: [
-      { h: '主持流程', html: '<ol><li>首頁「社會技巧/溝通訓練」→「你說我接」。每桌 3～6 人（4～5 人最好）。</li><li>QR code 上方選<b>什麼時候結束</b>：「分數或回合，先到就結束」（兩個條件都有，先達成的那個就結束）、「只看分數」、「只看回合數」；再選<b>目標分數</b>和<b>每人念幾題</b>。</li><li>上方的「🗣️ 老師控制台」→「⚙️ 上課設定」可以選本節主題、開關情緒語氣、開關不太合適的牌、自訂題目和回應。設定在下一局或新開的桌生效。</li><li>點某一桌可以打開那一桌：暫停、換一題、投影這一題全班討論、給學生加分。</li></ol>' },
-      { h: '老師控制台', html: '<ul><li><b>📚 本節主題</b>：安慰與關心（難過）、替別人開心（開心）、鼓勵打氣（擔心）、面對生氣（生氣）、道謝道歉與邀請。選了之後只出這個主題的題目，情緒也會固定。</li><li><b>🎭 情緒語氣</b>：開的時候，念題的人要照指定的情緒念（畫面會提示語氣怎麼做）；同一句話換不同情緒，適合的回應也會不一樣。</li><li><b>🤔 不太合適的牌</b>：牌堆裡有 16 張冷漠、只講自己、轉移話題、嘲笑、否定感受等回應。開票後系統會標出來並說明原因和改法，這種牌票再多也不得分。</li><li><b>✏️ 自訂題目和回應</b>：可以加班上真的發生的事。</li><li><b>📽️ 投影這一題</b>：投影到大螢幕並自動暫停全班，附三個討論問題；投票後投影會列出所有回應，按「揭曉參考答案」顯示適合的種類和不太合適的原因。之前的題目也可以再投影。</li><li><b>⭐ 給學生加 1 分</b>：先點原因（回應很貼心、語氣很真誠、眼睛有看著對方…），再點學生。原因會記在課後紀錄表。</li><li><b>📥 課後紀錄表</b>：用學號整理念題次數、出了合適的回應幾次、出了哪些不太合適的句子、投給不太合適的牌幾次、得票、被選為最佳回應、老師加分與原因，可以用 Excel 打開。</li></ul>' },
-      { h: '上課建議', html: '<ul><li>第一次玩：先投影一題全班一起示範，「念題 → 想回應 → 投票」走一次。</li><li>情緒語氣：先示範同一句「我明天要轉學了」，用開心、難過、擔心各說一次，問學生回應會不會不一樣。</li><li>得分的人要<b>真的</b>對念題的人說一次那句話（或做那個動作），練習眼神、語氣和距離。</li><li>開票後遇到不太合適的牌，可以用「投影這一題」問全班：「為什麼不合適？可以怎麼改？」</li><li>回應不到 4 個時（3～4 人一桌），系統會自動加入神秘回應湊到 4 個；可以投的選項有 4 個以上時每人 2 票，比較少時 1 票。人數允許的話，一桌 4～5 人最好玩。</li><li>玩到只剩 2 個人（其他人離開或認輸）時，這局會用目前的分數結束。</li></ul><p>玩法機制參考「念題、出回應牌、投票」這類社交教具的流程；題目、回應、名稱與畫面都是原創。</p>' }
+      { h: '主持流程', html: '<ol><li>首頁「社會技巧/溝通訓練」→「你說我接」。全班同一桌（3～6 人），開桌後老師畫面會滿版顯示這一桌；多人連線不會有電腦玩家，電腦只出現在學生自己的單人練習。</li><li><b>🔔 待處理鈴鐺</b>：學生按「我念完了」或「我說完了」時，鈴鐺會閃爍並顯示數字，點開就能直接按通過；鈴鐺可以拖到畫面任何位置。桌子畫面最上面也會列出「🗣️ 待審查」。</li><li><b>念題審查</b>：按「通過」才開始出牌；按「請他再念一次」，題目和情緒會鎖住不換。念題不加分。</li><li><b>說話審查</b>：得票最多的學生說完後，按「✅ 通過 +2 分」「🌗 半分通過 +1 分」或「🔁 請他再說一次」。全部確認完才能到下一題。</li><li>QR code 上方選<b>什麼時候結束</b>：「分數或回合，先到就結束」（兩個條件都有，先達成的那個就結束）、「只看分數」、「只看回合數」；再選<b>目標分數</b>（預設 10 分，可選 6／14／20）和<b>每人念幾題</b>。</li><li>上方的「🗣️ 老師控制台」→「⚙️ 上課設定」可以選本節主題、開關情緒語氣、開關不太合適的牌、自訂題目和回應。設定在下一局或新開的桌生效。</li><li>點某一桌可以打開那一桌：暫停、換一題、投影這一題全班討論、給學生加分。</li></ol>' },
+      { h: '老師控制台', html: '<ul><li><b>📚 本節主題</b>：安慰與關心（難過）、替別人開心（開心）、鼓勵打氣（擔心）、面對生氣（生氣）、道謝道歉與邀請。選了之後只出這個主題的題目，情緒也會固定。</li><li><b>🎭 情緒語氣</b>：開的時候，念題的人要照指定的情緒念（畫面會提示語氣怎麼做）；同一句話換不同情緒，適合的回應也會不一樣。</li><li><b>🤔 不太合適的牌</b>：牌堆裡有 16 張冷漠、只講自己、轉移話題、嘲笑、否定感受等回應。開票後系統會標出來並說明原因和改法，這種牌票再多也不得分。</li><li><b>✏️ 自訂題目和回應</b>：可以加班上真的發生的事。</li><li><b>📽️ 投影這一題</b>：投影到大螢幕並自動暫停全班，附三個討論問題；投票後投影會列出所有回應，按「揭曉參考答案」顯示適合的種類和不太合適的原因。之前的題目也可以再投影。</li><li><b>⭐ 給學生加 1 分</b>：先點原因（回應很貼心、語氣很真誠、眼睛有看著對方…），再點學生。原因會記在課後紀錄表。</li><li><b>👥 玩家狀況</b>：桌子畫面最下面列出每位學生的分數、得票、被選為最佳、出過哪些回應、手上有幾張不太合適的牌。學生畫面只顯示暱稱，看不到是誰出了哪張牌。</li><li><b>📥 課後紀錄表</b>：用學號整理念題次數、說話通過（+2）與半分通過（+1）次數、被請重念／重說次數、出了合適的回應幾次、出了哪些不太合適的句子、投給不太合適的牌幾次、得票、被選為最佳回應、老師加分與原因，可以用 Excel 打開。</li></ul>' },
+      { h: '上課建議', html: '<ul><li>第一次玩：先投影一題全班一起示範，「念題 → 想回應 → 投票」走一次。</li><li>情緒語氣：先示範同一句「我明天要轉學了」，用開心、難過、擔心各說一次，問學生回應會不會不一樣。</li><li>得分的人要<b>真的</b>對念題的人說一次那句話（或做那個動作），老師聽過再按通過，練習眼神、語氣和距離。說得很完整給 +2，有說但還不夠到位給半分 +1。</li><li>開票後遇到不太合適的牌，可以用「投影這一題」問全班：「為什麼不合適？可以怎麼改？」</li><li>回應不到 4 個時（3～4 人一桌），系統會自動加入神秘回應湊到 4 個；可以投的選項有 4 個以上時每人 2 票，比較少時 1 票。人數允許的話，一桌 4～5 人最好玩。</li><li>玩到只剩 2 個人（其他人離開或認輸）時，這局會用目前的分數結束。</li></ul><p>玩法機制參考「念題、出回應牌、投票」這類社交教具的流程；題目、回應、名稱與畫面都是原創。</p>' }
     ]
   };
   BG.register('saynext', mod);
