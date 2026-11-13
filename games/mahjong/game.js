@@ -76,7 +76,7 @@
   function finishKakan(g, seat, tile) {
     if (g.last && g.last.rob) { g.last = g.last0 || null; g.last0 = null; }
     g.melds[seat].forEach(function (m) { if (m.k === 'pon' && m.t === tile) m.k = 'kan'; });
-    g.log = { k: 'kan', s: seat, t: tile }; g.pend = {}; g.resp = {}; g.nclaim++; g.cnt++; g.kanDraw = true; draw(g, seat, true);
+    g.log = { k: 'kan', s: seat, t: tile }; g.pend = {}; g.resp = {}; g.nclaim++; g.hold = Date.now() + HOLD; g.cnt++; g.kanDraw = true; draw(g, seat, true);
   }
   function resolve(g) {
     if (Object.keys(g.pend).some(function (s) { return !(s in g.resp); })) return;
@@ -311,7 +311,7 @@
       if (holdLeft(g) > 150) return false;   // 特效還在播
       var so = selfOpts(g, seat);
       if (d.t === 'tsumo') { if (!so.tsumo) return false; win(g, seat, g.drawn, true); return true; }
-      if (d.t === 'ankan') { if (!so.ankan || so.ankan.indexOf(d.tile) < 0) return false; rm(g.hands[seat], d.tile, 4); g.melds[seat].push({ k: 'ankan', t: d.tile }); g.log = { k: 'ankan', s: seat, t: -1 }; g.cnt++; g.nclaim++; g.kanDraw = true; draw(g, seat, true); return true; }
+      if (d.t === 'ankan') { if (!so.ankan || so.ankan.indexOf(d.tile) < 0) return false; rm(g.hands[seat], d.tile, 4); g.melds[seat].push({ k: 'ankan', t: d.tile }); g.log = { k: 'ankan', s: seat, t: -1 }; g.cnt++; g.nclaim++; g.hold = Date.now() + HOLD; g.kanDraw = true; draw(g, seat, true); return true; }
       if (d.t === 'kakan') { if (!so.kakan || so.kakan.indexOf(d.tile) < 0) return false; kakan(g, seat, d.tile); return true; }
       if (d.t === 'discard') { if (g.hands[seat].indexOf(d.tile) < 0) return false; discard(g, seat, d.tile); return true; }
       return false;
@@ -372,15 +372,39 @@
   function who(tb, i) { return i === tb.seat ? '你' : short(tb, i); }
   function hk(tb) { return tb.round + ':' + (tb.view.M ? tb.view.M.no : 0); }
   /* 我打出的牌被吃／碰／槓／胡：畫面中間放大顯示約 2 秒 */
-  var ZW = { chi: '吃！', pon: '碰！', kan: '槓！', hu: '胡！' }, ZV = { chi: '吃了', pon: '碰了', kan: '槓了', hu: '胡了' };
-  function zoom(tb, k, s, t, sp) {
+  var ZW = { chi: '吃！', pon: '碰！', kan: '槓！', hu: '胡！' }, ZV = { chi: '吃了', pon: '碰了', kan: '槓了', hu: '胡了', ankan: '暗槓了' };
+  /* 吃／碰／槓：所有人都看得到的放大提醒（約 2 秒） */
+  function zoom(tb, k, s, t, from, sub) {
     var old = document.querySelector('.mj-zoom'); if (old) old.remove();
-    var z = el('div', 'mj-zoom k-' + k);
-    z.innerHTML = '<div class="mj-zcard"><div class="mj-zw">' + (sp || ZW[k]) + '</div>' + (t >= 0 ? '<div class="mj-zt">' + MJ.svg(t) + '</div>' : '') +
-      '<div class="mj-zs"><b>' + short(tb, s) + '</b> ' + (sp ? '用七張花搶了你摸到的第八張花' : ZV[k] + '你打出的「' + MJ.name(t) + '」') + '</div></div>';
+    var z = el('div', 'mj-zoom k-' + k + (from === tb.seat ? ' mine' : '') + (s === tb.seat ? ' me' : ''));
+    var txt = '<b>' + who(tb, s) + '</b> ' + (sub === 'ankan' ? '暗槓（四張一樣的牌蓋著放）' : sub === 'kakan' ? '把碰過的「' + MJ.name(t) + '」加槓成四張' :
+      ZV[k] + ' ' + (from === tb.seat ? '你' : who(tb, from)) + ' 打出的「' + MJ.name(t) + '」');
+    z.innerHTML = '<div class="mj-zcard"><div class="mj-zw">' + (sub === 'ankan' ? '暗槓！' : sub === 'kakan' ? '加槓！' : ZW[k]) + '</div>' + (t >= 0 ? '<div class="mj-zt">' + MJ.svg(t) + '</div>' : '<div class="mj-zt">' + MJ.svg(0, { back: true }) + '</div>') +
+      '<div class="mj-zs">' + txt + '</div>' + (from === tb.seat ? '<div class="mj-zm">⚠️ 是你打出去的牌！</div>' : '') + '</div>';
     document.body.appendChild(z);
     setTimeout(function () { z.classList.add('out'); }, 1900);
     setTimeout(function () { z.remove(); }, 2400);
+  }
+  /* 胡牌／自摸：更誇張的慶祝畫面，至少 10 秒，可以按「關閉」 */
+  function huFx(tb, w) {
+    var old = document.querySelector('.mj-hufx'); if (old) old.remove();
+    var z0 = document.querySelector('.mj-zoom'); if (z0) z0.remove();
+    var me = w.s === tb.seat, big = w.special || (w.tsumo ? '自摸！' : '胡！');
+    var z = el('div', 'mj-hufx' + (me ? ' me' : '') + (!w.tsumo && w.from === tb.seat ? ' mine' : ''));
+    var conf = ''; for (var i = 0; i < 40; i++) conf += '<i style="left:' + Math.round(Math.random() * 100) + '%;animation-delay:' + (Math.random() * 3).toFixed(2) + 's;animation-duration:' + (2.5 + Math.random() * 2.5).toFixed(2) + 's;background:' + ['#ffd54f', '#e63946', '#2a9d5c', '#1d7dd8', '#f4a300', '#ff7eb6'][i % 6] + '"></i>';
+    var hand = (tb.view.hands && tb.view.hands[w.s]) || [];
+    z.innerHTML = '<div class="mj-conf">' + conf + '</div><div class="mj-hucard">' +
+      '<div class="mj-huw">' + big + '</div>' +
+      '<div class="mj-hus">' + (me ? '🎉 恭喜你' : '<b>' + who(tb, w.s) + '</b>') + (w.special ? '' : w.tsumo ? ' 自己摸到胡牌！' : ' 胡了 ' + (w.from === tb.seat ? '<b class="red">你</b>' : who(tb, w.from)) + (w.rob ? ' 加槓' : ' 打出') + '的牌！') + '</div>' +
+      (w.t >= 0 ? '<div class="mj-hut">' + MJ.svg(w.t) + '</div>' : '') +
+      '<div class="mj-huh">' + ((tb.view.melds && tb.view.melds[w.s]) || []).map(function (m) { return meldHTML(m, true); }).join('') + hand.map(function (t) { return MJ.svg(t); }).join('') + '</div>' +
+      '<div class="mj-hutai">' + (w.tai.total ? '共 <b>' + w.tai.total + '</b> 台：' + w.tai.list.map(function (x) { return x[0]; }).join('、') : '屁胡（0 台）') + '</div>' +
+      '<button type="button" class="mj-btn go big mj-huclose">✕ 關閉（<span>10</span>）</button></div>';
+    document.body.appendChild(z);
+    var left = 10, btnx = z.querySelector('.mj-huclose'), sp = btnx.querySelector('span');
+    var iv = setInterval(function () { left--; if (left <= 0) { clearInterval(iv); close(); } else sp.textContent = left; }, 1000);
+    function close() { clearInterval(iv); z.classList.add('out'); setTimeout(function () { z.remove(); }, 450); }
+    btnx.addEventListener('click', close);
   }
   mod.onUpdate = function (prev, tb, fx) {
     var v = tb.view, k0 = hk(tb);
@@ -389,16 +413,16 @@
     if (v.opts && L.claimCnt !== v.cnt) { L.claimCnt = v.cnt; L.claimAt = Date.now(); fx.snd('turn'); }
     var lg = v.log, key = lg ? lg.k + lg.s + ':' + v.cnt + ':' + (lg.t) : '';
     if (lg && key !== L.logKey && prev) {
-      var mine = lg.from === tb.seat && lg.s !== tb.seat;
-      if (mine && ZW[lg.k]) zoom(tb, lg.k, lg.s, lg.t);
-      else if (lg.k === 'pon') fx.toast(who(tb, lg.s) + '：碰！'); else if (lg.k === 'chi') fx.toast(who(tb, lg.s) + '：吃！'); else if (lg.k === 'kan' || lg.k === 'ankan') fx.toast(who(tb, lg.s) + '：槓！');
+      if ((lg.k === 'pon' || lg.k === 'chi' || lg.k === 'kan') && lg.from != null) zoom(tb, lg.k, lg.s, lg.t, lg.from);
+      else if (lg.k === 'kan') zoom(tb, 'kan', lg.s, lg.t, -1, 'kakan');
+      else if (lg.k === 'ankan') zoom(tb, 'kan', lg.s, -1, -1, 'ankan');
       else if (lg.k === 'kakan?') fx.toast(who(tb, lg.s) + ' 要加槓「' + MJ.name(lg.t) + '」');
       if (lg.k === 'discard') fx.snd('move'); else if (lg.k !== 'flower') fx.snd('cap');
     }
     L.logKey = key;
     // 我放槍（或被七搶一）：放大提醒
     var w = v.win, wk = w ? k0 + ':' + w.s : '';
-    if (w && !w.tsumo && w.from === tb.seat && L.zk !== wk && prev) { L.zk = wk; zoom(tb, 'hu', w.s, w.t, w.special); }
+    if (w && L.zk !== wk && prev) { L.zk = wk; huFx(tb, w); if (!tb.res) fx.snd('win'); }
     if (prev && prev.view && v.turn === tb.seat && prev.view.turn !== tb.seat) fx.snd('turn');
     var M = v.M, mu = v.mode === 'east' || v.mode === 'full';
     if (prev === null || (prev && (prev.round !== tb.round || (mu && prev.view && prev.view.M && prev.view.M.no !== M.no)))) {
@@ -439,7 +463,7 @@
     } else if (out) st.textContent = '你已經認輸，正在觀看';
     else if (v.opts) { st.textContent = v.opts.rob ? who(tb, v.last.s) + ' 要加槓「' + MJ.name(v.last.t) + '」，你可以搶槓胡！' : '有人打出 ' + MJ.name(v.last.t) + '，你要吃／碰／胡嗎？'; st.className = 'mj-status me'; }
     else if (myTurn) { st.textContent = v.self.tsumo ? '你可以自摸！' : (L.sel != null ? '再點一次「' + MJ.name(L.sel) + '」或按「打出」' : '輪到你：點一張牌打出去'); st.className = 'mj-status me'; }
-    else if (holding && v.log) st.textContent = '⏸️ ' + who(tb, v.log.s) + ' ' + (ZV[v.log.k] || '') + (v.log.from === seat ? '你的牌' : '') + '，等一下再繼續…';
+    else if (holding && v.log) st.textContent = '⏸️ ' + who(tb, v.log.s) + ' ' + (ZV[v.log.k] || '') + (v.log.from === seat ? '你的牌' : v.log.from != null && v.log.from >= 0 ? who(tb, v.log.from) + '的牌' : '') + '，等一下再繼續…';
     else if (v.waiting.length) st.textContent = '等 ' + v.waiting.map(function (s) { return who(tb, s); }).join('、') + ' 決定要不要吃碰…';
     else st.textContent = '輪到 ' + (v.turn >= 0 ? who(tb, v.turn) : '…');
     wrap.appendChild(st);
