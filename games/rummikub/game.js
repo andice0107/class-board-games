@@ -186,7 +186,7 @@
     if (tb.res) st.textContent = '這局結束了：' + (tb.res.w >= 0 ? who(tb, tb.res.w) + ' 獲勝' : '平手');
     else if (out) st.textContent = '你已經認輸，正在觀看';
     else if (L.pending) st.textContent = '送出中…';
-    else if (myTurn) { st.textContent = W.sel.length ? '再點桌上的一組，或「＋新的一組」' : ws.err ? '⚠️ ' + ws.err : (!v.pool ? '牌堆抽完了：能出就繼續出，出不了就按「跳過」' : v.opened[seat] ? '點牌選起來，移到桌上；或抽一張' : '第一次出牌要 30 點以上'); st.className = 'rk-status me' + (ws.err && !W.sel.length ? ' warn' : ''); }
+    else if (myTurn) { st.textContent = W.sel.length ? '已選 ' + W.sel.length + ' 張：可以再點其他牌一起選，選好按「⬇ 放這裡」或「＋新的一組」' : ws.err ? '⚠️ ' + ws.err : (!v.pool ? '牌堆抽完了：能出就繼續出，出不了就按「跳過」' : v.opened[seat] ? '點牌選起來，移到桌上；或抽一張' : '第一次出牌要 30 點以上'); st.className = 'rk-status me' + (ws.err && !W.sel.length ? ' warn' : ''); }
     else st.textContent = '等 ' + short(tb, v.turn) + ' 出牌…';
     wrap.appendChild(st);
     wrap.appendChild(PKUI.opps(tb, v, seat, function (i) { return v.opened[i] ? '' : '未開局'; }, short));
@@ -198,10 +198,13 @@
       var a = RK.analyze(s), row = el('div', 'rk-set' + (myTurn && !a.ok ? ' bad' : '') + (myTurn && W.sel.length ? ' target' : '')); row.setAttribute('data-h', 'set' + i);
       (a.ok ? a.order : s).forEach(function (id) { var x = el('span'); x.innerHTML = RK.tile(id, { sel: myTurn && W.sel.indexOf(id) >= 0, mine: myTurn && W.orig[id] }); var t = x.firstChild; if (lastPlaced[id]) t.classList.add('new'); row.appendChild(t); });
       if (myTurn && !a.ok) row.appendChild(el('small', 'rk-why', a.why || '不合法'));
+      // 有選牌時，每一組後面出現「放這裡」：點牌是「多選／取消」，點「放這裡」（或這組的空白處）才把選好的牌一次移過去
+      var allSel = s.every(function (id) { return W.sel.indexOf(id) >= 0; });
+      if (myTurn && W.sel.length && !allSel) { var pb = el('button', 'rk-put', '⬇ 放這裡'); pb.type = 'button'; row.appendChild(pb); }
       row.addEventListener('click', function (e) {
         if (!myTurn) return;
         var t = e.target.closest('.rk-tile');
-        if (W.sel.length && !(t && W.sel.indexOf(+t.getAttribute('data-id')) >= 0)) { moveSel(i); ctx.snd('move'); ctx.rerender(); return; }
+        if (W.sel.length && !t && !allSel) { moveSel(i); ctx.snd('move'); ctx.rerender(); return; }
         if (t) { var id = +t.getAttribute('data-id'), k = W.sel.indexOf(id); if (k >= 0) W.sel.splice(k, 1); else W.sel.push(id); ctx.snd('tap'); ctx.rerender(); }
       });
       felt.appendChild(row);
@@ -237,7 +240,6 @@
       if (!t && W.sel.length) { var er = moveSel('rack'); if (er) ctx.toast(er); ctx.rerender(); return; }
       if (!t) return;
       var id = +t.getAttribute('data-id');
-      if (W.sel.length && W.sel.some(function (x) { return W.rack.indexOf(x) < 0; })) { var er2 = moveSel('rack'); if (er2) ctx.toast(er2); ctx.rerender(); return; }
       var k = W.sel.indexOf(id); if (k >= 0) W.sel.splice(k, 1); else W.sel.push(id); ctx.snd('tap'); ctx.rerender();
     });
     me.appendChild(rr);
@@ -294,8 +296,8 @@
   function row(ids, note) { return '<figure class="g-fig"><div class="rk-set demo">' + ids.map(function (id) { return RK.tile(id); }).join('') + '</div><figcaption>' + note + '</figcaption></figure>'; }
   mod.guide = {
     student: [
-      { h: '怎麼玩', html: '<ol><li>每人先拿 <b>14 張</b>。輪到你時，可以把牌組成「一組」放到桌上，或<b>抽一張</b>。</li><li><b>第一次出牌</b>：放出去的組合點數加起來要 <b>30 點以上</b>，而且只能用自己的牌。</li><li>開局後，可以把牌<b>接到桌上別人的組合</b>，也可以把桌上的牌重新拆開、重組，只要回合結束時桌上每一組都合法。</li><li>第一個把手牌全部放完的人獲勝！</li></ol>' +
-        '<h4>操作方法</h4><ul><li>點一張或好幾張牌（會浮起來），再點<b>桌上的某一組</b>把牌加進去，或點「<b>＋ 新的一組</b>」。</li><li>放錯了：選起來再點自己的手牌區可以收回（只限本回合從手上拿出去的牌），或按「<b>↩ 重來</b>」。</li><li>不合法的組合會用紅框標示。全部合法才能按「<b>✔ 完成</b>」。</li></ul>' },
+      { h: '怎麼玩', html: '<ol><li>每人先拿 <b>14 張</b>。輪到你時，可以把牌組成「一組」放到桌上，或<b>抽一張</b>。</li><li><b>第一次出牌（破冰）</b>：這一回合可以放<b>好幾組</b>，只要全部是自己手上的牌、點數加起來 <b>30 點以上</b>就可以。破冰這一回合還不能接別人的組合、也不能拆桌上的牌，要等下一回合才可以。</li><li>開局後，可以把牌<b>接到桌上別人的組合</b>，也可以把桌上的牌重新拆開、重組，只要回合結束時桌上每一組都合法。</li><li>第一個把手牌全部放完的人獲勝！</li></ol>' +
+        '<h4>操作方法</h4><ul><li>點一張或好幾張牌（會浮起來）。手上的牌和桌上的牌可以<b>一起多選</b>（例如從桌上不同組拆出好幾張），再點那一組後面的「<b>⬇ 放這裡</b>」一次移過去，或點「<b>＋ 新的一組</b>」。再點一次已選的牌就取消。</li><li>放錯了：選起來再點自己的手牌區可以收回（只限本回合從手上拿出去的牌），或按「<b>↩ 重來</b>」。</li><li>不合法的組合會用紅框標示。全部合法才能按「<b>✔ 完成</b>」。</li></ul>' },
       { h: '合法的組合', html: '<div class="g-figs">' + row([6, 19, 32], '同數字、不同顏色（3～4 張）') + row([0, 1, 2, 3], '同顏色、連續數字（3 張以上）') + row([22, 104, 24], '鬼牌 😀 可以當作任何一張牌') + '</div><p>1 不能接在 13 後面。</p>' },
       { h: '計分方式', html: '<p><b>誰先把手上的牌全部出完，誰就贏</b>（積分榜 +3 分），這是正常的結束方式。如果牌堆被抽完了，遊戲<b>還會繼續</b>：能出牌就繼續出，沒有牌可以出就按「跳過」（如果你其實還有牌能出，系統會先提醒你）。要等到牌堆抽完、而且大家連續一整輪都出不了牌，才會結束，這時候把大家的牌翻開，手上點數最少的人獲勝（數字多少算幾點，鬼牌算 30 點）。</p>' }
     ],
