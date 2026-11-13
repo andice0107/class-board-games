@@ -310,7 +310,7 @@
     var nm = function (i) { var x = tb.seats[i]; return i === tb.seat ? '你' : !x ? '?' : x.bot ? '電腦 ' + (i + 1) : x.name.replace(/（\d{4}）/, ''); };
     var who = r.ws ? (r.ws.length ? '🏆 獲勝：' + r.ws.map(nm).join('、') : '') : r.l != null ? '💥 ' + nm(r.l) + '：' + (GAME.reasons[r.why] || '輸了') : r.w >= 0 ? '🏆 獲勝：' + nm(r.w) : '';
     var rn = GAME.resultNote ? GAME.resultNote(tb, nm) : null;
-    if (rn) { var bx = el('div', 'res-info'); rn.forEach(function (line) { bx.appendChild(el('p', 'res-note', line)); }); c.appendChild(bx); }
+    if (rn) { var bx = el('div', 'res-info'); rn.forEach(function (line) { if (line && line.html != null) { var hx = el('div', 'res-html'); hx.innerHTML = line.html; bx.appendChild(hx); } else bx.appendChild(el('p', 'res-note', line)); }); c.appendChild(bx); }
     else { if (who) c.appendChild(el('p', 'res-who', who)); if (r.note) c.appendChild(el('p', 'res-note', r.note)); }
     if (r.lose != null && r.lose >= 0) c.appendChild(el('p', 'res-note', r.lose === tb.seat ? '🤡 鬼牌最後在你手上！' : '🤡 鬼牌最後在 ' + tb.seats[r.lose].name + ' 手上'));
     if (S.stat) c.appendChild(el('p', '', '我的積分：' + S.pts + ' 分（' + S.stat.w + ' 勝 ' + S.stat.d + ' 和 ' + S.stat.l + ' 負）'));

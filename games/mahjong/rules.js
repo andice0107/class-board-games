@@ -94,40 +94,75 @@ window.MJ = (function () {
     return best;
   }
 
-  /* ---------- 台數（簡化版） ---------- */
-  function tai(o) { // o: {hand(含胡的那張), melds, flowers, seat, dealer, tsumo, kanDraw, lastTile}
-    var c = counts(o.hand), ds = decomps(c), list = [], bestN = -1, best = null;
-    var open = o.melds.filter(function (m) { return m.k !== 'ankan'; });
-    var all = o.hand.concat([]).filter(function (t) { return t < 34; });
-    o.melds.forEach(function (m) { if (m.k === 'chi') all.push(m.t, m.t + 1, m.t + 2); else { all.push(m.t, m.t, m.t); } });
+  /* ---------- 台數（台灣 16 張常見正式台數） ----------
+     莊家／連莊拉莊的台數要看「誰付錢」，所以不放在這裡，由遊戲在付分時另外加。 */
+  var WN = '東南西北';
+  function waitsOf(h) { // h：還沒胡之前的手牌（不含胡的那張）
+    var c = counts(h), w = [];
+    for (var t = 0; t < 34; t++) { if (c[t] >= 4) continue; c[t]++; if (isWin(c)) w.push(t); c[t]--; }
+    return w;
+  }
+  function tai(o) { // o: {hand(含胡的那張), melds, flowers, wind(門風0-3), round(圈風0-3), tsumo, win(胡的牌), kanDraw, lastTile, rob, first:'heaven'|'earth'|'human'|null}
+    var c = counts(o.hand), ds = decomps(c), best = null, bestN = -1;
+    var open = o.melds.filter(function (m) { return m.k !== 'ankan'; }), ank = o.melds.filter(function (m) { return m.k === 'ankan'; }).length;
+    var all = o.hand.filter(function (t) { return t < 34; });
+    o.melds.forEach(function (m) { if (m.k === 'chi') all.push(m.t, m.t + 1, m.t + 2); else all.push(m.t, m.t, m.t); });
     var suits = {}; all.forEach(function (t) { suits[suit(t)] = 1; });
     var nSuit = [0, 1, 2].filter(function (s) { return suits[s]; }).length, hasHon = !!suits[3];
+    var h16 = o.hand.slice(); h16.splice(h16.indexOf(o.win), 1);
+    var waits = waitsOf(h16).length;
+    var quan = 27 + (o.round || 0), men = 27 + (o.wind || 0);
     ds.forEach(function (d) {
-      var L = [];
-      if (o.seat === o.dealer) L.push(['莊家', 1]);
-      if (!open.length) L.push(['門清', 1]);
-      if (o.tsumo) L.push(['自摸', 1]);
-      if (o.tsumo && !open.length) L.push(['門清自摸', 1]);
-      if (o.kanDraw && o.tsumo) L.push(['槓上開花', 1]);
-      if (o.lastTile) L.push([o.tsumo ? '海底撈月' : '河底撈魚', 1]);
-      var pungs = d.sets.filter(function (s) { return s.k === 'pung'; }).map(function (s) { return s.t; })
-        .concat(o.melds.filter(function (m) { return m.k !== 'chi'; }).map(function (m) { return m.t; }));
-      var chows = d.sets.filter(function (s) { return s.k === 'chow'; }).length + o.melds.filter(function (m) { return m.k === 'chi'; }).length;
-      var drag = pungs.filter(function (t) { return t >= 31; }).length;
-      if (drag === 3) L.push(['大三元', 8]); else if (drag === 2 && d.pair >= 31) L.push(['小三元', 4]); else pungs.forEach(function (t) { if (t >= 31) L.push([name(t), 1]); });
-      var wind = 27 + ((o.seat - o.dealer + 4) % 4);
-      if (pungs.indexOf(wind) >= 0) L.push(['門風 ' + name(wind), 1]);
-      if (pungs.indexOf(27) >= 0) L.push(['圈風 東風', 1]);
-      if (!chows) L.push(['碰碰胡', 4]);
-      if (!nSuit && hasHon) L.push(['字一色', 16]); else if (nSuit === 1 && !hasHon) L.push(['清一色', 8]); else if (nSuit === 1 && hasHon) L.push(['混一色', 4]);
-      var n = L.reduce(function (a, x) { return a + x[1]; }, 0);
-      if (n > bestN) { bestN = n; best = L; }
+      var places = [];
+      if (d.pair === o.win) places.push(-1);
+      d.sets.forEach(function (s, i) { if ((s.k === 'pung' && s.t === o.win) || (s.k === 'chow' && o.win >= s.t && o.win <= s.t + 2)) places.push(i); });
+      places.forEach(function (pl) {
+        var L = [];
+        if (o.first === 'heaven') L.push(['天胡', 24]); else if (o.first === 'earth') L.push(['地胡', 16]); else if (o.first === 'human') L.push(['人胡', 16]);
+        if (!o.first) {
+          if (!open.length) L.push(['門清', 1]);
+          if (o.tsumo) L.push(['自摸', 1]);
+          if (o.tsumo && !open.length) L.push(['不求人（門清又自摸，再加）', 1]);
+        }
+        var allOpen = open.length === 5 && !o.tsumo;
+        if (allOpen) L.push(['全求人', 2]);
+        if (o.kanDraw && o.tsumo) L.push(['槓上開花', 1]);
+        if (o.lastTile) L.push([o.tsumo ? '海底撈月' : '河底撈魚', 1]);
+        if (o.rob) L.push(['搶槓', 1]);
+        var hp = d.sets.filter(function (s) { return s.k === 'pung'; });
+        var pungs = hp.map(function (s) { return s.t; }).concat(o.melds.filter(function (m) { return m.k !== 'chi'; }).map(function (m) { return m.t; }));
+        var chows = d.sets.filter(function (s) { return s.k === 'chow'; }).length + o.melds.filter(function (m) { return m.k === 'chi'; }).length;
+        var hidden = ank + d.sets.filter(function (s, i) { return s.k === 'pung' && (o.tsumo || i !== pl); }).length;
+        // 三元牌
+        var drag = pungs.filter(function (t) { return t >= 31; }).length;
+        if (drag === 3) L.push(['大三元', 8]); else if (drag === 2 && d.pair >= 31) L.push(['小三元', 4]); else pungs.forEach(function (t) { if (t >= 31) L.push([name(t) + '（三元牌刻子）', 1]); });
+        // 風牌
+        var nw = pungs.filter(function (t) { return t >= 27 && t <= 30; }).length;
+        if (nw === 4) L.push(['大四喜', 16]);
+        else if (nw === 3 && d.pair >= 27 && d.pair <= 30) L.push(['小四喜', 8]);
+        else { if (pungs.indexOf(quan) >= 0) L.push(['圈風（' + WN[o.round || 0] + '風圈的' + name(quan) + '刻子）', 1]); if (pungs.indexOf(men) >= 0) L.push(['門風（你坐' + WN[o.wind || 0] + '家的' + name(men) + '刻子）', 1]); }
+        var ziyi = !nSuit && hasHon;
+        if (!chows && !ziyi) L.push(['碰碰胡', 4]);
+        if (hidden >= 5) L.push(['五暗刻', 8]); else if (hidden === 4) L.push(['四暗刻', 5]); else if (hidden === 3) L.push(['三暗刻', 2]);
+        if (ziyi) L.push(['字一色', 16]); else if (nSuit === 1 && !hasHon) L.push(['清一色', 8]); else if (nSuit === 1 && hasHon) L.push(['混一色', 4]);
+        if (!o.flowers.length && !hasHon && !pungs.length && !o.tsumo && waits >= 2 && !allOpen) L.push(['平胡', 2]);
+        if (waits === 1 && !allOpen) {
+          var s0 = pl >= 0 ? d.sets[pl] : null;
+          L.push([pl < 0 ? '獨聽（單吊）' : s0.k === 'chow' && o.win === s0.t + 1 ? '獨聽（中洞）' : s0.k === 'chow' ? '獨聽（邊張）' : '獨聽', 1]);
+        }
+        var n = L.reduce(function (a, x) { return a + x[1]; }, 0);
+        if (n > bestN) { bestN = n; best = L; }
+      });
     });
     best = best || [];
-    var pos = (o.seat - o.dealer + 4) % 4;
-    o.flowers.forEach(function (f) { if ((f - 34) % 4 === pos) best.push(['花牌 ' + FL[f - 34], 1]); });
+    // 花牌：自己位置的花各 1 台；同一組四張（春夏秋冬或梅蘭竹菊）收齊是花槓 2 台
+    [0, 4].forEach(function (b) {
+      var have = o.flowers.filter(function (f) { return f - 34 >= b && f - 34 < b + 4; });
+      if (have.length === 4) best.push([b ? '花槓（梅蘭竹菊）' : '花槓（春夏秋冬）', 2]);
+      else if (have.indexOf(34 + b + (o.wind || 0)) >= 0) best.push(['正花 ' + FL[b + (o.wind || 0)], 1]);
+    });
     var total = best.reduce(function (a, x) { return a + x[1]; }, 0);
-    return { list: best, total: total };
+    return { list: best, total: total, waits: waits };
   }
 
   /* ---------- 牌面（SVG） ---------- */
@@ -171,5 +206,5 @@ window.MJ = (function () {
     if (!CACHE[t]) CACHE[t] = '<rect x="1" y="1" width="38" height="52" rx="5" fill="#fbf7ea" stroke="#c8bfa3" stroke-width="1.5"/>' + face(t);
     return '<svg class="mj-t" viewBox="0 0 40 54" data-t="' + t + '">' + CACHE[t] + '</svg>';
   }
-  return { name: name, wall: wall, counts: counts, sortHand: sortHand, isWin: isWin, shanten: shanten, pickDiscard: pickDiscard, afterClaim: afterClaim, tai: tai, svg: svg, isFlower: isFlower, useful: useful, HON: HON };
+  return { name: name, wall: wall, counts: counts, sortHand: sortHand, isWin: isWin, shanten: shanten, pickDiscard: pickDiscard, afterClaim: afterClaim, tai: tai, waitsOf: waitsOf, svg: svg, isFlower: isFlower, useful: useful, HON: HON };
 })();
