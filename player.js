@@ -71,7 +71,7 @@
       }
       if (!SOLO) BGSfx.force(d.snd !== false);
       if (!SOLO && 'cast' in d) setCast(d.cast);
-      S = d; me.name = d.name; save(); render();
+      d._rt = Date.now(); S = d; me.name = d.name; save(); render();
     } else if (d.t === 'sidtaken') {
       if (joined) return;
       if (net) net.close(); net = null; S = null; clearTimeout(connect.t);
@@ -89,9 +89,13 @@
   function topBar() {
     var t = el('div', 'p-top');
     t.innerHTML = '<div class="brand"><div class="logo"><i></i><i></i><i></i><i></i></div><h1>桌遊對戰教室</h1></div><span class="sp"></span>';
+    var A = joined && S && S.tb && !S.tb.res ? S.aid : null;
+    if (A && (A.tl != null || (A.h != null && GAME && GAME.hint))) t.classList.add('aidon');
+    if (A && A.tl != null) t.appendChild(el('span', 'pill aid-tl', '⏱ ' + secsLeft()));
+    if (A && A.h != null && GAME && GAME.hint) t.appendChild(btn('btn small aid-btn' + (A.hint ? ' on' : '') + (A.h === 0 ? ' dis' : ''), '💡 提示' + (A.h < 0 ? '' : '（' + A.h + '）'), askHint));
     if (SOLO) t.appendChild(BGSfx.button('btn small ghost'));   // 多人時音效由老師端統一開關
     if (joined && S && GAME && GAME.guide) t.appendChild(btn('btn small ghost', '📖 規則', function () { BG.showGuide((BG.meta(S.gid) || {}).title + '・玩法說明', GAME.guide.student); }));
-    if (code && !SOLO) t.appendChild(el('span', 'pill', '🔑 ' + code));
+    if (code && !SOLO) { var cp = el('span', 'pill code-pill', '🔑 ' + code); t.appendChild(cp); }
     return t;
   }
   function render() {
@@ -109,10 +113,12 @@
     if (!S.tb || !GAME) return waiting();
     var n0 = app.children.length;
     GAME.render(app, ctx());
+    hintMark();
     fit(app.children[n0]);
     if (S.tb.res) result();
     if (showEmo && (SOLO || !S || S.emo !== false)) emotes();
     placeBubbles();
+    aidBanner();
   }
   /* 遊戲桌自動放大到填滿畫面：找出「整張桌子剛好放得下」的最大倍率。
      只在開新局、換方向／視窗大小時重新計算；遊戲中不會因為牌變少而縮小，
@@ -164,9 +170,54 @@
   };
   function ctx() {
     var vsBots = S.tb.seats.every(function (x, i) { return i === S.tb.seat || x.bot; });
-    return { tb: S.tb, canUndo: vsBots, send: send, toast: toast, snd: function (k) { snd.play(k); }, rerender: render,
+    return { tb: S.tb, hint: S.aid && S.aid.hint ? S.aid.hint : null, canUndo: vsBots, send: send, toast: toast, snd: function (k) { snd.play(k); }, rerender: render,
       button: btn, emoteButton: function (cls) { if (!SOLO && S && S.emo === false) { var x = el('span'); x.style.display = 'none'; return x; } return btn(cls, '💬 說話', function () { showEmo = !showEmo; render(); }); } };
   }
+
+  /* ---------- 提示・倒數計時・溫馨小提醒（由老師端控制） ---------- */
+  var dismissed = {};
+  function secsLeft() { var A = S && S.aid; if (!A || A.tl == null) return ''; return Math.max(0, Math.ceil((A.tl - (Date.now() - S._rt)) / 1000)); }
+  function askHint() {
+    var A = S && S.aid; if (!A) return;
+    if (A.hint) { delete dismissed['h' + A.hint.k]; aidBanner(); return; }
+    if (A.h === 0) { toast('這局的提示次數用完了，自己想想看！'); snd.play('error'); return; }
+    send('hint'); snd.play('tap');
+  }
+  /* 被提示指到的牌／棋子加上閃亮框（遊戲用 data-h 或撲克牌的 data-c 標記） */
+  function hintMark() {
+    var h = S && S.aid && S.aid.hint; if (!h || !h.hl || !h.hl.length) return;
+    var set = {}; h.hl.forEach(function (x) { set[x] = 1; });
+    [].forEach.call(app.querySelectorAll('[data-h],[data-c],[data-id]'), function (n) {
+      var a = n.getAttribute('data-h'), b = n.getAttribute('data-c'), c = n.getAttribute('data-id');
+      if ((a != null && set[a]) || (b != null && set[b]) || (c != null && set[c])) n.classList.add('hint-hl');
+    });
+  }
+  function aidBanner() {
+    [].forEach.call(document.querySelectorAll('.aid-banner'), function (n) { n.remove(); });
+    var A = S && S.aid; if (!A || !S.tb || S.tb.res) return;
+    var items = [];
+    if (A.hint && !dismissed['h' + A.hint.k]) items.push({ c: 'hint', t: '💡 提示：' + A.hint.msg, k: 'h' + A.hint.k });
+    if (A.tip && !dismissed['t' + A.tip + A.tk]) items.push({ c: 'tip', t: '🌟 溫馨小提醒：' + A.tip, k: 't' + A.tip + A.tk });
+    if (!items.length) return;
+    var box = el('div', 'aid-banner');
+    items.forEach(function (it) {
+      var d = el('div', 'aid-msg ' + it.c); d.appendChild(el('span', 'tx', it.t));
+      var x = el('button', 'x', '✕'); x.type = 'button'; x.title = '先關掉這則'; x.addEventListener('click', function () { dismissed[it.k] = 1; aidBanner(); });
+      d.appendChild(x); box.appendChild(d);
+    });
+    document.body.appendChild(box);
+    if (aidBanner.last !== items[0].k) { aidBanner.last = items[0].k; snd.play(items[0].c === 'tip' ? 'turn' : 'pop'); }
+  }
+  var lastTick = -1;
+  setInterval(function () {
+    var A = S && S.aid, bar = document.querySelector('.aid-bar');
+    if (!A || A.tl == null || !S.tb || S.tb.res) { if (bar) bar.remove(); return; }
+    var left = A.tl - (Date.now() - S._rt), sec = Math.max(0, Math.ceil(left / 1000)), pill = document.querySelector('.aid-tl');
+    if (pill) { pill.textContent = '⏱ ' + sec; pill.classList.toggle('warn2', sec <= 10); pill.classList.toggle('hot', sec <= 5); }
+    if (!bar) { bar = el('div', 'aid-bar'); bar.appendChild(el('i')); document.body.appendChild(bar); }
+    var fillEl = bar.firstChild; fillEl.style.width = Math.max(0, Math.min(100, left / Math.max(1, A.tt || left) * 100)) + '%'; bar.classList.toggle('hot', sec <= 10);
+    if (sec <= 5 && sec > 0 && sec !== lastTick) { lastTick = sec; snd.play('tap'); } else if (sec > 5) lastTick = -1;
+  }, 250);
   function dice() { var w = el('div', 'wait-dice'); ['♠', '帥', '●', '★'].forEach(function (t) { w.appendChild(el('span', '', t)); }); return w; }
   function codeForm() {
     var c = el('div', 'panel p-card');

@@ -42,3 +42,6 @@
 /* 老師端縮圖 */
 .g-xiangqi-mini { margin: 4px 0; }
 .big-view .g-xiangqi-mini svg { max-height: calc(var(--vh, 1vh) * 62); width: auto; margin: 0 auto; }
+
+.xq-svg .hint-ring { animation: hintring 1s ease-in-out infinite; transform-box: fill-box; transform-origin: center; pointer-events: none; }
+@keyframes hintring { 50% { transform: scale(1.18); opacity: .6; } }

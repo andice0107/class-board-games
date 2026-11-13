@@ -68,6 +68,21 @@
       nextTurn(g);
       return true;
     },
+    hintDesc: '會算出「第三張落在兩根門柱中間」的機率，告訴你兩根門柱中間有幾種點數，並亮出建議押的籌碼（機率高才多押，機率低就別射）；門柱一樣大時，亮出猜大或猜小哪邊比較有機會。',
+    tipDesc: '提醒你先選要押幾個（選「不射」也可以），再按「射」。',
+    hint: function (g, seat) {
+      if (g.res || g.turn !== seat || g.out.indexOf(seat) >= 0 || !g.posts) return null;
+      var a = num(g.posts[0]), b = num(g.posts[1]), p = winProb(g), mb = maxBet(g, seat), rec = p > .7 ? mb : p > .55 ? Math.min(2, mb) : p > .42 ? Math.min(1, mb) : 0, pct = Math.round(p * 100);
+      if (a === b) {
+        var hi = 13 - a, lo = a - 1, gs = hi >= lo ? 'hi' : 'lo';
+        return { msg: '兩根門柱一樣大（' + PK.label(g.posts[0][0]) + '），要猜第三張比它大還是小。比它大的點數有 ' + hi + ' 種、比它小的有 ' + lo + ' 種，所以猜「' + (gs === 'hi' ? '比較大' : '比較小') + '」機會比較高（約 ' + pct + '%）。' + (rec ? '建議押 ' + rec + ' 個。' : '機會不高，建議這次不射。'), hl: ['b' + rec, 'g:' + gs] };
+      }
+      return { msg: '兩根門柱中間有 ' + Math.max(0, b - a - 1) + ' 種點數，第三張落在門裡面的機會約 ' + pct + '%。' + (rec ? '機會不錯，建議押 ' + rec + ' 個。' : '機會不大，建議這次「不射」。') + '（撞柱要賠 2 倍，要小心）', hl: ['b' + rec] };
+    },
+    nudge: function (g, seat) {
+      if (g.res || g.turn !== seat || g.out.indexOf(seat) >= 0 || !g.posts) return null;
+      return num(g.posts[0]) === num(g.posts[1]) ? '兩根門柱一樣大！先選要押幾個，再選猜「比較大」或「比較小」，最後按「射」。' : '輪到你了：先選要押幾個籌碼（不想冒險就選「不射」），再按「射」，翻開第三張決定輸贏。';
+    },
     botTurn: function (g, seat, lv) {
       if (g.res || g.turn !== seat) return null;
       var p = winProb(g), mb = maxBet(g, seat), a = num(g.posts[0]), b;
@@ -140,9 +155,9 @@
     if (myTurn) {
       var mb = Math.max(0, Math.min(3, v.pot, v.chips[seat])); if (L.bet > mb) L.bet = mb;
       var row = el('div', 'pk-tools');
-      for (var b = 0; b <= mb; b++) (function (b) { row.appendChild(ctx.button('pk-btn' + (L.bet === b ? ' go' : ''), b ? '押 ' + b : '不射', function () { L.bet = b; ctx.snd('tap'); ctx.rerender(); })); })(b);
+      for (var b = 0; b <= mb; b++) (function (b) { var bb = ctx.button('pk-btn' + (L.bet === b ? ' go' : ''), b ? '押 ' + b : '不射', function () { L.bet = b; ctx.snd('tap'); ctx.rerender(); }); bb.setAttribute('data-h', 'b' + b); row.appendChild(bb); })(b);
       me.appendChild(row);
-      if (same && L.bet) { var gr = el('div', 'pk-tools'); [['lo', '猜比較小 ⬇'], ['hi', '猜比較大 ⬆']].forEach(function (x) { gr.appendChild(ctx.button('pk-btn' + (L.guess === x[0] ? ' go' : ''), x[1], function () { L.guess = x[0]; ctx.rerender(); })); }); me.appendChild(gr); }
+      if (same && L.bet) { var gr = el('div', 'pk-tools'); [['lo', '猜比較小 ⬇'], ['hi', '猜比較大 ⬆']].forEach(function (x) { var gb = ctx.button('pk-btn' + (L.guess === x[0] ? ' go' : ''), x[1], function () { L.guess = x[0]; ctx.rerender(); }); gb.setAttribute('data-h', 'g:' + x[0]); gr.appendChild(gb); }); me.appendChild(gr); }
       var go = ctx.button('pk-btn go dg-shoot', L.bet ? '🏹 射！' : '這次不射', function () { L.sent = v.cnt; ctx.snd('move'); ctx.send('shoot', { b: L.bet, guess: L.guess, n: v.cnt }); ctx.rerender(); });
       if (same && L.bet && !L.guess) go.disabled = true;
       var gw = el('div', 'pk-tools'); gw.appendChild(go); me.appendChild(gw);

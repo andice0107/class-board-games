@@ -95,6 +95,24 @@
       g.turn = nxt(g, seat); g.cnt++;
       return true;
     },
+    hintDesc: '會亮出你手上「現在用得出去」的牌（有可以打的小豬或豬舍）；如果你的牌都沒辦法用，會亮出「換手牌」按鈕。也會順便提醒你的髒小豬有沒有被保護、有沒有人快贏了。',
+    tipDesc: '手牌都沒辦法用時，提醒你按「換手牌」；其他時候提醒你怎麼出牌（先點牌，再點發光的小豬）。',
+    hint: function (g, seat) {
+      if (g.res || g.turn !== seat || g.out.indexOf(seat) >= 0) return null;
+      var h = g.hands[seat], ok = [];
+      h.forEach(function (c, i) { if (targets(g, seat, c).length) ok.push('c' + i); });
+      if (!ok.length) return { msg: '你手上的牌現在都沒辦法用（沒有可以打的小豬或豬舍）。請按亮黃框的「🔄 換手牌」，換 3 張新的。', hl: ['swap'] };
+      var unprot = g.pigs[seat].filter(function (p) { return p.d && !p.barn; }).length, extra = '';
+      var danger = alive(g).filter(function (s) { return s !== seat && dirtyCount(g, s) >= g.pigs[s].length - 1; });
+      if (danger.length) extra = '小心！第 ' + (danger[0] + 1) + ' 位的小豬快全部變髒了，想辦法用農夫洗乾淨他的豬，或用閃電打壞他的豬舍。';
+      else if (unprot) extra = '你有 ' + unprot + ' 隻髒小豬還沒有豬舍保護，一下雨就會被洗乾淨，可以考慮先蓋豬舍。';
+      return { msg: '亮黃框的牌現在都用得出去。' + extra, hl: ok };
+    },
+    nudge: function (g, seat) {
+      if (g.res || g.turn !== seat || g.out.indexOf(seat) >= 0) return null;
+      var any = g.hands[seat].some(function (c) { return targets(g, seat, c).length > 0; });
+      return any ? '輪到你了：先點一張手牌，再點發光的小豬（下雨牌不用選小豬，按「下雨」就好）。' : '你的手牌現在都沒辦法用，請按「🔄 換手牌」換 3 張新的牌。';
+    },
     botTurn: function (g, seat, lv) {
       if (g.res || g.turn !== seat) return null;
       var h = g.hands[seat], n = g.cnt, opts = [];
@@ -237,7 +255,7 @@
       var hand = el('div', 'mp-hand');
       v.hand.forEach(function (c, i) {
         var usable = targets(g, seat, c).length > 0;
-        var b = el('button', 'mp-card' + (L.sel === i ? ' sel' : '') + (myTurn && !usable ? ' dim' : '')); b.type = 'button';
+        var b = el('button', 'mp-card' + (L.sel === i ? ' sel' : '') + (myTurn && !usable ? ' dim' : '')); b.type = 'button'; b.setAttribute('data-h', 'c' + i);
         b.innerHTML = '<img src="' + IMG(c) + '" alt=""><b>' + CARDS[c].n + '</b><small>' + CARDS[c].d + '</small>';
         b.addEventListener('click', function () { if (!myTurn) { ctx.toast(CARDS[c].n + '：' + CARDS[c].d); return; } L.sel = L.sel === i ? -1 : i; ctx.snd('tap'); ctx.rerender(); });
         hand.appendChild(b);
@@ -248,7 +266,7 @@
     if (!tb.res && !out) {
       var tools = el('div', 'mp-tools');
       if (myTurn && selCard === 'rain') tools.appendChild(ctx.button('mp-btn go', '🌧️ 下雨！', function () { send('play', { i: L.sel }); }));
-      if (myTurn) tools.appendChild(ctx.button('mp-btn', '🔄 換手牌', function () { if (confirm('把 3 張手牌全部丟掉，換 3 張新的？（這回合就結束）')) send('swap'); }));
+      if (myTurn) { var swb = ctx.button('mp-btn', '🔄 換手牌', function () { if (confirm('把 3 張手牌全部丟掉，換 3 張新的？（這回合就結束）')) send('swap'); }); swb.setAttribute('data-h', 'swap'); tools.appendChild(swb); }
       tools.appendChild(ctx.button('mp-btn', '🏳️', function () { if (confirm('確定要認輸嗎？')) ctx.send('resign', {}); }));
       tools.appendChild(ctx.emoteButton('mp-btn'));
       wrap.appendChild(tools);

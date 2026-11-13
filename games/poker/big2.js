@@ -163,6 +163,27 @@ window.B2 = (function () {
       if (!p) return g.table ? { t: 'pass', n: g.cnt } : { t: 'play', cs: [B2.sort(g.hands[seat].slice())[0]], n: g.cnt };
       return { t: 'play', cs: p, n: g.cnt };
     },
+    hintDesc: '輪到你時，會亮出「可以壓過桌上那手牌」的牌（沒有牌可以壓就會告訴你只能 Pass）；自由出牌時，會亮出手上最小的一組對子／順子，建議先把小牌出掉；第一手會亮出梅花 3。',
+    tipDesc: '桌上有牌、而你沒有能壓過的牌時，提醒你按 Pass；其他時候提醒你怎麼選牌出牌。',
+    hint: function (g, seat) {
+      if (g.res || g.turn !== seat || g.out.indexOf(seat) >= 0) return null;
+      var hand = g.hands[seat], plays = B2.legal(hand, g.table, g.must);
+      if (g.must) return { msg: '第一手一定要包含最小的牌「梅花 3」，亮黃框的就是它。你可以只出它，也可以搭配其他牌（對子、順子…）一起出。', hl: [g.must] };
+      if (g.table) {
+        if (!plays.length) return { msg: '你手上沒有能壓過桌上那手牌的牌，只能按 Pass。', hl: [] };
+        var set = {}; plays.forEach(function (p) { p.forEach(function (c) { set[c] = 1; }); });
+        return { msg: '亮黃框的牌都可以拿來壓過桌上的牌（共 ' + Object.keys(set).length + ' 張）。想一想：要用最小的壓過去，還是先 Pass 把大牌留著？', hl: Object.keys(set) };
+      }
+      var multi = plays.filter(function (p) { var c = B2.classify(p); return c && c.n >= 2; }).sort(function (a, b) { return B2.classify(a).n - B2.classify(b).n || B2.classify(a).v - B2.classify(b).v; });
+      if (multi.length) { var m = multi[0], k = B2.classify(m).k; return { msg: '自由出牌時，先把不容易配對的小牌出掉最划算。亮黃框的是你手上最小的一組「' + B2.KIND[k] + '」，可以考慮。', hl: m.slice() }; }
+      var one = B2.sort(hand.slice())[0];
+      return { msg: '沒有對子或順子可以出，那就從最小的單張開始出，把大牌留到後面。亮黃框的是你最小的牌。', hl: [one] };
+    },
+    nudge: function (g, seat) {
+      if (g.res || g.turn !== seat || g.out.indexOf(seat) >= 0) return null;
+      if (g.table && !B2.legal(g.hands[seat], g.table, g.must).length) return '你手上沒有能壓過桌上這手牌的牌，請按「Pass」跳過這一輪。';
+      return g.table ? '輪到你了：選好要壓過去的牌（張數要跟桌上一樣），再按「出牌」；不想出就按「Pass」。' : '輪到你了：點牌讓它浮起來（可以選好幾張），湊成合法牌型再按「出牌」。';
+    },
     hostView: function (g) {
       var h = '<div class="pk-host"><div class="pk-host-tb">' + (g.table ? g.table.cs.map(function (c) { return '<span>' + PK.svg(c) + '</span>'; }).join('') : '<em>新的一輪</em>') + '</div><div class="pk-host-seats">';
       for (var s = 0; s < g.np; s++) h += '<span class="pk-hs' + (g.turn === s && !g.res ? ' turn' : '') + (g.out.indexOf(s) >= 0 ? ' out' : '') + '"><i style="background:' + SEATC[s] + '"></i>' + (g.out.indexOf(s) >= 0 ? '認輸' : g.hands[s].length + ' 張') + (g.passed.indexOf(s) >= 0 ? '・Pass' : '') + '</span>';
@@ -236,11 +257,6 @@ window.B2 = (function () {
       var tools = el('div', 'pk-tools');
       var pb = ctx.button('pk-btn go', '出牌', function () { if (ok) { ctx.snd('move'); act(ctx, 'play', { cs: L.sel.slice() }); } }); pb.disabled = !ok; tools.appendChild(pb);
       if (myTurn && v.table) tools.appendChild(ctx.button('pk-btn', 'Pass', function () { act(ctx, 'pass', {}); }));
-      if (myTurn) tools.appendChild(ctx.button('pk-btn', '💡 提示', function () {
-        var Ls = B2.legal(v.hand, v.table, v.must).sort(function (a, b) { var x = B2.classify(a), y = B2.classify(b); return (x.n === 5 ? 1 : 0) - (y.n === 5 ? 1 : 0) || x.v - y.v; });
-        if (!Ls.length) { ctx.toast('沒有能壓過的牌，只能 Pass'); return; }
-        L.hint = (L.hint + 1) % Ls.length; L.sel = Ls[L.hint].slice(); ctx.rerender();
-      }));
       if (L.sel.length) tools.appendChild(ctx.button('pk-btn', '清除', function () { L.sel = []; ctx.rerender(); }));
       tools.appendChild(ctx.button('pk-btn', L.bySuit ? '依點數排' : '依花色排', function () { L.bySuit = !L.bySuit; ctx.rerender(); }));
       tools.appendChild(ctx.button('pk-btn', '🏳️', function () { if (confirm('確定要認輸嗎？')) ctx.send('resign', {}); }));
@@ -256,7 +272,7 @@ window.B2 = (function () {
   mod.guide = {
     student: [
       { h: '怎麼玩', html: '<ol><li>4 人每人 13 張（3 人每人 17 張，2 人每人 13 張）。</li><li>拿到<b>梅花 3</b>（最小的牌）的人先出，第一手一定要包含這張。</li><li>輪流出牌，要出<b>同樣張數、同樣牌型而且比較大</b>的牌；不想出或出不了就按 <b>Pass</b>。</li><li>其他人都 Pass，最後出牌的人就可以重新自由出任何牌型。</li><li><b>第一個把手牌出完的人獲勝！</b></li></ol>' +
-        '<p>操作：點牌會往上浮起（可以選好幾張），再按「出牌」。不知道出什麼可以按 <b>💡 提示</b>，每按一次換一種出法。</p>' },
+        '<p>操作：點牌會往上浮起（可以選好幾張），再按「出牌」。不知道出什麼時，可以請老師開放「💡 提示」功能，它會把能用的牌標出亮黃框。</p>' },
       { h: '大小順序', html: '<p>點數：<b>2 &gt; A &gt; K &gt; Q &gt; J &gt; 10 &gt; … &gt; 3</b></p><p>點數一樣比花色：<b>黑桃 ♠ &gt; 紅心 ♥ &gt; 方塊 ♦ &gt; 梅花 ♣</b></p>' + cards(['2s', '2h', 'As', '3c'], '黑桃 2 最大、梅花 3 最小') },
       { h: '牌型', html: '<table class="g-tbl"><tr><th>牌型</th><th>說明</th></tr><tr><td>單張</td><td>任何一張</td></tr><tr><td>對子</td><td>兩張一樣點數，比較大的那張決定大小</td></tr><tr><td>順子</td><td>五張連續點數（A2345、23456 … 10JQKA；JQKA2 不算）。比最大的那張，有 2 的順子以 2 為最大</td></tr><tr><td>葫蘆</td><td>三張一樣＋一對，比三張的點數</td></tr><tr><td>鐵支</td><td>四張一樣＋任一張，可以壓單張、對子、順子、葫蘆</td></tr><tr><td>同花順</td><td>同花色的順子，可以壓所有牌型</td></tr></table>' +
         cards(['7c', '8d', '9s', 'Th', 'Jc'], '順子') + cards(['Kc', 'Kd', 'Ks', '4h', '4c'], '葫蘆') + cards(['9c', '9d', '9h', '9s', '3d'], '鐵支') },

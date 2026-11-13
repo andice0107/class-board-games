@@ -19,3 +19,6 @@
 .go-mark, .go-req { background: #fffaf0; border-radius: 14px; padding: 10px; text-align: center; display: flex; flex-direction: column; gap: 8px; align-items: center; }
 .go-mark p, .go-req p { margin: 0; } .go-mark .row, .go-req .row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
 .go-fig .go-svg { max-width: 200px; margin: 0 auto; }
+
+.go-svg .hint-ring { animation: hintring 1s ease-in-out infinite; transform-box: fill-box; transform-origin: center; pointer-events: none; }
+@keyframes hintring { 50% { transform: scale(1.15); opacity: .6; } }

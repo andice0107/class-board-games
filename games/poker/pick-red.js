@@ -81,6 +81,22 @@
       });
       return { t: 'play', c: best.c, take: null, n: g.cnt };
     },
+    hintDesc: '會亮出「手牌裡可以和桌上湊成 10 點」的牌，以及桌上對應的牌；如果沒有牌可以撿，會亮出最適合丟出去的牌（分數低、不會送分給對手）。',
+    tipDesc: '你的手牌都湊不到 10 點時，提醒你丟一張牌到桌上；其他時候提醒你怎麼撿牌。',
+    hint: function (g, seat) {
+      if (g.res || g.turn !== seat || g.out.indexOf(seat) >= 0) return null;
+      var h = g.hands[seat], hs = {}, ts = {}, best = 0;
+      h.forEach(function (c) { g.table.forEach(function (t) { if (match(c, t)) { hs[c] = 1; ts[t] = 1; best = Math.max(best, pts(c) + pts(t)); } }); });
+      var hl = Object.keys(hs).concat(Object.keys(ts));
+      if (hl.length) return { msg: '亮黃框的手牌可以和桌上亮黃框的牌湊成 10 點（A+9、2+8、3+7、4+6、5+5；10、J、Q、K 要配一樣的）。' + (best >= 20 ? '其中有機會撿到 20 分的 A，別錯過！' : best >= 10 ? '其中有 10 分以上的紅牌可以撿。' : ''), hl: hl };
+      var low = h.slice().sort(function (a, b) { return pts(a) - pts(b); }), m = pts(low[0]);
+      return { msg: '你的手牌都湊不到 10 點，這一輪要把一張牌丟到桌上。亮黃框的是分數最低的牌，丟掉最不吃虧。', hl: low.filter(function (c) { return pts(c) === m; }).slice(0, 3) };
+    },
+    nudge: function (g, seat) {
+      if (g.res || g.turn !== seat || g.out.indexOf(seat) >= 0) return null;
+      var h = g.hands[seat], any = h.some(function (c) { return g.table.some(function (t) { return match(c, t); }); });
+      return any ? '輪到你了：先點一張變亮的手牌，桌上能湊成 10 點的牌會發亮，點那張就能撿回來。' : '你的手牌都湊不到 10 點喔！請選一張牌，按「丟到桌上」（建議丟分數低的黑色牌）。';
+    },
     hostView: function (g) {
       var h = '<div class="pk-host"><div class="pk-host-tb">' + g.table.map(function (c) { return '<span>' + PK.mini(c) + '</span>'; }).join('') + '</div><div class="pk-host-seats">';
       for (var s = 0; s < g.np; s++) h += '<span class="pk-hs' + (g.out.indexOf(s) >= 0 ? ' out' : '') + '"><i style="background:' + SEATC[s] + '"></i>' + (g.out.indexOf(s) >= 0 ? '認輸' : sum(g.won[s]) + ' 分') + '</span>';
@@ -128,7 +144,7 @@
     felt.appendChild(info);
     var tbl = el('div', 'pr-board');
     v.table.forEach(function (c) {
-      var b = el('button', 'pr-tc' + (can.indexOf(c) >= 0 && myTurn ? ' can' : '') + (v.flip && v.flip.c === c ? ' new' : '') + (v.last && v.last.c === c && !v.last.take ? ' new' : '')); b.type = 'button'; b.innerHTML = PK.svg(c);
+      var b = el('button', 'pr-tc' + (can.indexOf(c) >= 0 && myTurn ? ' can' : '') + (v.flip && v.flip.c === c ? ' new' : '') + (v.last && v.last.c === c && !v.last.take ? ' new' : '')); b.type = 'button'; b.setAttribute('data-c', c); b.innerHTML = PK.svg(c);
       if (pts(c)) b.appendChild(el('small', 'pr-pt', pts(c)));
       b.addEventListener('click', function () { if (!myTurn || !L.sel || can.indexOf(c) < 0) return; send({ t: 'play', c: L.sel, take: c }); });
       tbl.appendChild(b);

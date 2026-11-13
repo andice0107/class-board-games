@@ -268,3 +268,35 @@ input:focus { border-color: var(--sky); background: #fff; }
 .p-cast .cast-html.doc { overflow: hidden; }
 .cast-doc { background: #fff; color: #2b2340; border-radius: 22px; padding: 28px 44px; text-align: left; font-size: 28px; line-height: 1.7; width: 1400px; max-height: none; overflow: visible; }
 .cast-doc h2 { margin: 0 0 10px; font-size: 40px; } .cast-doc h3 { font-size: 32px; margin: 18px 0 6px; }
+
+/* ---------- 提示・倒數計時・溫馨小提醒 ---------- */
+.aid { margin-top: 12px; border-radius: 14px; background: #eef7ff; border: 2px solid #9ccaf5; padding: 8px 10px; }
+.aid > summary { font-weight: 900; cursor: pointer; font-size: 15px; }
+.aid-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.aid-row .switch { margin-top: 0; justify-content: flex-start; font-size: 14.5px; }
+.aid-row.sub { padding-left: 24px; font-size: 14px; font-weight: 700; }
+.aid-row.off { opacity: .45; }
+.aid-row .btn.small { padding: 4px 10px; min-width: 34px; }
+.aid-row .btn.small.on { background: #ffd54a; }
+.aid-v { min-width: 56px; text-align: center; font-size: 16px; font-weight: 900; }
+.aid-note { margin: 8px 0 0; font-size: 12.5px; color: #4a5175; line-height: 1.55; }
+.tmr { background: #fff1d6 !important; color: #8a4b00 !important; font-weight: 900; }
+.p-top .aid-btn { background: #ffe27a; color: #3b2a00; font-weight: 900; box-shadow: 0 0 0 2px #f5b800; }
+.p-top .aid-btn.on { background: #fff6c2; }
+.p-top .aid-btn.dis { opacity: .5; box-shadow: none; }
+.p-top .aid-tl { background: #fff; color: #1d3b6b; font-weight: 900; font-size: 16px; min-width: 62px; justify-content: center; }
+.p-top .aid-tl.warn2 { background: #ffe9a8; color: #7a4a00; }
+.p-top .aid-tl.hot { background: #ff5a4d; color: #fff; animation: aidshake .5s infinite; }
+@keyframes aidshake { 25% { transform: translateX(-2px); } 75% { transform: translateX(2px); } }
+@media (max-width: 560px) { .p-top.aidon .brand h1, .p-top.aidon .code-pill { display: none; } }
+.aid-bar { position: fixed; left: 0; right: 0; top: 0; height: 6px; background: rgba(0,0,0,.12); z-index: 90; pointer-events: none; }
+.aid-bar i { display: block; height: 100%; background: #2ec4b6; transition: width .25s linear; }
+.aid-bar.hot i { background: #ff5a4d; }
+.aid-banner { position: fixed; left: 8px; right: 8px; top: 52px; z-index: 80; display: flex; flex-direction: column; gap: 6px; align-items: center; pointer-events: none; }
+.aid-msg { pointer-events: auto; max-width: min(640px, 100%); display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; border-radius: 14px; font-size: 17px; font-weight: 800; line-height: 1.5; white-space: pre-line; box-shadow: 0 6px 22px rgba(0,0,0,.35); animation: rise .25s; }
+.aid-msg.hint { background: #fff3b0; color: #3b2a00; box-shadow: 0 0 0 3px #f5b800, 0 6px 22px rgba(0,0,0,.35); }
+.aid-msg.tip { background: #dff7e6; color: #0d4a26; box-shadow: 0 0 0 3px #3dbb6b, 0 6px 22px rgba(0,0,0,.35); }
+.aid-msg .tx { flex: 1; }
+.aid-msg .x { flex: none; border: 0; background: rgba(0,0,0,.12); border-radius: 50%; width: 28px; height: 28px; font-size: 14px; font-weight: 900; cursor: pointer; }
+.hint-hl { outline: 4px solid #ffd400 !important; outline-offset: 2px; border-radius: 8px; box-shadow: 0 0 0 4px rgba(255,212,0,.55), 0 0 18px 6px rgba(255,200,0,.95) !important; animation: hintpulse 1s ease-in-out infinite; position: relative; z-index: 3; }
+@keyframes hintpulse { 50% { box-shadow: 0 0 0 7px rgba(255,212,0,.35), 0 0 26px 10px rgba(255,200,0,.65); } }

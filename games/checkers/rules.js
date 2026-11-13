@@ -136,6 +136,7 @@ window.CCK = (function () {
         var k = +v;
         h.push('<g class="ck-m' + (o.sel === i ? ' sel' : '') + (o.anim && o.path && o.path[o.path.length - 1] === i ? ' land' : '') + '"><circle cx="' + (q[0] + .35).toFixed(2) + '" cy="' + (q[1] + .55).toFixed(2) + '" r="2.55" fill="#000" opacity=".3"/><circle cx="' + q[0].toFixed(2) + '" cy="' + q[1].toFixed(2) + '" r="2.55" fill="url(#ckM' + k + ')" stroke="' + (o.sel === i ? '#fff' : shade(COLORS[k])) + '" stroke-width="' + (o.sel === i ? .9 : .3) + '"/></g>');
       }
+      if (o.hint && o.hint.indexOf(i) >= 0) h.push('<circle class="hint-ring" cx="' + q[0].toFixed(2) + '" cy="' + q[1].toFixed(2) + '" r="3.7" fill="rgba(255,212,0,.3)" stroke="#ffc400" stroke-width=".9"/>');
       if (hl[i]) h.push('<circle class="ck-dot" cx="' + q[0].toFixed(2) + '" cy="' + q[1].toFixed(2) + '" r="1.35" fill="#fff" stroke="#1b5e20" stroke-width=".7"/>');
       else if (last[i] && v === '.') h.push('<circle cx="' + q[0].toFixed(2) + '" cy="' + q[1].toFixed(2) + '" r=".8" fill="#fff" opacity=".85"/>');
     }

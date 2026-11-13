@@ -76,6 +76,34 @@
         var i = GO.pick(g.b, N, me, g.ko, level, g.passes > 0, KOMI);
         return i < 0 ? { t: 'pass', n: g.hist.length } : { t: 'move', i: i, n: g.hist.length };
       },
+      acting: function (g) { return g.res ? [] : g.phase === 'play' ? [g.turn - 1] : [0, 1].filter(function (s) { return !g.conf[s]; }); },
+      hintDesc: '會用閃亮的圈圈標出：被叫吃（只剩一口氣）而要趕快逃的棋、可以吃掉對方的位置、對方快被圍住的棋，或這一手附近值得考慮的位置。',
+      tipDesc: '發呆太久時，提醒你怎麼下子；雙方虛手後提醒你按「確認死子」。',
+      hint: function (g, seat) {
+        var me = seat + 1, b = g.b, seen = {}, mine = [], theirs = [], i;
+        if (g.res || g.phase !== 'play' || g.turn !== me) return null;
+        for (i = 0; i < N * N; i++) if (b[i] && !seen[i]) { var gr = GO.group(b, N, i); gr.stones.forEach(function (s) { seen[s] = 1; }); (b[i] === me ? mine : theirs).push(gr); }
+        var danger = mine.filter(function (x) { return x.libs.length === 1; }), prey = theirs.filter(function (x) { return x.libs.length === 1; });
+        if (prey.length) return { msg: '對方有棋只剩一口氣了（叫吃）！下在亮黃圈的位置就能把它吃掉。', hl: prey.map(function (x) { return x.libs[0]; }).filter(function (v, k, a) { return a.indexOf(v) === k; }).slice(0, 4) };
+        if (danger.length) { var st = []; danger.forEach(function (x) { x.stones.forEach(function (s) { st.push(s); }); }); return { msg: '小心！亮黃圈的棋只剩一口氣，快被吃掉了，想想要怎麼救（延長氣，或吃掉旁邊的對方棋）。', hl: st.slice(0, 8) }; }
+        var pressure = theirs.filter(function (x) { return x.libs.length === 2; });
+        if (pressure.length) { var ps = []; pressure.forEach(function (x) { ps.push(x.stones[0]); }); return { msg: '亮黃圈的對方棋只剩兩口氣，可以從旁邊追，把它的氣一口一口收光。', hl: ps.slice(0, 4) }; }
+        var empt = 0; for (i = 0; i < N * N; i++) if (b[i]) empt++;
+        var legal = GO.legalMoves(b, N, me, g.ko, true), cand;
+        if (empt < 4) { var mid = (N - 1) / 2, c0 = mid * N + mid; cand = legal.filter(function (m) { var r = (m / N) | 0, c = m % N; return Math.abs(r - mid) <= 2 && Math.abs(c - mid) <= 2 && (r + c) % 2 === 0; }).sort(function (x, y) { return Math.abs(x - c0) - Math.abs(y - c0); }).slice(0, 3); return { msg: '剛開始，通常先下在棋盤中央附近或星位（有小黑點的地方）。亮黃圈是可以考慮的位置。', hl: cand.length ? cand : legal.slice(0, 3) }; }
+        var near = g.last >= 0 ? g.last : (legal[0] || 0), nr = (near / N) | 0, nc = near % N;
+        cand = legal.map(function (m) { var r2 = GO.play(b, N, m, me, g.ko); var libs = r2 ? GO.group(r2.b, N, m).libs.length : 0; return { m: m, d: Math.abs(((m / N) | 0) - nr) + Math.abs(m % N - nc), libs: libs, caps: r2 ? r2.caps : 0 }; })
+          .filter(function (x) { return x.d <= 4; }).sort(function (x, y) { return (y.caps * 6 + y.libs) - (x.caps * 6 + x.libs) || x.d - y.d; }).slice(0, 3);
+        if (!cand.length) cand = legal.slice(0, 3).map(function (m) { return { m: m }; });
+        return { msg: '附近的戰場最值得注意。亮黃圈的位置下了以後，自己的棋氣比較多、也比較不容易被圍住。', hl: cand.map(function (x) { return x.m; }) };
+      },
+      nudge: function (g, seat) {
+        var me = seat + 1; if (g.res) return null;
+        if (g.phase === 'mark') return g.conf[seat] ? null : '雙方都虛手了，現在要確認死子：灰色打叉的是系統判斷的死棋，點棋串可以修正，確認好就按「確認」。';
+        if (g.req && g.req.by !== me) return '對方提出了' + (g.req.k === 'undo' ? '悔棋' : '和棋') + '，請在畫面上選「同意」或「不同意」。';
+        if (g.turn !== me || g.req) return null;
+        return '輪到你了：點交叉點會先出現半透明預覽，確認位置再按「確認落子」。如果覺得沒地方好下，可以按「虛手」。';
+      },
       hostView: function (g) { return GO.svg(g.b, N, { last: g.last, dead: g.phase === 'mark' || g.res ? g.dead : null, terr: g.phase === 'mark' ? GO.score(g.b, N, g.dead, KOMI).terr : g.final ? g.final.terr : null }); },
       hostStatus: function (g) {
         if (g.phase === 'mark') return { t: '雙方虛手，正在確認死子', c: 'hot' };
@@ -129,7 +157,7 @@
       wrap.appendChild(bar(1 - seat, false, v, tb));
       var bx = el('div', 'go-board'), bin = el('div');
       var showTerr = mark || (tb.res && v.final);
-      bin.innerHTML = GO.svg(board, N, { last: P ? P.i : v.last, anim: P ? P.i : L.anim, ghost: myTurn ? L.ghost : null, ghostColor: my, dead: mark || (tb.res && v.final) ? v.dead : null, terr: showTerr ? (mark ? v.est.terr : v.final.terr) : null });
+      bin.innerHTML = GO.svg(board, N, { hl: myTurn && ctx.hint && ctx.hint.hl, last: P ? P.i : v.last, anim: P ? P.i : L.anim, ghost: myTurn ? L.ghost : null, ghostColor: my, dead: mark || (tb.res && v.final) ? v.dead : null, terr: showTerr ? (mark ? v.est.terr : v.final.terr) : null });
       L.anim = -1;
       bx.appendChild(BG.zoom(gid, bin));
       function commit(i) { L.pending = { i: i, n: v.mv, at: Date.now() }; L.ghost = null; ctx.snd('move'); ctx.send('move', { i: i, n: v.mv }); ctx.rerender(); }

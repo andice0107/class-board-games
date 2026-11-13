@@ -97,6 +97,30 @@
       if (Math.random() < lie) { var junk = h.slice().sort(function (a, b) { return ORD.indexOf(a[0]) - ORD.indexOf(b[0]); }).slice(0, lv >= 4 && h.length > 4 ? 2 : 1); return { t: 'play', cards: junk, n: n }; }
       return { t: 'pass', n: n };
     },
+    hintDesc: '會亮出你手上「真的有」要喊的點數的牌（可以放心出）；如果你手上的張數加上上一家喊的張數超過 4 張（一種點數只有 4 張），會告訴你他一定在吹牛，建議抓；新的一輪則亮出你最多張的點數。',
+    tipDesc: '你手上沒有要喊的點數時，提醒你可以說謊、不出或抓；有人快出完時，提醒這是最後一次抓他的機會。',
+    hint: function (g, seat) {
+      if (g.res || g.turn !== seat || g.out.indexOf(seat) >= 0) return null;
+      var h = g.hands[seat];
+      function have(r) { return h.filter(function (c) { return c[0] === r; }); }
+      if (g.lastPlay && g.rank) {
+        var mine = have(g.rank).length, claim = g.lastPlay.cards.length;
+        if (mine + claim > 4) return { msg: '你手上有 ' + mine + ' 張「' + PK.label(g.rank) + '」，上一家說他出了 ' + claim + ' 張，加起來超過 4 張（一種點數只有 4 張），他一定在吹牛！亮黃框的「抓」可以抓他。', hl: ['call'] };
+      }
+      if (!g.rank) {
+        var best = null; ORD.split('').forEach(function (r) { var k = have(r).length; if (k && (!best || k > best.k)) best = { r: r, k: k }; });
+        return best ? { msg: '新的一輪，你可以自己決定喊什麼。你手上最多的是 ' + best.k + ' 張「' + PK.label(best.r) + '」（亮黃框），喊它最安全。', hl: have(best.r).slice(0, 4) } : null;
+      }
+      var real = have(g.rank);
+      if (real.length) return { msg: '你手上真的有 ' + real.length + ' 張「' + PK.label(g.rank) + '」（亮黃框），出它們就不用說謊。', hl: real.slice(0, 4) };
+      return { msg: '你手上沒有「' + PK.label(g.rank) + '」。你可以：偷偷出別的牌說謊、選「不出」，或「抓」上一家（猜他吹牛）。亮黃框的是你可以選的按鈕。', hl: ['pass'].concat(g.lastPlay ? ['call'] : []) };
+    },
+    nudge: function (g, seat) {
+      if (g.res || g.turn !== seat || g.out.indexOf(seat) >= 0) return null;
+      if (g.pendingWin != null && g.pendingWin !== seat && g.lastPlay) return '上一家已經把手牌出完了！如果你覺得他剛剛在吹牛，現在是最後的機會，按「抓」就能把他的牌翻開。';
+      if (g.rank && !g.hands[seat].some(function (c) { return c[0] === g.rank; })) return '你手上沒有「' + PK.label(g.rank) + '」喔！可以說謊（出別的牌）、按「不出」，或是「抓」上一家。';
+      return g.rank ? '輪到你了：選 1～4 張牌，跟著喊「' + PK.label(g.rank) + '」；不想出就按「不出」。' : '新的一輪：先選 1～4 張牌，再選要喊的點數，按出牌。';
+    },
     hostView: function (g) {
       var h = '<div class="pk-host"><div class="pk-host-tb"><b class="nn-host">' + (g.rank ? PK.label(g.rank) : '—') + '</b><span>桌上 ' + g.pile.length + ' 張</span></div><div class="pk-host-seats">';
       for (var s = 0; s < g.np; s++) h += '<span class="pk-hs' + (g.out.indexOf(s) >= 0 ? ' out' : '') + '"><i style="background:' + SEATC[s] + '"></i>' + (g.out.indexOf(s) >= 0 ? '認輸' : g.hands[s].length + ' 張') + '</span>';
@@ -171,9 +195,9 @@
       if (myTurn) {
         var rk = v.rank || L.rank;
         var pb = ctx.button('pk-btn go', L.sel.length ? '出 ' + L.sel.length + ' 張' + (rk ? '，喊「' + PK.label(rk) + '」' : '') : '先選牌', function () { ctx.snd('move'); send('play', { cards: L.sel.slice(), rank: rk }); });
-        pb.disabled = !L.sel.length || !rk; tools.appendChild(pb);
-        if (v.rank) tools.appendChild(ctx.button('pk-btn', '不出', function () { send('pass'); }));
-        if (v.lastPlay) tools.appendChild(ctx.button('pk-btn ch2-call', '🔍 抓！', function () { ctx.snd('check'); send('call'); }));
+        pb.setAttribute('data-h', 'play'); pb.disabled = !L.sel.length || !rk; tools.appendChild(pb);
+        if (v.rank) { var pb2 = ctx.button('pk-btn', '不出', function () { send('pass'); }); pb2.setAttribute('data-h', 'pass'); tools.appendChild(pb2); }
+        if (v.lastPlay) { var cb = ctx.button('pk-btn ch2-call', '🔍 抓！', function () { ctx.snd('check'); send('call'); }); cb.setAttribute('data-h', 'call'); tools.appendChild(cb); }
       }
       tools.appendChild(ctx.button('pk-btn', '🏳️', function () { if (confirm('確定要認輸嗎？')) ctx.send('resign', {}); }));
       tools.appendChild(ctx.emoteButton('pk-btn'));

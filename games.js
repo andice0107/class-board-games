@@ -1,6 +1,6 @@
 /* 遊戲清單：每個遊戲是 games/<id>/ 裡獨立的模組，用 BG.register 加進來 */
 window.BG = window.BG || {};
-BG.VER = '202611121551';
+BG.VER = '202611130821';
 BG.games = BG.games || {};
 BG.register = function (id, mod) { mod.id = id; BG.games[id] = mod; };
 BG.catalog = [
@@ -74,6 +74,25 @@ BG.showGuide = function (title, sections) {
   document.body.appendChild(ov); show(0);
 };
 
+
+/* 每個遊戲的說明都自動補上「提示・倒數計時・溫馨小提醒」一節（各遊戲用 hintDesc／tipDesc 說明自己的做法） */
+BG.aidGuide = function (G) {
+  if (!G || !G.guide || G.guide._aid) return; G.guide._aid = 1;
+  if (G.hint) {
+    G.guide.student.push({ h: '💡 提示與小提醒', html:
+      '<p><b>💡 提示</b>：畫面上方的「💡 提示」按鈕（老師有開放才會出現，括號裡是這局還剩幾次）。按下去會用<b>閃亮的黃框</b>告訴你「有哪些牌／棋子可以用」，不會直接替你出牌。</p>' +
+      (G.hintDesc ? '<p>' + G.hintDesc + '</p>' : '') +
+      '<p><b>⏱ 思考倒數</b>：老師開啟後，畫面上方會出現倒數時間。時間到了，系統會先幫你出一步，所以想好就快點出手喔！</p>' +
+      '<p><b>🌟 溫馨小提醒</b>：如果你發呆一下子，畫面會跳出小提醒（例如「你現在沒有牌可以出，請先抽一張」）。小提醒<b>不會</b>扣提示次數，點右邊的 ✕ 可以先關掉。</p>' });
+    G.guide.teacher.push({ h: '提示・倒數・小提醒', html:
+      '<p>左邊「🎓 提示・倒數計時・溫馨小提醒」可以<b>隨時開關、隨時調整</b>，開桌前先設定好預設值，遊戲中也能即時改，<b>一次對全班每個人生效</b>。</p>' +
+      '<ul><li><b>💡 提示</b>：可設每局每人幾次（或無限）。提示只會標出「可以用的牌／棋子」，不會直接代答；每局重新計次。</li>' +
+      '<li><b>⏱ 思考倒數</b>：可設每次思考幾秒；遊戲中可按「+10／+30／+60 秒」對全班目前的倒數加時間。時間到系統自動代出一步。</li>' +
+      '<li><b>🌟 溫馨小提醒</b>：獨立開關，不扣提示次數；學生沒動作超過設定秒數就跳出提醒。</li></ul>' +
+      (G.hintDesc ? '<p><b>這個遊戲的提示：</b>' + G.hintDesc + '</p>' : '') + (G.tipDesc ? '<p><b>這個遊戲的溫馨小提醒：</b>' + G.tipDesc + '</p>' : '') });
+  }
+};
+
 BG.cats = ['棋類', '撲克牌', '牌類', '麻將', '益智', '社會技巧/溝通訓練'];
 /* 只載入選到的遊戲檔案 */
 BG.load = function (id, cb) {
@@ -82,7 +101,7 @@ BG.load = function (id, cb) {
   BG._wait = BG._wait || {};
   if (BG._wait[id]) return BG._wait[id].push(cb);
   BG._wait[id] = [cb];
-  function done(ok) { var l = BG._wait[id]; delete BG._wait[id]; l.forEach(function (f) { f(ok); }); }
+  function done(ok) { var l = BG._wait[id]; delete BG._wait[id]; BG.aidGuide(BG.games[id]); l.forEach(function (f) { f(ok); }); }
   var files = m.files.slice();
   (function next() {
     var f = files.shift(); if (!f) return done(!!BG.games[id]);

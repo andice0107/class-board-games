@@ -79,6 +79,29 @@
       var m = CCK.pick(g.board, g.np, seat, level); if (!m) return null;
       return { t: 'move', from: m[0], to: m[1], n: g.hist.length };
     },
+    hintDesc: '會亮出「走了以後最靠近終點」的彈珠，也就是可以跳得最遠、或可以連續跳的彈珠，不會直接告訴你要走到哪裡。',
+    tipDesc: '發呆太久時，提醒你怎麼走彈珠（點自己的彈珠，會出現白點，再點白點）。',
+    hint: function (g, seat) {
+      if (g.res || g.turn !== seat || g.out.indexOf(seat) >= 0) return null;
+      var base = CCK.score(g.board, g.np, seat), best = {}, multi = {}, movers = {}, any = false;
+      CCK.allMoves(g.board, seat, g.np).forEach(function (m) {
+        any = true; movers[m[0]] = 1; var gain = base - CCK.score(CCK.move(g.board, m[0], m[1]), g.np, seat);
+        if (gain > (best[m[0]] || 0)) best[m[0]] = gain;
+        if (m[2].length > 2) multi[m[0]] = 1;
+      });
+      if (!any) return null;
+      var arr = Object.keys(best).map(function (k) { return { i: +k, g: best[k] }; }).sort(function (a, b) { return b.g - a.g; });
+      if (!arr.length) return { msg: '現在每一顆彈珠都只能橫著或往旁邊挪。可以想想怎麼先讓後面的彈珠跟上來。', hl: Object.keys(movers).map(Number).slice(0, 6) };
+      var top = arr.filter(function (x) { return x.g >= arr[0].g - 1; }).slice(0, 3).map(function (x) { return x.i; });
+      var jump = top.some(function (i) { return multi[i]; });
+      return { msg: jump ? '亮黃框的彈珠可以「連續跳」，一次往終點前進很多格！' : '亮黃框的彈珠走了以後，離對面的終點最近。', hl: top };
+    },
+    nudge: function (g, seat) {
+      if (g.res) return null;
+      if (g.req && g.req.by !== seat) return '對方提出了' + (g.req.k === 'undo' ? '悔棋' : '和棋') + '，請在畫面上選「同意」或「不同意」。';
+      if (g.turn !== seat || g.req) return null;
+      return '輪到你了：先點一顆自己的彈珠，會出現白點（可以走到的地方），再點白點就會走過去。可以連續跳過旁邊的棋子喔！';
+    },
     hostView: function (g) { return CCK.svg(g.board, { n: g.np, path: g.last }); },
     hostStatus: function (g) {
       if (g.req) return { t: NAMES[g.req.by] + '提出' + (g.req.k === 'undo' ? '悔棋' : '和棋') + '，等待回覆', c: 'hot' };
@@ -133,7 +156,7 @@
     var others = el('div', 'ck-others'); for (var i = 0; i < v.np; i++) if (i !== seat) others.appendChild(bar(i, false, v, tb));
     wrap.appendChild(others);
     var bx = el('div', 'ck-board'), bin = el('div');
-    bin.innerHTML = CCK.svg(board, { n: v.np, seat: seat, sel: L.sel, dots: Object.keys(L.dests).map(Number), path: P ? [P.from, P.to] : v.last, anim: L.anim || !!P });
+    bin.innerHTML = CCK.svg(board, { hint: myTurn && ctx.hint && ctx.hint.hl, n: v.np, seat: seat, sel: L.sel, dots: Object.keys(L.dests).map(Number), path: P ? [P.from, P.to] : v.last, anim: L.anim || !!P });
     L.anim = false;
     bx.appendChild(BG.zoom('checkers', bin));
     bx.addEventListener('click', function (e) {

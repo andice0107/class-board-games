@@ -33,3 +33,6 @@
 .gm-req p { margin: 0 0 10px; font-size: 18px; font-weight: 900; }
 .g-gomoku-mini { margin: 4px 0; }
 .big-view .g-gomoku-mini svg { max-height: calc(var(--vh, 1vh) * 62); width: auto; margin: 0 auto; }
+
+.gm-svg .hint-ring { animation: hintring 1s ease-in-out infinite; transform-box: fill-box; transform-origin: center; pointer-events: none; }
+@keyframes hintring { 50% { transform: scale(1.2); opacity: .6; } }

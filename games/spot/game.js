@@ -46,7 +46,7 @@
       if (k > 0) { var a = (spin + (k - 1) * 72) * Math.PI / 180; cx = 50 + Math.cos(a) * 31; cy = 50 + Math.sin(a) * 31; }
       var size = (k === 0 ? 1.05 : 1) * (0.78 + r() * 0.42), rot = theme.text ? (r() * 40 - 20) : (r() * 90 - 45);
       var col = theme.text ? 'color:' + TCOL[(s + id) % TCOL.length] + ';' : '';
-      h += '<button type="button" class="sp-sym' + (o.hi === s ? ' hi' : '') + (theme.text ? ' txt' : '') + '" data-s="' + s + '" style="left:' + cx + '%;top:' + cy + '%;' + col + '--z:' + size.toFixed(2) + ';--r:' + rot.toFixed(0) + 'deg">' + face(theme, s, o.hi === s ? id : o.vs) + '</button>';
+      h += '<button type="button" class="sp-sym' + (o.hi === s ? ' hi' : '') + (theme.text ? ' txt' : '') + '" data-s="' + s + '" data-h="s' + s + '" style="left:' + cx + '%;top:' + cy + '%;' + col + '--z:' + size.toFixed(2) + ';--r:' + rot.toFixed(0) + 'deg">' + face(theme, s, o.hi === s ? id : o.vs) + '</button>';
     });
     return h + '</div>';
   }
@@ -76,6 +76,20 @@
         return g;
       },
       turnSeat: function () { return -1; },
+      /* 搶答遊戲：沒有輪流，所以不做思考倒數；提示、小提醒照常（由老師端統一控制） */
+      noTimer: true,
+      acting: function (g) { return g.res ? [] : alive(g); },
+      hintDesc: '這一款的提示就是答案：會把「我的牌」和「中間的牌」上一樣的那個' + (theme.text ? '字' : '圖案') + '亮出黃框並直接告訴你。提示只針對當下中間這張牌，換牌後就消失。',
+      tipDesc: '發呆一下子時，提醒你「先盯住自己牌上的一個' + (theme.text ? '字' : '圖案') + '，去中間那張找，找不到就換下一個」的找法。',
+      hint: function (g, seat) {
+        if (g.res || g.center == null || g.out.indexOf(seat) >= 0) return null;
+        var a = common(g.top[seat], g.center);
+        return { msg: '兩張牌一樣的是「' + theme.syms[a] + '」，快點它！（它在兩張牌上都亮黃框）', hl: ['s' + a] };
+      },
+      nudge: function (g, seat) {
+        if (g.res || g.center == null || g.out.indexOf(seat) >= 0) return null;
+        return '找不到嗎？先盯住「我的牌」上的一個' + (theme.text ? '字' : '圖案') + '，到中間那張去找；沒有就換下一個。記得大小和方向都會不一樣喔！';
+      },
       forfeit: function (g, seat) { knock(g, seat, 'left'); },
       teacherDraw: function (g) { g.res = { w: -1, why: 'teacher' }; },
       view: function (g, seat) {

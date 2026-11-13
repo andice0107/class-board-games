@@ -19,3 +19,6 @@
 .ch-promo .row, .ch-req .row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
 .ch-promo .ch-btn, .ch-req .ch-btn { color: #3b2a1f; border-color: #b58863; background: #fff; }
 .ch-fig .ch-svg { max-width: 220px; margin: 0 auto; }
+
+.ch-svg .hint-ring { animation: hintring 1s ease-in-out infinite; transform-box: fill-box; transform-origin: center; pointer-events: none; }
+@keyframes hintring { 50% { transform: scale(1.06); opacity: .6; } }

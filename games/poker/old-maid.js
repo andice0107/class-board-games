@@ -68,6 +68,19 @@
       if (g.turn === -1) settle(g);
       return true;
     },
+    hintDesc: '抽鬼牌靠運氣，鬼牌的位置沒辦法偷看。提示會告訴你「這一輪要從誰那裡抽」、亮出對方蓋著的牌，並說明你手上有哪些點數，抽到一樣的點數就能湊成一對丟掉。',
+    tipDesc: '輪到你卻發呆時，提醒你要點對方的牌背、再點一次確認抽牌。',
+    hint: function (g, seat) {
+      if (g.res || g.turn !== seat || g.out.indexOf(seat) >= 0) return null;
+      var from = nextActive(g, seat); if (from < 0) return null;
+      var mine = g.hands[seat].filter(function (c) { return c[0] !== 'X'; }), rs = {}; mine.forEach(function (c) { rs[PK.label(c[0])] = 1; });
+      var j = g.hands[seat].some(function (c) { return c[0] === 'X'; });
+      return { msg: '這一輪你要抽「第 ' + (from + 1) + ' 位」的牌：亮黃框的牌背選一張，再點一次確認。' + (Object.keys(rs).length ? '你手上有 ' + Object.keys(rs).join('、') + '，抽到一樣的點數就能湊成一對丟掉。' : '') + (j ? '你手上有鬼牌！想辦法讓別人抽走它。' : '鬼牌的位置看不出來，抽哪一張都是運氣。'), hl: ['om'].concat(mine) };
+    },
+    nudge: function (g, seat) {
+      if (g.res || g.turn !== seat || g.out.indexOf(seat) >= 0) return null;
+      return '輪到你了：點對方的一張牌背（會浮起來），再點一次就抽這張。抽到跟你手上一樣點數的牌會自動配對丟掉。';
+    },
     botTurn: function (g, seat) {
       if (g.res || g.turn !== seat) return null;
       var from = nextActive(g, seat); if (from < 0) return null;
@@ -141,7 +154,7 @@
     if (myTurn && v.target >= 0) {
       var n = v.counts[v.target], fan = el('div', 'om-fan');
       for (var k = 0; k < n; k++) (function (k) {
-        var b = el('button', 'om-back' + (L.pick === k ? ' sel' : '')); b.type = 'button'; b.innerHTML = PK.svg(null, { back: true });
+        var b = el('button', 'om-back' + (L.pick === k ? ' sel' : '')); b.type = 'button'; b.setAttribute('data-h', 'om'); b.innerHTML = PK.svg(null, { back: true });
         b.style.transform = 'rotate(' + ((k - (n - 1) / 2) * Math.min(3.5, 24 / n)) + 'deg)' + (L.pick === k ? ' translateY(-14px)' : '');
         b.addEventListener('click', function () {
           if (L.pick !== k) { L.pick = k; ctx.snd('tap'); ctx.rerender(); return; }

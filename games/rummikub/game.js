@@ -82,6 +82,34 @@
       }
       return false;
     },
+    hintDesc: '還沒「破冰」（第一次出牌要 30 點以上）時，會直接亮出可以用來破冰的牌；已經破冰的話，會告訴你「哪一張牌可以加到桌上的哪一組」，或亮出手牌裡「已經可以組成一組」的牌。',
+    tipDesc: '還沒破冰又湊不出 30 點時，提醒你直接抽一張牌；已經破冰、但手上沒有牌可以放時，也提醒你抽牌。',
+    /* 手牌可以接在桌上哪一組後面（一張牌 + 一組仍然合法） */
+    _append: function (g, seat) {
+      var out = [];
+      g.racks[seat].forEach(function (id) { g.table.forEach(function (set, i) { if (RK.analyze(set.concat([id])).ok) out.push({ id: id, set: i }); }); });
+      return out;
+    },
+    hint: function (g, seat) {
+      if (g.res || g.turn !== seat || g.out.indexOf(seat) >= 0) return null;
+      var rack = g.racks[seat], best = RK.bestBySum(rack);
+      if (!g.opened[seat]) {
+        if (best.sum >= 30) { var ids = []; best.combos.forEach(function (m) { m.forEach(function (id) { ids.push(id); }); }); return { msg: '你可以「破冰」了！亮黃框的 ' + ids.length + ' 張牌可以組成 ' + best.combos.length + ' 組，合計 ' + best.sum + ' 點（超過 30）。把它們分組放到桌上，按「完成」。', hl: ids }; }
+        return { msg: '你現在湊不出 30 點以上的組合（最多只有 ' + best.sum + ' 點），沒辦法破冰。請直接按亮黃框的「抽一張」。', hl: ['draw'] };
+      }
+      var ap = mod._append(g, seat);
+      if (ap.length) { var a = ap[0]; return { msg: '亮黃框的這張牌，可以加到桌上亮黃框的那一組裡面（組合仍然合法）。', hl: [a.id, 'set' + a.set] }; }
+      if (best.combos.length) { var m = best.combos[0]; return { msg: '你手上亮黃框的 ' + m.length + ' 張牌，已經可以自己組成一組（同數字不同顏色，或同顏色連號）。', hl: m.slice() }; }
+      return { msg: '你手上目前沒有牌可以放到桌上，也湊不出新的一組。請按亮黃框的「抽一張」。', hl: ['draw'] };
+    },
+    nudge: function (g, seat) {
+      if (g.res || g.turn !== seat || g.out.indexOf(seat) >= 0) return null;
+      var best = RK.bestBySum(g.racks[seat]);
+      if (!g.opened[seat]) return best.sum >= 30 ? '第一次出牌（破冰）要湊出 30 點以上的組合，而且只能用自己的牌。湊好了就按「完成」；湊不出來就按「抽一張」。' : '你現在沒有可以破冰的牌組（湊不出 30 點以上），請直接按「抽一張」牌。';
+      if (!mod._append(g, seat).length && !best.combos.length) return '你手上的牌好像沒辦法放到桌上，也湊不出新的一組，請直接按「抽一張」牌。';
+      return '輪到你了：點牌選起來，再點桌上的一組（或「＋新的一組」）放進去，放好按「完成」；放不了就按「抽一張」。';
+    },
+    turnKey: function (g, seat) { return g.cnt; },
     botTurn: function (g, seat, level) {
       if (g.res || g.turn !== seat) return null;
       var t = RK.botPlay(g.table, g.racks[seat], g.opened[seat], level);
@@ -161,7 +189,7 @@
     var felt = el('div', 'rk-felt');
     var lastPlaced = {}; if (v.last && v.last.k === 'play' && !myTurn) (v.last.placed || []).forEach(function (id) { lastPlaced[id] = 1; });
     table.forEach(function (s, i) {
-      var a = RK.analyze(s), row = el('div', 'rk-set' + (myTurn && !a.ok ? ' bad' : '') + (myTurn && W.sel.length ? ' target' : ''));
+      var a = RK.analyze(s), row = el('div', 'rk-set' + (myTurn && !a.ok ? ' bad' : '') + (myTurn && W.sel.length ? ' target' : '')); row.setAttribute('data-h', 'set' + i);
       (a.ok ? a.order : s).forEach(function (id) { var x = el('span'); x.innerHTML = RK.tile(id, { sel: myTurn && W.sel.indexOf(id) >= 0, mine: myTurn && W.orig[id] }); var t = x.firstChild; if (lastPlaced[id]) t.classList.add('new'); row.appendChild(t); });
       if (myTurn && !a.ok) row.appendChild(el('small', 'rk-why', a.why || '不合法'));
       row.addEventListener('click', function (e) {
@@ -198,10 +226,10 @@
       var tools = el('div', 'pk-tools');
       if (myTurn) {
         var done = ctx.button('pk-btn go', '✔ 完成', function () { if (!ws.ok) return; L.pending = v.cnt; ctx.snd('move'); ctx.send('play', { table: W.table, n: v.cnt }); ctx.rerender(); }); done.disabled = !ws.ok; tools.appendChild(done);
-        tools.appendChild(ctx.button('pk-btn', ws.placed || W.table.length !== v.table.length ? '↩ 重來' : '🀫 抽一張', function () {
+        var db = ctx.button('pk-btn', ws.placed || W.table.length !== v.table.length ? '↩ 重來' : '🀫 抽一張', function () {
           if (ws.placed || W.table.length !== v.table.length || W.sel.length) { resetWork(v); ctx.rerender(); return; }
           L.pending = v.cnt; ctx.send('draw', { n: v.cnt }); ctx.rerender();
-        }));
+        }); db.setAttribute('data-h', 'draw'); tools.appendChild(db);
         if (W.sel.length) tools.appendChild(ctx.button('pk-btn', '取消選取', function () { W.sel = []; ctx.rerender(); }));
       }
       tools.appendChild(ctx.button('pk-btn', L.sortNum ? '依顏色排' : '依數字排', function () { L.sortNum = !L.sortNum; ctx.rerender(); }));

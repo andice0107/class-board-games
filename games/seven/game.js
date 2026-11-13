@@ -7,7 +7,6 @@
   'use strict';
   var HAND = 5, LOCK = 700, FREEZE = 2000;
   var SEATC = ['#e63946', '#1d7dd8', '#f4a300', '#2a9d5c', '#8e44ad', '#e76f51'];
-  var HINTS = 3;
   var MCOL = { 1: '#2a9d5c', 2: '#1d7dd8', 3: '#e63946' };
   var MNAME = { 1: '綠', 2: '藍', 3: '紅' };
   // 牌號 0～59：數字 = floor(id/6)+1，加減數 = id%3+1（每種組合 2 張，共 60 張）
@@ -54,28 +53,40 @@
     init: function (n) {
       n = Math.max(2, Math.min(6, n || 4));
       var d = shuffle(Array.apply(null, Array(60)).map(function (_, i) { return i; }));
-      var g = { np: n, piles: [], hands: [], center: [d.pop()], frz: [], hint: [], hintAt: [], out: [], last: null, lockAt: 0, stuck: 0, cnt: 0, res: null };
+      var g = { np: n, piles: [], hands: [], center: [d.pop()], frz: [], out: [], last: null, lockAt: 0, stuck: 0, cnt: 0, res: null };
       var per = Math.floor(d.length / n);
-      for (var s = 0; s < n; s++) { g.piles.push(d.splice(0, per)); g.hands.push([]); g.frz.push(0); g.hint.push(HINTS); g.hintAt.push(-1); refill(g, s); }
+      for (var s = 0; s < n; s++) { g.piles.push(d.splice(0, per)); g.hands.push([]); g.frz.push(0); refill(g, s); }
       g.center = d.concat(g.center); // 多出來的牌放到中間牌堆底下
       unstick(g);
       return g;
     },
     turnSeat: function () { return -1; },
+    /* 搶答遊戲：沒有輪流，所以不做思考倒數；提示、小提醒照常（由老師端統一控制） */
+    noTimer: true,
+    acting: function (g) { return g.res ? [] : alive(g); },
+    hintDesc: '會告訴你「中間這張牌可以出哪些數字」，並亮出你手上可以出的牌；如果你手上沒有可以出的牌，也會告訴你。提示只針對當下中間這張牌，中間換牌後就消失。',
+    tipDesc: '發呆一下子時，提醒你「超過 10 要減 10、小於 1 要加 10」的繞圈算法；如果你手上沒有能出的牌，提醒你不用急。',
+    hint: function (g, seat) {
+      if (g.res || g.out.indexOf(seat) >= 0) return null;
+      var t = top(g), tg = targets(t), ok = g.hands[seat].filter(function (c) { return canPlay(g, seat, c); });
+      var eq = '中間是 ' + num(t) + '（±' + md(t) + '），可以出 ' + tg.join(' 或 ') + '。';
+      return ok.length ? { msg: eq + '亮黃框的牌就是你手上現在可以出的牌。', hl: ok.map(String) } : { msg: eq + '可惜你手上目前沒有這些數字，等中間換牌再看看。', hl: [] };
+    },
+    nudge: function (g, seat) {
+      if (g.res || g.out.indexOf(seat) >= 0) return null;
+      var ok = g.hands[seat].some(function (c) { return canPlay(g, seat, c); });
+      return ok ? '算不出來嗎？記得：中間的大數字加或減那個數字。算出來超過 10 要減 10，小於 1 要加 10（數字排成一圈）。' : '你手上現在沒有可以出的牌，不用急，等別人出牌、中間換牌後再看看。';
+    },
     forfeit: function (g, seat) { knock(g, seat, 'left'); },
     teacherDraw: function (g) { g.res = { w: -1, why: 'teacher' }; },
     view: function (g, seat) {
       var now = Date.now();
       return { np: g.np, top: top(g), center: g.center.length, hand: seat >= 0 ? g.hands[seat] : null, counts: g.hands.map(function (h, s) { return left(g, s); }),
-        out: g.out, last: g.last, stuck: g.stuck, cnt: g.cnt, turn: -1, frz: seat >= 0 ? Math.max(0, g.frz[seat] - now) : 0, hints: seat >= 0 && g.hint ? g.hint[seat] : 0, hintOn: seat >= 0 && g.hintAt ? g.hintAt[seat] === g.cnt : false, lock: Math.max(0, g.lockAt - now) };
+        out: g.out, last: g.last, stuck: g.stuck, cnt: g.cnt, turn: -1, frz: seat >= 0 ? Math.max(0, g.frz[seat] - now) : 0, lock: Math.max(0, g.lockAt - now) };
     },
     act: function (g, seat, d, notify) {
       if (g.res || g.out.indexOf(seat) >= 0) return false;
       if (d.t === 'resign') { notify(seat, '你已經認輸，可以繼續觀看'); knock(g, seat, 'resign'); g.cnt++; return true; }
-      if (d.t === 'hint') {   // 每局最多 3 次提示，只顯示目前中間這張的答案
-        if (d.n !== g.cnt || !g.hint || g.hint[seat] <= 0 || g.hintAt[seat] === g.cnt) return false;
-        g.hint[seat]--; g.hintAt[seat] = g.cnt; return true;
-      }
       if (d.t !== 'play' || d.n !== g.cnt) return false;   // 中間的牌已經換了，這一下不算
       var now = Date.now(), h = g.hands[seat], c = +d.c;
       if (now < g.frz[seat] || now < g.lockAt || h.indexOf(c) < 0) return false;
@@ -152,18 +163,8 @@
     var pile = el('div', 's9-pile'); pile.innerHTML = cardHTML(t, { cls: 'center' + (locked ? ' in' : '') }); mid.appendChild(pile);
     var info = el('div', 's9-info');
     info.appendChild(el('div', 's9-eq', num(t) + ' ± ' + md(t)));
-    if (v.hintOn) info.appendChild(el('div', 's9-ans', '可以出：' + targets(t).join(' 或 ')));
-    else info.appendChild(el('div', 's9-ans dim', '= ？'));
+    info.appendChild(el('div', 's9-ans dim', '= ？'));
     info.appendChild(el('small', '', '中間有 ' + v.center + ' 張'));
-    if (seat >= 0 && !out && !tb.res) {
-      var hl = v.hints || 0, hb = ctx.button('s9-hint' + (v.hintOn ? ' on' : ''), v.hintOn ? '💡 提示中（剩 ' + hl + ' 次）' : '💡 看提示（剩 ' + hl + ' 次）', function () {
-        if (v.hintOn) return;
-        if (hl <= 0) { ctx.toast('這局的 3 次提示用完了，自己算算看！'); ctx.snd('error'); return; }
-        ctx.send('hint', { n: v.cnt }); ctx.snd('tap');
-      });
-      if (hl <= 0 && !v.hintOn) hb.disabled = true;
-      info.appendChild(hb);
-    }
     mid.appendChild(info);
     wrap.appendChild(mid);
     if (seat >= 0 && v.hand) {
@@ -202,11 +203,11 @@
         '<div class="g-figs">' + ex(4 * 6 + 1, '中間是 5（±2）：可以出 <b>3</b> 或 <b>7</b>') + ex(8 * 6 + 2, '中間是 9（±3）：9+3=12，超過 10 要減 10 → <b>2</b>；9−3 → <b>6</b>') + '</div>' },
       { h: '繞一圈', html: '<ul><li>算出來<b>超過 10</b>：減 10。例如 8+3=11 → 出 <b>1</b>。</li><li>算出來<b>小於 1</b>：加 10。例如 1−2=−1 → 出 <b>9</b>；2−2=0 → 出 <b>10</b>。</li><li>想像數字排成一圈：…8、9、10、1、2、3…</li></ul>' },
       { h: '怎麼贏', html: '<p>最先把自己的牌（手牌加牌堆）全部出完的人獲勝！最後一張不用算，可以直接出。</p><table class="g-tbl"><tr><th>結果</th><th>得分</th></tr><tr><td>🏆 第一個出完</td><td>3 分</td></tr><tr><td>💪 其他</td><td>0 分</td></tr></table><p>和電腦玩的不列入總分。</p>' },
-      { h: '小技巧', html: '<ul><li>看到中間的牌，先算出兩個答案，再找手上有沒有。</li><li>真的算不出來，可以按「💡 看提示」，會告訴你中間這張可以出哪兩個數字。<b>每局只有 3 次</b>，要省著用！</li></ul>' }
+      { h: '小技巧', html: '<ul><li>看到中間的牌，先算出兩個答案，再找手上有沒有。</li><li>真的算不出來，可以按上方的「💡 提示」（老師有開放才會出現），會告訴你中間這張可以出哪兩個數字、亮出你手上能出的牌。次數由老師決定，要省著用！</li></ul>' }
     ],
     teacher: [
       { h: '主持流程', html: '<ol><li>首頁「牌類」→「7吃9」，每桌 2～6 人（2～4 人最好玩）。</li><li>一副 60 張：數字 1～10，每個數字都有 ±1、±2、±3 各 2 張。</li><li>一局大約 3～5 分鐘。老師端會顯示中間的牌、答案和每人剩幾張。</li></ol>' },
-      { h: '教學重點', html: '<ul><li>練習 10 以內的<b>加減心算</b>，以及「繞一圈」（超過 10 減 10、小於 1 加 10）。</li><li>學生每局有 3 次「💡 看提示」，每次只顯示當下中間那張牌可以出的數字，換牌就消失；用完就不能再看，鼓勵學生自己心算。</li><li>算錯只會暫停 2 秒，不扣分，鼓勵學生先算清楚再出。</li><li>規則參考市售「7 ate 9」玩法：原版牌數、張數分布查不到完整資料，本工具用 60 張平均分配；原版手牌沒有上限，本工具為了好操作，手上固定補到 5 張。</li></ul>' },
+      { h: '教學重點', html: '<ul><li>練習 10 以內的<b>加減心算</b>，以及「繞一圈」（超過 10 減 10、小於 1 加 10）。</li><li>學生可以用上方的「💡 提示」（由老師端統一設定次數），每次只顯示當下中間那張牌可以出的數字，換牌就消失；用完就不能再看，鼓勵學生自己心算。</li><li>算錯只會暫停 2 秒，不扣分，鼓勵學生先算清楚再出。</li><li>規則參考市售「7 ate 9」玩法：原版牌數、張數分布查不到完整資料，本工具用 60 張平均分配；原版手牌沒有上限，本工具為了好操作，手上固定補到 5 張。</li></ul>' },
       { h: '電腦對手', html: '<table class="g-tbl"><tr><th>強度</th><th>電腦大約多久出一張</th></tr><tr><td>🐣 入門</td><td>約 8～10 秒</td></tr><tr><td>🙂 簡單</td><td>約 6～8 秒</td></tr><tr><td>🤔 普通</td><td>約 4～6 秒</td></tr><tr><td>🔥 困難</td><td>約 2.5～4.5 秒</td></tr></table><p>「電腦出牌速度」也會影響電腦反應。</p>' }
     ]
   };

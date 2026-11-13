@@ -59,6 +59,23 @@
       var i = GMK.pick(g.board, me, level); if (i < 0) return null;
       return { t: 'move', i: i, n: g.hist.length };
     },
+    hintDesc: '會用閃亮的圈圈標出「這一步很重要」的交叉點：自己能連成五子的位置、必須擋住對方的位置，或對你攻守都有幫助的位置。',
+    tipDesc: '發呆太久時，提醒你怎麼下子（點交叉點先預覽，再按確認）。',
+    hint: function (g, seat) {
+      var me = COL[seat]; if (g.res || g.turn !== me) return null;
+      var list = GMK.scored(g.board, me, 1);
+      if (!list.length) return null;
+      var win = list.filter(function (m) { return m.a >= 1e6; }), blk = list.filter(function (m) { return m.d >= 1e6; });
+      if (win.length) return { msg: '你有機會直接連成五子！亮黃圈的位置就是。', hl: win.slice(0, 3).map(function (m) { return m.i; }) };
+      if (blk.length) return { msg: '對方下一步就要連成五子了，一定要擋住！亮黃圈的位置要擋。', hl: blk.slice(0, 3).map(function (m) { return m.i; }) };
+      return { msg: '這幾個位置對你很重要：下在這裡可以讓自己的棋連得更長，或擋住對方的連線。亮黃圈的位置值得考慮。', hl: list.slice(0, 3).map(function (m) { return m.i; }) };
+    },
+    nudge: function (g, seat) {
+      var me = COL[seat]; if (g.res) return null;
+      if (g.req && g.req.by !== me) return '對方提出了' + (g.req.k === 'undo' ? '悔棋' : '和棋') + '，請在畫面上選「同意」或「不同意」。';
+      if (g.turn !== me || g.req) return null;
+      return '輪到你了：點棋盤上的交叉點，會先出現半透明的預覽棋子，確定位置再按「確認落子」。';
+    },
     hostView: function (g) { return GMK.svg(g.board, { last: g.last, win: g.win }); },
     hostStatus: function (g) {
       if (g.req) return { t: (g.req.by === 'b' ? '黑子' : '白子') + '提出' + (g.req.k === 'undo' ? '悔棋' : '和棋') + '，等待回覆', c: 'hot' };
@@ -109,7 +126,7 @@
     wrap.appendChild(st);
     wrap.appendChild(bar(1 - seat, false, v, tb));
     var bx = el('div', 'gm-board'), bin = el('div');
-    bin.innerHTML = GMK.svg(board, { last: P ? P.i : v.last, win: v.win, anim: L.anim || !!P, ghost: myTurn ? L.ghost : null, ghostColor: my });
+    bin.innerHTML = GMK.svg(board, { hl: myTurn && ctx.hint && ctx.hint.hl, last: P ? P.i : v.last, win: v.win, anim: L.anim || !!P, ghost: myTurn ? L.ghost : null, ghostColor: my });
     L.anim = false;
     bx.appendChild(BG.zoom('gomoku', bin));
     function commit(i) {

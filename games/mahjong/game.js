@@ -115,6 +115,77 @@
       return g;
     },
     turnSeat: function (g) { return g.phase === 'discard' ? g.turn : -1; },
+    /* ---- 提示／小提醒（老師端統一控制）---- */
+    acting: function (g) {
+      if (g.res) return [];
+      if (g.phase === 'discard') return g.out.indexOf(g.turn) >= 0 ? [] : [g.turn];
+      if (g.phase === 'claim') return Object.keys(g.pend).map(Number).filter(function (s) { return !(s in g.resp) && g.out.indexOf(s) < 0; });
+      return [];
+    },
+    /* 別人出牌時，沒有吃碰機會的人也可能在想「我能不能吃／碰」：只給提示／小提醒，不倒數 */
+    watch: function (g) {
+      if (g.res || g.phase !== 'claim' || !g.last) return [];
+      var a = []; for (var s = 0; s < g.np; s++) if (s !== g.last.s && g.out.indexOf(s) < 0 && !g.pend[s]) a.push(s);
+      return a;
+    },
+    autoPlay: function (g, seat) {
+      if (g.res) return null;
+      if (g.phase === 'claim') { var o = g.pend[seat]; if (!o || seat in g.resp) return null; return { t: 'resp', a: o.hu ? 'hu' : 'pass' }; }
+      if (g.phase !== 'discard' || g.turn !== seat) return null;
+      if (selfOpts(g, seat).tsumo) return { t: 'tsumo' };
+      return { t: 'discard', tile: MJ.pickDiscard(g.hands[seat], need(g, seat), 2, null) };
+    },
+    hintDesc: '輪到你打牌時：先看能不能自摸／槓；沒有的話，會用黃框亮出「現在比較沒用、可以優先考慮打出去」的幾張牌（不會直接指定答案），如果打其中一張就會聽牌也會告訴你。別人打出牌時：如果你可以胡、碰、槓、吃，會亮出對應的按鈕、那張牌和你手上要用到的牌，並說明怎麼吃碰；如果你不能吃也不能碰，會直接告訴你原因。',
+    tipDesc: '別人打出牌，而你有機會胡／碰／槓／吃時，發呆幾秒後會明確提醒你「可以…」，下面的按鈕也會一直閃亮；如果你不能吃也不能碰，會提醒你「不用按任何按鈕，輪到你時系統自動幫你摸牌」；輪到你打牌時發呆，會提醒你「先點一張牌再點一次打出」。',
+    hint: function (g, seat) {
+      if (g.res || g.out.indexOf(seat) >= 0) return null;
+      var h = g.hands[seat], N = need(g, seat), t, hl;
+      if (g.phase === 'claim' && g.last) {
+        var o = g.pend[seat], lt = g.last.t, nm = MJ.name(lt);
+        if (!o) {
+          var why = g.last.s === seat ? '這是你自己打的牌。' : '你手上沒有兩張一樣的「' + nm + '」可以碰，' + (lt >= 27 ? '字牌也不能吃。' : (seat === (g.last.s + 1) % g.np ? '也湊不出可以吃的順子。' : '而且只有打牌那家的「下家」才能吃。'));
+          return { msg: '這張「' + nm + '」你不能吃也不能碰。' + why + '不用按任何按鈕，等其他人決定，輪到你時系統會自動幫你摸一張牌。', hl: ['last'] };
+        }
+        if (seat in g.resp) return null;
+        hl = ['last'];
+        if (o.hu) return { msg: '這張「' + nm + '」你可以胡！按亮黃框的「胡！」。', hl: ['last', 'c:hu'] };
+        var parts = [];
+        if (o.kan) { parts.push('槓（手上有三張「' + nm + '」）'); hl.push('c:kan', 't' + lt); }
+        if (o.pon) { parts.push('碰（手上有兩張「' + nm + '」）'); hl.push('c:pon', 't' + lt); }
+        (o.chi || []).forEach(function (st) {
+          var use = [st, st + 1, st + 2].filter(function (x) { return x !== lt; });
+          parts.push('吃（用你手上的「' + use.map(MJ.name).join('」和「') + '」）'); hl.push('c:chi' + st); use.forEach(function (x) { hl.push('t' + x); });
+        });
+        return { msg: '這張「' + nm + '」你可以：' + parts.join('；') + '。吃碰之後這些牌會攤開，還要再打一張，想清楚再決定；不想要就按「過」。', hl: hl };
+      }
+      if (g.phase !== 'discard' || g.turn !== seat) return null;
+      var so = selfOpts(g, seat);
+      if (so.tsumo) return { msg: '你摸到的這張可以自摸胡牌！按亮黃框的「自摸！」。', hl: ['c:tsumo'] };
+      var c = MJ.counts(h), types = [], res = [];
+      h.forEach(function (x) { if (types.indexOf(x) < 0) types.push(x); });
+      types.forEach(function (x) { c[x]--; res.push({ t: x, s: MJ.shanten(c, N), u: MJ.useful(c, x) }); c[x]++; });
+      var mn = Math.min.apply(null, res.map(function (r) { return r.s; }));
+      var cand = res.filter(function (r) { return r.s === mn; }).sort(function (a, b) { return a.u - b.u; }).slice(0, 3);
+      hl = cand.map(function (r) { return 't' + r.t; });
+      var extra = '';
+      if (so.ankan) { extra += '（你手上有四張一樣的牌，也可以「暗槓」）'; hl.push('c:ankan'); }
+      if (so.kakan) { extra += '（你可以「加槓」）'; hl.push('c:kakan'); }
+      return { msg: (mn <= 0 ? '打出亮黃框的其中一張牌，你就聽牌了（只差一張就胡）。' : '亮黃框的牌是你現在比較沒用的牌，可以優先考慮打出去（也要看你想做什麼牌型）。') + extra, hl: hl };
+    },
+    nudge: function (g, seat) {
+      if (g.res || g.out.indexOf(seat) >= 0) return null;
+      if (g.phase === 'claim' && g.last) {
+        var o = g.pend[seat], nm = MJ.name(g.last.t);
+        if (!o) return g.pend[seat] || seat === g.last.s ? null : '別人打了「' + nm + '」，你不能吃也不能碰，不用按任何按鈕喔。等其他人決定後，輪到你時系統會自動幫你摸一張牌。';
+        if (seat in g.resp) return null;
+        var can = []; if (o.hu) can.push('胡'); if (o.kan) can.push('槓'); if (o.pon) can.push('碰'); if (o.chi) can.push('吃');
+        return '別人打了「' + nm + '」，你可以「' + can.join('」「') + '」！下面閃亮的按鈕就是你能做的；不想要就按「過」（不按也會自動過）。';
+      }
+      if (g.phase !== 'discard' || g.turn !== seat) return null;
+      var so = selfOpts(g, seat);
+      if (so.tsumo) return '你可以自摸胡牌了！按下面的「自摸！」。';
+      return '輪到你打牌了：先點一張要打出去的牌，再點一次（或按「打出」）。不知道打哪一張，可以按 💡 提示。' + (so.ankan || so.kakan ? '你也可以槓喔。' : '');
+    },
     forfeit: function (g, seat) { knock(g, seat, 'left'); },
     teacherDraw: function (g) { g.res = { w: -1, why: 'teacher' }; g.phase = 'end'; },
     view: function (g, seat) {
@@ -242,7 +313,7 @@
     // 桌面：最新一張＋四家的河
     var felt = el('div', 'mj-felt');
     var mid = el('div', 'mj-mid');
-    mid.innerHTML = '<div class="mj-wall">牌牆<br><b>' + v.left + '</b> 張</div>' + (v.last && !tb.res ? '<div class="mj-lastt"><small>' + who(tb, v.last.s) + ' 打出</small>' + MJ.svg(v.last.t) + '</div>' : '');
+    mid.innerHTML = '<div class="mj-wall">牌牆<br><b>' + v.left + '</b> 張</div>' + (v.last && !tb.res ? '<div class="mj-lastt' + (v.opts ? ' hint-hl' : '') + '" data-h="last"><small>' + who(tb, v.last.s) + ' 打出</small>' + MJ.svg(v.last.t) + '</div>' : '');
     if (tb.res && v.win) { var tl = el('div', 'mj-tai'); tl.innerHTML = '<b>' + (v.win.tai.total ? v.win.tai.total + ' 台' : '屁胡') + '</b>' + v.win.tai.list.map(function (x) { return '<span>' + x[0] + ' ' + x[1] + '</span>'; }).join(''); mid.appendChild(tl); }
     felt.appendChild(mid);
     var rivers = el('div', 'mj-rivers');
@@ -265,7 +336,7 @@
     if (drawn != null) { tiles.splice(tiles.indexOf(drawn), 1); }
     MJ.sortHand(tiles);
     function tileBtn(t, extra) {
-      var b2 = el('button', 'mj-tile' + (L.sel === t ? ' sel' : '') + (extra || '')); b2.type = 'button'; b2.innerHTML = MJ.svg(t);
+      var b2 = el('button', 'mj-tile' + (L.sel === t ? ' sel' : '') + (extra || '')); b2.type = 'button'; b2.setAttribute('data-h', 't' + t); b2.innerHTML = MJ.svg(t);
       if (tb.res && v.win && v.win.s === seat && t === v.win.t) b2.classList.add('win');
       b2.addEventListener('click', function () {
         if (!myTurn) return;
@@ -279,25 +350,26 @@
     mine.appendChild(hand);
     function send(t, d) { d = d || {}; d.n = v.cnt; L.sent = v.cnt; L.sel = null; ctx.send(t, d); ctx.rerender(); }
     function doDiscard(t) { send('discard', { tile: t }); ctx.snd('move'); }
-    // 動作按鈕
+    // 動作按鈕：能胡／碰／槓／吃／自摸時，按鈕會一直閃亮（明顯提示，不算提示次數）
+    function clm(b, id) { b.setAttribute('data-h', id); b.classList.add('hint-hl'); return b; }
     var bar = el('div', 'mj-acts');
     if (v.opts && !tb.res && L.sent !== v.cnt) {
       var o = v.opts;
-      if (o.hu) bar.appendChild(ctx.button('mj-btn hu', '胡！', function () { send('resp', { a: 'hu' }); }));
-      if (o.kan) bar.appendChild(ctx.button('mj-btn', '槓', function () { send('resp', { a: 'kan' }); }));
-      if (o.pon) bar.appendChild(ctx.button('mj-btn', '碰', function () { send('resp', { a: 'pon' }); }));
+      if (o.hu) bar.appendChild(clm(ctx.button('mj-btn hu', '胡！', function () { send('resp', { a: 'hu' }); }), 'c:hu'));
+      if (o.kan) bar.appendChild(clm(ctx.button('mj-btn', '槓', function () { send('resp', { a: 'kan' }); }), 'c:kan'));
+      if (o.pon) bar.appendChild(clm(ctx.button('mj-btn', '碰', function () { send('resp', { a: 'pon' }); }), 'c:pon'));
       if (o.chi) o.chi.forEach(function (stt) {
         var b3 = ctx.button('mj-btn chi', '', function () { send('resp', { a: 'chi', st: stt }); });
-        b3.innerHTML = '吃 <span>' + [stt, stt + 1, stt + 2].map(function (x) { return MJ.svg(x); }).join('') + '</span>'; bar.appendChild(b3);
+        b3.innerHTML = '吃 <span>' + [stt, stt + 1, stt + 2].map(function (x) { return MJ.svg(x); }).join('') + '</span>'; bar.appendChild(clm(b3, 'c:chi' + stt));
       });
       var left = Math.max(0, Math.ceil((AUTO - (Date.now() - L.claimAt)) / 1000));
       bar.appendChild(ctx.button('mj-btn pass', '過（' + left + '）', function () { send('resp', { a: 'pass' }); }));
       clearTimeout(L.timer);
       L.timer = setTimeout(function () { var cv = (BGPlayer.state().tb || {}).view; if (cv && cv.opts && cv.cnt === v.cnt && L.sent !== v.cnt) { if (Date.now() - L.claimAt >= AUTO) send('resp', { a: 'pass' }); else ctx.rerender(); } }, 1000);
     } else if (myTurn) {
-      if (v.self.tsumo) bar.appendChild(ctx.button('mj-btn hu', '自摸！', function () { send('tsumo'); }));
-      (v.self.ankan || []).forEach(function (t) { var b4 = ctx.button('mj-btn', '', function () { send('ankan', { tile: t }); }); b4.innerHTML = '暗槓 ' + MJ.svg(t); bar.appendChild(b4); });
-      (v.self.kakan || []).forEach(function (t) { var b5 = ctx.button('mj-btn', '', function () { send('kakan', { tile: t }); }); b5.innerHTML = '加槓 ' + MJ.svg(t); bar.appendChild(b5); });
+      if (v.self.tsumo) bar.appendChild(clm(ctx.button('mj-btn hu', '自摸！', function () { send('tsumo'); }), 'c:tsumo'));
+      (v.self.ankan || []).forEach(function (t) { var b4 = ctx.button('mj-btn', '', function () { send('ankan', { tile: t }); }); b4.setAttribute('data-h', 'c:ankan'); b4.innerHTML = '暗槓 ' + MJ.svg(t); bar.appendChild(b4); });
+      (v.self.kakan || []).forEach(function (t) { var b5 = ctx.button('mj-btn', '', function () { send('kakan', { tile: t }); }); b5.setAttribute('data-h', 'c:kakan'); b5.innerHTML = '加槓 ' + MJ.svg(t); bar.appendChild(b5); });
       var db = ctx.button('mj-btn go', L.sel != null ? '打出 ' + MJ.name(L.sel) : '先點一張牌', function () { if (L.sel != null) doDiscard(L.sel); });
       if (L.sel == null) db.disabled = true; bar.appendChild(db);
     }

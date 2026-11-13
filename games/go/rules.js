@@ -156,6 +156,7 @@ window.GO = (function () {
         if (o.last === i && !dead) h += '<circle cx="' + x + '" cy="' + y + '" r="7" fill="none" stroke="' + (v === 1 ? '#fff' : '#000') + '" stroke-width="2.5"/>';
       }
       if (o.terr && o.terr[i] && (!v || (o.dead && o.dead[i]))) h += '<rect x="' + (x - 6) + '" y="' + (y - 6) + '" width="12" height="12" fill="' + (o.terr[i] === 1 ? '#111' : '#fff') + '" stroke="#555" stroke-width="1"/>';
+      if (o.hl && o.hl.indexOf(i) >= 0) h += '<circle class="hint-ring" cx="' + x + '" cy="' + y + '" r="22" fill="rgba(255,212,0,.3)" stroke="#ffc400" stroke-width="3.5"/>';
       if (o.ghost === i && !v) h += '<circle cx="' + x + '" cy="' + y + '" r="18" fill="url(#go' + (o.ghostColor === 1 ? 'b' : 'w') + ')" opacity=".55"/>';
     }
     return h + '</svg>';

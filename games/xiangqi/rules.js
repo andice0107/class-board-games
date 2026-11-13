@@ -129,6 +129,7 @@ window.XQ = (function () {
       h.push('<circle cx="' + x + '" cy="' + y + '" r="3.4" fill="none" stroke="' + col + '" stroke-width=".35"/>');
       h.push('<text x="' + x + '" y="' + (y + 1.75) + '" font-size="4.9" text-anchor="middle" fill="' + col + '" font-weight="900">' + NAME[p] + '</text></g>');
     }
+    if (o.hl) o.hl.forEach(function (i) { h.push('<circle class="hint-ring" cx="' + X(i) + '" cy="' + Y(i) + '" r="5.7" fill="rgba(255,212,0,.28)" stroke="#ffc400" stroke-width="1.1"/>'); });
     if (o.dots) o.dots.forEach(function (i) {
       if (b[i] === '.') h.push('<circle cx="' + X(i) + '" cy="' + Y(i) + '" r="1.6" fill="#3f7d6b" opacity=".9"/>');
       else h.push('<circle cx="' + X(i) + '" cy="' + Y(i) + '" r="5" fill="none" stroke="#b8322a" stroke-width=".9" stroke-dasharray="1.6 1"/>');

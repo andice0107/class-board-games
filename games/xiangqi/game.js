@@ -65,6 +65,44 @@
       var m = XQAI.pick(g.board, me, level); if (!m) return null;
       return { t: 'move', from: m.from, to: m.to, n: g.hist.length };
     },
+    /* 提示：只指出「哪些棋子可以用」，不直接替玩家走棋 */
+    hintDesc: '被將軍時，會亮出能解圍的棋子；可以吃子時，亮出能吃對方棋子的棋子；自己的棋子正被攻擊時，亮出需要保護或躲開的棋子；否則亮出可以出動的車、馬、炮。',
+    tipDesc: '被將軍沒有解圍、對方提出悔棋／和棋還沒回覆，或發呆太久時，提醒怎麼走棋。',
+    hint: function (g, seat) {
+      var me = COL[seat], b = g.board, V = { r: 9, c: 4.5, n: 4, a: 2, b: 2, p: 1, k: 99 };
+      if (g.res || g.turn !== me) return null;
+      var movers = [], caps = [], free = [], danger = [], big = [];
+      for (var i = 0; i < 90; i++) {
+        if (XQ.side(b[i]) !== me) continue;
+        var ms = XQ.legalFrom(b, i); if (!ms.length) continue;
+        movers.push(i);
+        var t = b[i].toLowerCase();
+        if ('rnc'.indexOf(t) >= 0) big.push(i);
+        var cap = ms.filter(function (m) { return b[m] !== '.'; });
+        if (cap.length) { caps.push(i); if (cap.some(function (m) { var b2 = XQ.apply(b, i, m); return !attacked(b2, m, XQ.other(me)); })) free.push(i); }
+      }
+      function attacked(bd, sq, by) { for (var j = 0; j < 90; j++) if (XQ.side(bd[j]) === by && bd[j].toLowerCase() !== 'k' && XQ.pseudo(bd, j).indexOf(sq) >= 0) return true; return false; }
+      if (g.check) return { msg: '你被將軍了！一定要先解圍。亮黃框的棋子，就是可以幫國王解圍的棋子（' + movers.length + ' 顆）。', hl: movers };
+      for (var k = 0; k < 90; k++) {
+        if (XQ.side(b[k]) !== me || b[k].toLowerCase() === 'k') continue;
+        var ai = -1; for (var j2 = 0; j2 < 90; j2++) if (XQ.side(b[j2]) === XQ.other(me) && b[j2].toLowerCase() !== 'k' && XQ.pseudo(b, j2).indexOf(k) >= 0 && (ai < 0 || V[b[j2].toLowerCase()] < V[b[ai].toLowerCase()])) ai = j2;
+        if (ai < 0) continue;
+        var atk = b[ai], defended = attacked(XQ.apply(b, ai, k), k, me);
+        if (!defended || V[atk.toLowerCase()] < V[b[k].toLowerCase()]) danger.push(k);
+      }
+      if (free.length) return { msg: '有棋子可以「白吃」對方的棋（吃了以後不會被吃回來）！亮黃框的就是可以吃子的棋子。', hl: caps };
+      if (danger.length) return { msg: '小心！你有棋子正被對方攻擊，快想想要躲開或保護它。亮黃框的是有危險的棋子。', hl: danger };
+      if (caps.length) return { msg: '有棋子可以吃對方的棋，但要先想想：吃了會不會被吃回來？亮黃框的是可以吃子的棋子。', hl: caps };
+      return { msg: '目前沒有急著要吃的子，也沒有危險的棋子。可以讓亮黃框的車、馬、炮出動，找機會進攻。', hl: big.length ? big : movers };
+    },
+    nudge: function (g, seat) {
+      var me = COL[seat];
+      if (g.res) return null;
+      if (g.req && g.req.by !== me) return '對方提出了' + (g.req.k === 'undo' ? '悔棋' : '和棋') + '，請在畫面上選「同意」或「不同意」。';
+      if (g.turn !== me || g.req) return null;
+      if (g.check) return '你被將軍了！先想想怎麼解圍：把國王移開、擋住攻擊，或吃掉攻擊的棋子。';
+      return '輪到你了：先點一顆自己的棋子，會出現綠色小點（可以走的位置），再點綠點就能走囉！';
+    },
     hostView: function (g) { return XQ.svg(g.board, { last: g.last, checkKing: g.check && !g.res ? XQ.king(g.board, g.turn) : null }); },
     hostStatus: function (g) {
       if (g.req) return { t: (g.req.by === 'r' ? '紅方' : '黑方') + '提出' + (g.req.k === 'undo' ? '悔棋' : '和棋') + '，等待回覆', c: 'hot' };
@@ -119,7 +157,7 @@
     wrap.appendChild(st);
     wrap.appendChild(bar(ctx, op, false, v, tb));
     var bx = el('div', 'xq-board'), bin = el('div');
-    bin.innerHTML = XQ.svg(board, { flip: my === 'b', sel: L.sel, dots: L.dots, last: P ? [P.from, P.to] : v.last, anim: L.anim || !!P, checkKing: v.check && !tb.res && !P ? XQ.king(v.board, v.turn) : null });
+    bin.innerHTML = XQ.svg(board, { flip: my === 'b', sel: L.sel, dots: L.dots, last: P ? [P.from, P.to] : v.last, hl: myTurn && ctx.hint && ctx.hint.hl, anim: L.anim || !!P, checkKing: v.check && !tb.res && !P ? XQ.king(v.board, v.turn) : null });
     L.anim = false;
     bx.appendChild(BG.zoom('xiangqi', bin));
     bx.addEventListener('click', function (e) {

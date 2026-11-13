@@ -15,17 +15,21 @@
   $('h-game').innerHTML = '<b style="background:' + META.color + '">' + META.icon + '</b>';
   $('h-game').appendChild(document.createTextNode(META.title));
   var S = null, net = null;
-  function fresh() { return { gid: GID, code: BGNet.code(), broker: null, players: {}, queue: [], tables: {}, tn: 0, auto: false, allowBot: false, at: Date.now() }; }
+  /* 提示・倒數計時・溫馨小提醒：主持人隨時可開關、調整，全班一起套用 */
+  function aidDefault() { return { hint: true, hintN: SOLO ? -1 : 3, tm: false, tsec: 30, tips: true, tipSec: 8 }; }
+  function fresh() { return { aid: aidDefault(), gid: GID, code: BGNet.code(), broker: null, players: {}, queue: [], tables: {}, tn: 0, auto: false, allowBot: false, at: Date.now() }; }
   var saved = null;
   try { saved = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
   start(!SOLO && saved && saved.code && saved.gid === GID && Date.now() - saved.at < 12 * 3600e3 ? saved : fresh());
 
   function start(state) {
     if (net) net.close();
-    S = state; S.at = Date.now(); S.cast = null;   // 重新整理後投影一定關掉，學生不會卡在投影畫面
+    S = state; S.at = Date.now(); S.cast = null;
+    var A0 = aidDefault(); S.aid = S.aid || {}; Object.keys(A0).forEach(function (k) { if (S.aid[k] == null) S.aid[k] = A0[k]; });
+    Object.keys(S.tables).forEach(function (k) { S.tables[k].tm = {}; if (S.tables[k].g) aidSync(S.tables[k]); });   // 重新整理後投影一定關掉，學生不會卡在投影畫面
     Object.keys(S.players).forEach(function (k) { S.players[k].lastSeen = 0; S.players[k]._on = false; });
     // 遊戲規則改版後，舊的棋局資料不相容：重新開一局
-    Object.keys(S.tables).forEach(function (k) { var T = S.tables[k]; if ((T.gv || 0) !== (GAME.ver || 0)) { T.g = GAME.init(T.seats.length, gopts(T)); T.again = {}; T.round++; T.gv = GAME.ver || 0; } });
+    Object.keys(S.tables).forEach(function (k) { var T = S.tables[k]; if ((T.gv || 0) !== (GAME.ver || 0)) { T.g = GAME.init(T.seats.length, gopts(T)); T.again = {}; T.round++; T.gv = GAME.ver || 0; T.hu = {}; } });
     $('h-code').innerHTML = S.code.split('').map(function (c) { return '<span>' + c + '</span>'; }).join('');
     $('h-qr').textContent = '連線中…'; $('h-url').textContent = '';
     $('h-auto').checked = S.auto;
@@ -71,7 +75,7 @@
   function stOf(p) {
     var s = p.stat || { w: 0, d: 0, l: 0 }, m = { t: 'st', to: p.pid, v: p.ver, name: p.name, sid: p.sid, gid: GID, qn: S.queue.length, stat: s, pts: pts(s), allowBot: SOLO || S.allowBot === true, cast: S.cast || null, emo: SOLO || S.emo === true, snd: SOLO || S.snd !== false, botSeats: GAME.botSeats || null };
     var T = p.table && S.tables[p.table];
-    if (T) { var seat = T.seats.indexOf(p.pid); m.tb = { no: T.no, round: T.round, seat: seat, seats: names(T), view: GAME.view(T.g, seat), res: T.g.res || null, again: T.again }; }
+    if (T) { var seat = T.seats.indexOf(p.pid); m.tb = { no: T.no, round: T.round, seat: seat, seats: names(T), view: GAME.view(T.g, seat), res: T.g.res || null, again: T.again }; m.aid = aidFor(T, seat, p); }
     return m;
   }
   function send(p) { if (p) net.send(stOf(p)); }
@@ -86,7 +90,7 @@
       if (vsBot) { s.bot = s.bot || { w: 0, d: 0, l: 0 }; s = s.bot; }
       if (r.ws) { if (r.ws.indexOf(i) >= 0) s.w++; else s.l++; } else if (r.l != null) { if (r.l === i) s.l++; else s.w++; } else if (r.w < 0) s.d++; else if (r.w === i) s.w++; else s.l++; });
   }
-  function touch(T) { drain(T); score(T); runBots(T); T.seats.forEach(function (id) { bump(S.players[id]); }); render(); save(); if (ovId === T.id) drawOv(); drawLb(); }
+  function touch(T) { drain(T); score(T); aidSync(T); runBots(T); T.seats.forEach(function (id) { bump(S.players[id]); }); render(); save(); if (ovId === T.id) drawOv(); drawLb(); }
   /* 遊戲可以回報事件（例如天使與惡魔的課後紀錄），用學號存起來 */
   function drain(T) {
     if (!GAME.drain || !T.g) return;
@@ -130,6 +134,7 @@
     if (d.t === 'ping') { if (d.v !== p.ver) send(p); else if ((S.cast ? S.cast.seq : -1) !== (d.cs == null ? -1 : d.cs)) net.send({ t: 'cast', to: p.pid, c: S.cast || null }); return; }
     if (d.t === 'bot') { if (!T && (SOLO || S.allowBot === true)) { botTable(p, d.level, d.n, SOLO ? d.opts : null); var NT = tblOf(p); if (NT && SOLO && SPEEDS[d.speed]) NT.speed = d.speed; } return; }
     if (!T) return;
+    if (d.t === 'hint') { doHint(T, p, seat); return; }
     if (d.t === 'emo') {
       if (S.emo !== true && !SOLO) return;
       T.seats.forEach(function (id) { if (id !== p.pid) net.send({ t: 'emo', to: id, from: seat, i: d.i | 0 }); });
@@ -157,6 +162,99 @@
   setInterval(function () {
     Object.keys(S.players).forEach(function (k) { var p = S.players[k], on = online(p); if (p._on !== on) { p._on = on; presence(p); } });
   }, 3000);
+
+
+  /* ---------- 提示・倒數・溫馨小提醒 ---------- */
+  function say(p, text) { net.send({ t: 'note', to: p.pid, text: text }); }
+  function hleft(T, p) { var A = S.aid; if (!A.hint) return null; if (A.hintN < 0) return -1; return Math.max(0, A.hintN - ((T.hu || {})[p.pid] || 0)); }
+  /* 現在輪到哪些真人要動作（同時動作的遊戲可以有好幾位） */
+  function actingSeats(T) {
+    var g = T.g; if (!g || g.res) return [];
+    var a = GAME.acting ? GAME.acting(g) : (GAME.turnSeat ? [GAME.turnSeat(g)] : []);
+    return (a || []).filter(function (s) { return s >= 0 && s < T.seats.length && !BG.isBot(T.seats[s]); });
+  }
+  function turnKey(T, seat) { return T.round + ':' + (GAME.turnKey ? GAME.turnKey(T.g, seat) : (T.g.cnt != null ? T.g.cnt : '')); }
+  function newDl(now) { return S.aid.tm && !GAME.noTimer ? now + S.aid.tsec * 1000 : null; }
+  function aidSync(T) {
+    var now = Date.now(), tm = T.tm = T.tm || {}, act = actingSeats(T), wat = watchSeats(T, act); T.hint = {};
+    Object.keys(tm).forEach(function (s) { if (act.indexOf(+s) < 0 && wat.indexOf(+s) < 0) delete tm[s]; });
+    act.forEach(function (s) { var k = turnKey(T, s); if (!tm[s] || tm[s].k !== k) tm[s] = { k: k, at: now, dl: newDl(now), tip: null }; });
+    wat.forEach(function (s) { var k = turnKey(T, s); if (!tm[s] || tm[s].k !== k) tm[s] = { k: k, at: now, dl: null, tip: null }; });
+  }
+  /* 有些遊戲（麻將）別人出牌時，不用動作的人也可能想問「我能不能吃碰」：這些人只給提示／小提醒，不倒數 */
+  function watchSeats(T, act) {
+    var g = T.g; if (!g || g.res || !GAME.watch) return [];
+    var a = []; try { a = GAME.watch(g) || []; } catch (e) {}
+    return a.filter(function (s) { return s >= 0 && s < T.seats.length && act.indexOf(s) < 0 && !BG.isBot(T.seats[s]); });
+  }
+  function aidFor(T, seat, p) {
+    var A = S.aid, tm = (T.tm || {})[seat], o = { h: A.hint && GAME.hint ? hleft(T, p) : null };
+    if (tm && !T.g.res) { if (tm.dl) { o.tl = Math.max(0, tm.dl - Date.now()); o.tt = tm.dl - tm.at; } if (tm.tip) { o.tip = tm.tip; o.tk = tm.k; } }
+    var hh = (T.hint || {})[p.pid]; if (hh) o.hint = hh;
+    return o;
+  }
+  function doHint(T, p, seat) {
+    var A = S.aid;
+    if (!A.hint || !GAME.hint) return say(p, A.hint ? '這個遊戲目前沒有提示。' : '老師目前沒有開放提示功能。');
+    if (T.g.res) return;
+    T.hint = T.hint || {};
+    if (T.hint[p.pid]) { T.hint[p.pid].k = Date.now(); return send(p); }   // 已經有提示了：再顯示一次，不重複扣次數
+    var left = hleft(T, p); if (left === 0) return say(p, '這局的提示次數用完了，自己想想看！');
+    var ac = actingSeats(T); if (ac.indexOf(seat) < 0 && watchSeats(T, ac).indexOf(seat) < 0) return say(p, '還沒輪到你喔，輪到你的時候再按 💡 提示。');
+    var r = null; try { r = GAME.hint(T.g, seat); } catch (e) {}
+    if (!r || !r.msg) return say(p, '目前想不到特別的提示，自己再看看。');
+    if (!r.free) { T.hu = T.hu || {}; T.hu[p.pid] = (T.hu[p.pid] || 0) + 1; }
+    T.hint[p.pid] = { msg: r.msg, hl: r.hl || [], k: Date.now() };
+    send(p); render(); save();
+  }
+  function timeUp(T, seat, p) {
+    var e = T.tm[seat], a = null;
+    try { a = GAME.autoPlay ? GAME.autoPlay(T.g, seat) : GAME.botTurn(T.g, seat, 1); } catch (x) {}
+    if (a && GAME.act(T.g, seat, a, function () {})) { say(p, '⏰ 時間到！系統先幫你出了一步。'); touch(T); }
+    else if (e) e.dl = Date.now() + 4000;   // 現在沒有可以代出的動作，過幾秒再試
+  }
+  function aidTick() {
+    var now = Date.now();
+    Object.keys(S.tables).forEach(function (k) {
+      var T = S.tables[k]; if (!T.g || T.g.res || !T.tm) return;
+      Object.keys(T.tm).forEach(function (s) {
+        var e = T.tm[s], seat = +s, p = S.players[T.seats[seat]]; if (!e || !p) return;
+        if (e.dl && now >= e.dl) return timeUp(T, seat, p);
+        if (S.aid.tips && !e.tip && !e.tipDone && online(p) && now - e.at >= S.aid.tipSec * 1000) {
+          e.tipDone = true; var t = null; try { t = GAME.nudge ? GAME.nudge(T.g, seat) : null; } catch (x) {}
+          if (t) { e.tip = t; bump(p); }
+        }
+      });
+      var m = document.querySelector('.tmr[data-t="' + T.id + '"]');
+      if (m) { var min = null; Object.keys(T.tm).forEach(function (s) { var d = T.tm[s].dl; if (d && (min == null || d < min)) min = d; }); m.textContent = min ? '⏱ ' + Math.max(0, Math.ceil((min - now) / 1000)) : ''; m.style.display = min ? '' : 'none'; }
+    });
+  }
+  setInterval(aidTick, 1000);
+  function aidPush() { save(); Object.keys(S.players).forEach(function (k) { bump(S.players[k]); }); render(); }
+  function eachTm(fn) { Object.keys(S.tables).forEach(function (k) { var T = S.tables[k]; Object.keys(T.tm || {}).forEach(function (s) { fn(T, +s, T.tm[s]); }); }); }
+  function aidPanel() {
+    var box = el('details', 'aid'); box.open = true; box.appendChild(el('summary', '', '🎓 提示・倒數計時・溫馨小提醒（可隨時調整）'));
+    function row(c) { var r = el('div', 'aid-row ' + (c || '')); box.appendChild(r); return r; }
+    function check(r, label, key, after) { var lb = el('label', 'switch'), cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!S.aid[key]; cb.addEventListener('change', function () { S.aid[key] = this.checked; if (after) after(); aidPush(); paint(); }); lb.appendChild(cb); lb.appendChild(document.createTextNode(' ' + label)); r.appendChild(lb); }
+    function step(r, get, fn, fmt) { var b1 = btn('btn small', '－', function () { fn(-1); aidPush(); paint(); }), v = el('b', 'aid-v'), b2 = btn('btn small', '＋', function () { fn(1); aidPush(); paint(); }); r.appendChild(b1); r.appendChild(v); r.appendChild(b2); return function () { v.textContent = fmt(get()); }; }
+    var r1 = row(); check(r1, '💡 開放「提示」', 'hint');
+    var r1b = row('sub'); r1b.appendChild(el('span', '', '每局每人'));
+    var p1 = step(r1b, function () { return S.aid.hintN; }, function (d) { var n = S.aid.hintN < 0 ? 3 : S.aid.hintN + d; S.aid.hintN = Math.max(1, Math.min(30, n)); }, function (n) { return n < 0 ? '無限' : n + ' 次'; });
+    var un = btn('btn small', '♾️ 無限', function () { S.aid.hintN = S.aid.hintN < 0 ? 3 : -1; aidPush(); paint(); }); r1b.appendChild(un);
+    var r2 = row(); check(r2, '⏱ 開啟「思考倒數計時」', 'tm', function () { var now = Date.now(); eachTm(function (T, s, e) { e.dl = newDl(now); e.at = e.at || now; }); });
+    var r2b = row('sub'); r2b.appendChild(el('span', '', '每次思考'));
+    var p2 = step(r2b, function () { return S.aid.tsec; }, function (d) { S.aid.tsec = Math.max(5, Math.min(600, S.aid.tsec + d * (S.aid.tsec >= 60 ? 15 : 5))); }, function (n) { return n + ' 秒'; });
+    var r2c = row('sub'); r2c.appendChild(el('span', '', '現在全班每人多給'));
+    [10, 30, 60].forEach(function (n) { var b = btn('btn small', '+' + n + ' 秒', function () { if (!S.aid.tm) return; eachTm(function (T, s, e) { if (e.dl) { e.dl += n * 1000; var pl = S.players[T.seats[s]]; if (pl) say(pl, '老師多給你 ' + n + ' 秒思考時間'); } }); aidPush(); }); b.className += ' addsec'; r2c.appendChild(b); });
+    var r3 = row(); check(r3, '🌟 開啟「溫馨小提醒」（不扣提示次數）', 'tips');
+    var r3b = row('sub'); r3b.appendChild(el('span', '', '沒動作超過'));
+    var p3 = step(r3b, function () { return S.aid.tipSec; }, function (d) { S.aid.tipSec = Math.max(3, Math.min(60, S.aid.tipSec + d * (S.aid.tipSec >= 15 ? 5 : 1))); }, function (n) { return n + ' 秒'; });
+    r3b.appendChild(el('span', '', '就提醒'));
+    box.appendChild(el('p', 'aid-note', (GAME.noTimer ? '⚠️ 這個遊戲是大家同時搶答，沒有「輪流思考」，所以不會有倒數計時（提示和小提醒仍可使用）。' : '') + '倒數時間到了，系統會幫該位學生代出一步。提示次數是「每局」重新計算；調整次數會立刻套用到全班。'));
+    function paint() { p1(); p2(); p3(); un.classList.toggle('on', S.aid.hintN < 0); r1b.classList.toggle('off', !S.aid.hint); r2b.classList.toggle('off', !S.aid.tm); r2c.classList.toggle('off', !S.aid.tm); [].forEach.call(r2c.querySelectorAll('button'), function (b) { b.disabled = !S.aid.tm; }); r3b.classList.toggle('off', !S.aid.tips); }
+    paint(); return box;
+  }
+  window.BGAidPanel = aidPanel;
 
   /* ---------- 配對 ---------- */
   function pair() { if (S.auto) pairNow(); }
@@ -267,7 +365,7 @@
   }
   function newRound(T, rotate) {
     if (rotate) T.seats.push(T.seats.shift());
-    T.g = GAME.init(T.seats.length, gopts(T)); T.again = {}; T.round++; T.gv = GAME.ver || 0;
+    T.g = GAME.init(T.seats.length, gopts(T)); T.again = {}; T.round++; T.gv = GAME.ver || 0; T.hu = {}; T.tm = {};
     touch(T);
   }
   function dissolve(T, first) {
@@ -355,7 +453,7 @@
     ts.forEach(function (T) {
       var c = el('div', 'panel tcard'), hd = el('div', 'hd'), no = el('span', 'no');
       no.appendChild(el('b', '', T.no)); no.appendChild(document.createTextNode('第 ' + T.no + ' 桌'));
-      hd.appendChild(no); hd.appendChild(el('span', 'pill light', '第 ' + T.round + ' 局'));
+      hd.appendChild(no); hd.appendChild(el('span', 'pill light', '第 ' + T.round + ' 局')); var tmr = el('span', 'pill light tmr'); tmr.setAttribute('data-t', T.id); tmr.style.display = 'none'; hd.appendChild(tmr);
       c.appendChild(hd); c.appendChild(tableBody(T));
       var s = statusOf(T); c.appendChild(el('div', 'st ' + s.c, s.t));
       var bdg = GAME.hostBadge && GAME.hostBadge(T.g); if (bdg) { c.appendChild(el('div', 'st warn tbadge', bdg)); c.classList.add('alert'); }
@@ -480,6 +578,7 @@
   $('h-bot').checked = S.allowBot === true;
   $('h-bot').addEventListener('change', function () { S.allowBot = this.checked; save(); S.queue.forEach(function (id) { bump(S.players[id]); }); });
   $('h-pairnow').addEventListener('click', function () { pairNow(true); });
+  if (!SOLO) $('h-pairnow').parentNode.parentNode.appendChild(aidPanel());
   if (GAME.seatOptions) {
     var sw = el('div', 'switch seatsel'); sw.appendChild(el('span', '', '每桌人數：'));
     GAME.seatOptions.forEach(function (k) { var b = btn('btn small' + (seatN() === k ? ' on' : ''), k + ' 人', function () { S.seatN = k; save(); [].forEach.call(sw.querySelectorAll('button'), function (x) { x.classList.toggle('on', x === b); }); pair(); }); sw.appendChild(b); });

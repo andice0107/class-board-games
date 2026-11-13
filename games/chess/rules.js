@@ -162,6 +162,7 @@ window.CH = (function () {
         var w = p !== p.toLowerCase();
         h += '<text x="' + (x + 50) + '" y="' + (y + 82) + '" font-size="84" text-anchor="middle" class="ch-pc" fill="' + (w ? '#fffdf5' : '#1d1d1d') + '" stroke="' + (w ? '#1d1d1d' : '#000') + '" stroke-width="' + (w ? 2.6 : 1) + '">' + GLY[p.toLowerCase()] + '︎</text>';
       }
+      if (o.hl && o.hl.indexOf(i) >= 0) h += '<rect class="hint-ring" x="' + (x + 5) + '" y="' + (y + 5) + '" width="90" height="90" rx="12" fill="rgba(255,212,0,.32)" stroke="#ffc400" stroke-width="8"/>';
       if (tgt[i]) h += p !== '.' ? '<circle cx="' + (x + 50) + '" cy="' + (y + 50) + '" r="44" fill="none" stroke="#2e7d32" stroke-width="8" opacity=".7"/>' : '<circle cx="' + (x + 50) + '" cy="' + (y + 50) + '" r="15" fill="#2e7d32" opacity=".55"/>';
       if (vc === 0) h += '<text x="5" y="' + (y + 20) + '" font-size="17" font-weight="700" fill="' + (dark ? '#f0d9b5' : '#b58863') + '">' + (flip ? vr + 1 : 8 - vr) + '</text>';
       if (vr === 7) h += '<text x="' + (x + 88) + '" y="795" font-size="17" font-weight="700" fill="' + (dark ? '#f0d9b5' : '#b58863') + '">' + 'abcdefgh'[flip ? 7 - vc : vc] + '</text>';
@@ -175,5 +176,5 @@ window.CH = (function () {
     return flip ? (7 - vr) * 8 + (7 - vc) : vr * 8 + vc;
   }
   function sqName(i) { return 'abcdefgh'[i & 7] + (8 - (i >> 3)); }
-  return { START: START, NAME: NAME, legal: legal, apply: apply, status: status, inCheck: inCheck, kingAt: kingAt, key: key, pick: pick, svg: svg, hit: hit, colorOf: colorOf, other: other, sqName: sqName, evalW: evalW, GLY: GLY };
+  return { START: START, NAME: NAME, legal: legal, apply: apply, status: status, inCheck: inCheck, kingAt: kingAt, key: key, pick: pick, svg: svg, hit: hit, colorOf: colorOf, other: other, sqName: sqName, evalW: evalW, GLY: GLY, attacked: attacked, VAL: VAL };
 })();

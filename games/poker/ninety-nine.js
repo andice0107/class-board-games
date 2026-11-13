@@ -71,6 +71,25 @@
       checkStuck(g);
       return true;
     },
+    hintDesc: '會亮出「現在可以出、而且不會讓總數超過 99」的牌；總數很高（80 以上）時，會優先亮出能把總數降下來的牌（黑桃 A、10、Q）；總數還低時，提醒你把功能牌留著。',
+    tipDesc: '提醒你怎麼出牌（10、Q 要選加或減，5 要指定下一位）；總數很高時提醒你小心。',
+    hint: function (g, seat) {
+      if (g.res || g.turn !== seat || g.out.indexOf(seat) >= 0) return null;
+      var h = g.hands[seat], ok = h.filter(function (c) { return options(c, g.total).length; });
+      if (!ok.length) return { msg: '你手上每一張牌出了都會超過 99，這一輪沒有牌可以出了。', hl: [] };
+      if (g.total >= 80) {
+        var low = ok.filter(function (c) { return c === 'As' || c[0] === 'T' || c[0] === 'Q'; });
+        if (low.length) return { msg: '總數已經 ' + g.total + '，很危險了！亮黃框的牌可以把總數降下來（黑桃 A 歸零、10 減 10、Q 減 20）。', hl: low };
+      }
+      var plain = ok.filter(function (c) { return !special(c); });
+      if (g.total < 70 && plain.length) return { msg: '總數才 ' + g.total + '，還很安全。亮黃框的牌都可以出，建議先出普通牌，把功能牌留到危險的時候再用。', hl: plain };
+      return { msg: '總數 ' + g.total + '。亮黃框的牌現在都可以出（出了不會超過 99）。', hl: ok };
+    },
+    nudge: function (g, seat) {
+      if (g.res || g.turn !== seat || g.out.indexOf(seat) >= 0) return null;
+      if (g.total >= 85) return '總數已經 ' + g.total + ' 了，很危險！看看有沒有黑桃 A（歸零）、10（減 10）、Q（減 20）可以救急。';
+      return '輪到你了：點一張沒有變暗的牌，再點一次出牌。10 和 Q 要選加或減，5 要指定下一位玩家喔！';
+    },
     botTurn: function (g, seat, lv) {
       if (g.res || g.turn !== seat) return null;
       var h = g.hands[seat], cands = [];

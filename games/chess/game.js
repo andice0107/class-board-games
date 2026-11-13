@@ -59,6 +59,42 @@
       var m = CH.pick(g.st, level, g.keys); if (!m) return null;
       return { t: 'move', f: m.f, to: m.t, p: 'qrbn'.indexOf(m.x) >= 0 && m.x ? m.x : undefined, n: g.hist.length };
     },
+    hintDesc: '被將軍時，會亮出能解圍的棋子；可以「白吃」或吃到更值錢的棋時，亮出可以吃子的棋子；自己的棋子正被攻擊時，亮出需要保護或躲開的棋子；否則亮出還沒出動的馬、象。',
+    tipDesc: '被將軍、對方提出悔棋／和棋、或發呆太久時，提醒你怎麼走棋。',
+    hint: function (g, seat) {
+      var me = COL[seat], st = g.st, b = st.b, opp = CH.other(me), V = CH.VAL;
+      if (g.res || st.turn !== me) return null;
+      var ms = CH.legal(st); if (!ms.length) return null;
+      var movers = {}, caps = {}, wins = {}, danger = {}, dev = {};
+      ms.forEach(function (m) {
+        movers[m.f] = 1;
+        var pf = b[m.f].toLowerCase(), tgt = b[m.t];
+        if (tgt !== '.') {
+          caps[m.f] = 1;
+          var after = CH.attacked(CH.apply(st, m).b, m.t, opp);
+          if (!after || V[tgt.toLowerCase()] > V[pf]) wins[m.f] = 1;
+        }
+        if ((pf === 'n' || pf === 'b') && ((me === 'w' && (m.f >> 3) === 7) || (me === 'b' && (m.f >> 3) === 0))) dev[m.f] = 1;
+      });
+      function keys(o) { return Object.keys(o).map(Number); }
+      if (g.check) return { msg: '你被將軍了！一定要先解圍。亮黃框的棋子可以幫國王解圍（移開國王、擋住、或吃掉攻擊的棋）。', hl: keys(movers) };
+      for (var i = 0; i < 64; i++) {
+        if (b[i] === '.' || CH.colorOf(b[i]) !== me || b[i].toLowerCase() === 'k') continue;
+        if (CH.attacked(b, i, opp) && (!CH.attacked(b, i, me) || V[b[i].toLowerCase()] > 100)) danger[i] = 1;
+      }
+      if (keys(wins).length) return { msg: '有棋子可以「划算地吃子」（吃了不會被吃回來，或吃到更值錢的棋）！亮黃框的就是可以吃子的棋子。', hl: keys(wins) };
+      if (keys(danger).length) return { msg: '小心！亮黃框的棋子正被對方攻擊，想想要躲開、保護它，或反過來攻擊對方。', hl: keys(danger) };
+      if (keys(caps).length) return { msg: '有棋子可以吃子，但要先想想：吃了以後會不會被吃回來？亮黃框的是可以吃子的棋子。', hl: keys(caps) };
+      if (keys(dev).length) return { msg: '開局別忘了讓馬和象出動！亮黃框的是還在原位、可以走出去的馬和象。', hl: keys(dev) };
+      return { msg: '目前沒有急迫的吃子或危險。亮黃框的是可以移動的棋子，想一想哪一顆走了可以讓整體更好。', hl: keys(movers).slice(0, 6) };
+    },
+    nudge: function (g, seat) {
+      var me = COL[seat]; if (g.res) return null;
+      if (g.req && g.req.by !== me) return '對方提出了' + (g.req.k === 'undo' ? '悔棋' : '和棋') + '，請在畫面上選「同意」或「不同意」。';
+      if (g.st.turn !== me || g.req) return null;
+      if (g.check) return '你被將軍了！要先解圍：移開國王、擋住攻擊，或吃掉攻擊的棋子。';
+      return '輪到你了：先點一顆自己的棋子，會出現綠色提示（可以走的位置），再點那個位置就能走囉！';
+    },
     hostView: function (g) { return CH.svg(g.st, { last: g.last, check: g.check ? CH.kingAt(g.st.b, g.st.turn) : -1 }); },
     hostStatus: function (g) {
       if (g.req) return { t: (g.req.by === 'w' ? '白方' : '黑方') + '提出' + (g.req.k === 'undo' ? '悔棋' : '和棋'), c: 'hot' };
@@ -107,7 +143,7 @@
     wrap.appendChild(bar(1 - seat, false, v, tb));
     var targets = L.sel >= 0 ? legal.filter(function (m) { return m.f === L.sel; }).map(function (m) { return m.t; }) : [];
     var bx = el('div', 'ch-board'), bin = el('div');
-    bin.innerHTML = CH.svg(st, { flip: flip, last: P ? { f: P.m.f, t: P.m.t } : v.last, sel: L.sel, targets: targets, check: v.check && !P ? CH.kingAt(v.st.b, v.st.turn) : -1 });
+    bin.innerHTML = CH.svg(st, { hl: myTurn && ctx.hint && ctx.hint.hl, flip: flip, last: P ? { f: P.m.f, t: P.m.t } : v.last, sel: L.sel, targets: targets, check: v.check && !P ? CH.kingAt(v.st.b, v.st.turn) : -1 });
     bx.appendChild(BG.zoom('chess', bin));
     function go(m, p) {
       var d = { f: m.f, to: m.t, p: p, n: v.n };

@@ -89,6 +89,20 @@
       var nx = next(g, seat); if (nx < 0) endGame(g); else g.turn = nx;
       return true;
     },
+    hintDesc: '會亮出你手上「現在可以接在桌上」的牌；如果沒有牌可以出，會告訴你這一輪要「蓋牌」，並亮出點數最小、蓋掉最划算的牌。',
+    tipDesc: '你沒有牌可以接的時候，提醒你要蓋一張牌（不能不動）；其他時候提醒你怎麼出牌。',
+    hint: function (g, seat) {
+      if (g.res || g.turn !== seat || g.out.indexOf(seat) >= 0) return null;
+      var L = legal(g, seat);
+      if (L.length) return { msg: g.cnt === 0 ? '第一手一定要出黑桃 7，亮黃框的就是它。' : '亮黃框的牌現在都可以接在桌上（能出就一定要出）。想一想：先出哪個方向，對自己最有利？', hl: L };
+      var low = g.hands[seat].slice().sort(function (a, b) { return rv(a) - rv(b); })[0];
+      return { msg: '你現在沒有牌可以接，這一輪要「蓋牌」。蓋掉的牌點數會被加總，越少越好，所以亮黃框的是點數最小的牌。', hl: low ? [low] : [] };
+    },
+    nudge: function (g, seat) {
+      if (g.res || g.turn !== seat || g.out.indexOf(seat) >= 0) return null;
+      if (!legal(g, seat).length) return '你現在沒有牌可以接，不能不動喔！要選一張牌「蓋牌」（建議蓋點數小的），再點一次確認。';
+      return '輪到你了：只要是能接在桌上的牌就一定要出，點亮起來（沒有變暗）的牌，再點一次確認。';
+    },
     botTurn: function (g, seat, level) { if (g.res || g.turn !== seat) return null; var a = botPick(g, seat, level); a.n = g.cnt; return a; },
     hostView: function (g) { return '<div class="pk-host">' + boardHtml(g.board, true) + '<div class="pk-host-seats">' + g.hands.map(function (h, s) { return '<span class="pk-hs' + (g.turn === s && !g.res ? ' turn' : '') + (g.out.indexOf(s) >= 0 ? ' out' : '') + '"><i style="background:' + SEATC[s] + '"></i>' + (g.out.indexOf(s) >= 0 ? '認輸' : h.length + ' 張・蓋 ' + g.cover[s].length) + '</span>'; }).join('') + '</div></div>'; },
     hostStatus: function (g) { return { t: '輪到第 ' + (g.turn + 1) + ' 位', c: '' }; }

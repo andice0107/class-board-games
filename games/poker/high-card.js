@@ -39,6 +39,16 @@
       reveal(g);
       return true;
     },
+    /* 大家同時抽牌：還沒抽的人就是「輪到他」 */
+    acting: function (g) { var a = []; if (g.res) return a; for (var s = 0; s < g.np; s++) if (!g.picks[s] && g.out.indexOf(s) < 0) a.push(s); return a; },
+    turnKey: function (g) { return g.round; },
+    hintDesc: '比大小完全靠運氣，沒有策略可以選。提示只會用閃亮的框告訴你「點牌堆抽一張牌」，而且不會扣你的提示次數。',
+    tipDesc: '你還沒抽牌時，提醒你點牌堆抽一張。',
+    hint: function (g, seat) {
+      if (g.res || g.picks[seat] || g.out.indexOf(seat) >= 0) return null;
+      return { msg: '這個遊戲靠運氣：現在只要點亮黃框的「牌堆」抽一張牌就好。大家都抽完會一起翻牌，點數最大（A 最大，2 最小；一樣大比花色）的人贏這一回合。', hl: ['pile'], free: true };
+    },
+    nudge: function (g, seat) { return g.res || g.picks[seat] || g.out.indexOf(seat) >= 0 ? null : '這一回合還沒抽牌喔！點畫面上的「牌堆」抽一張，大家都抽完才會一起翻牌。'; },
     botTurn: function (g, seat) { if (g.res || g.picks[seat] || g.out.indexOf(seat) >= 0) return null; return { t: 'draw' }; },
     hostView: function (g) {
       var h = '<div class="pk-host"><div class="pk-host-tb">' + (g.shown ? g.shown.cards.map(function (c, i) { return c ? '<span class="' + (i === g.shown.w ? 'hc-win' : '') + '">' + PK.svg(c) + '</span>' : ''; }).join('') : '<em>第 ' + g.round + ' 回合</em>') + '</div><div class="pk-host-seats">';
@@ -104,7 +114,7 @@
     var mine = el('div', 'pk-me' + (!v.mine && !tb.res && !out ? ' turn' : ''));
     var t = el('div', 'pk-me-top'), dot = el('i'); dot.style.background = SEATC[seat]; t.appendChild(dot); t.appendChild(el('span', 'n', (tb.seats[seat].name === '我' ? '我' : tb.seats[seat].name + '・我'))); t.appendChild(el('span', 'pk-cnt', '贏 ' + v.wins[seat] + ' 次')); mine.appendChild(t);
     var area = el('div', 'hc-area');
-    var pile = el('button', 'hc-pile' + (!v.mine && !L.pending && !tb.res && !out ? ' can' : '')); pile.type = 'button'; pile.innerHTML = PK.svg(null, { back: true }) + '<span>抽牌</span>';
+    var pile = el('button', 'hc-pile' + (!v.mine && !L.pending && !tb.res && !out ? ' can' : '')); pile.type = 'button'; pile.setAttribute('data-h', 'pile'); pile.innerHTML = PK.svg(null, { back: true }) + '<span>抽牌</span>';
     pile.addEventListener('click', function () { if (v.mine || L.pending || tb.res || out) return; L.pending = true; ctx.snd('tap'); ctx.send('draw', {}); ctx.rerender(); });
     area.appendChild(pile);
     var my = el('div', 'hc-mine'); my.innerHTML = v.mine || L.pending ? PK.svg(null, { back: true }) : ''; if (v.mine) my.appendChild(el('small', '', '已抽，等大家一起翻牌'));

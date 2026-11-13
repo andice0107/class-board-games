@@ -119,6 +119,7 @@ window.GMK = (function () {
       if (win[i]) h.push('<circle class="gm-win" cx="' + x + '" cy="' + y + '" r="3.3" fill="none" stroke="#e53935" stroke-width=".7"/>');
       else if (o.last === i) h.push('<circle cx="' + x + '" cy="' + y + '" r=".9" fill="#e53935"/>');
     }
+    if (o.hl) o.hl.forEach(function (i) { h.push('<circle class="hint-ring" cx="' + P(i % N) + '" cy="' + P((i / N) | 0) + '" r="3.4" fill="rgba(255,212,0,.3)" stroke="#ffc400" stroke-width=".8"/>'); });
     if (o.ghost != null && b[o.ghost] === '.') {
       var gx = P(o.ghost % N), gy = P((o.ghost / N) | 0);
       h.push('<circle class="gm-ghost" cx="' + gx + '" cy="' + gy + '" r="2.75" fill="url(#gm' + (o.ghostColor === 'w' ? 'W' : 'B') + ')" opacity=".55"/><circle cx="' + gx + '" cy="' + gy + '" r="3.4" fill="none" stroke="#1e88e5" stroke-width=".55" stroke-dasharray="1 .7"/>');
@@ -132,5 +133,5 @@ window.GMK = (function () {
     if (x < 0 || y < 0 || x >= N || y >= N) return -1;
     return y * N + x;
   }
-  return { N: N, empty: empty, place: place, winLine: winLine, full: full, pick: pick, advantage: advantage, svg: svg, hit: hit };
+  return { N: N, empty: empty, place: place, winLine: winLine, full: full, pick: pick, advantage: advantage, scored: scored, svg: svg, hit: hit };
 })();

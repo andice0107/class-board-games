@@ -80,6 +80,33 @@ window.BANKER = function (CFG) {
       }
       return false;
     },
+    /* 大家同時動作：下注階段看誰還沒下注、補牌階段看誰還沒停牌 */
+    acting: function (g) {
+      if (g.res) return [];
+      return alive(g).filter(function (s) { return g.phase === 'bet' ? !g.bets[s] : g.phase === 'play' ? !g.stood[s] : false; });
+    },
+    turnKey: function (g, seat) { return g.round + g.phase + (g.hands[seat] || []).length + ':' + g.bets[seat]; },
+    hintDesc: CFG.hintDesc || '補牌時，會告訴你目前的點數、再補一張「會爆掉的機率」，並亮出建議的按鈕（補一張或停牌）；下注時提醒你依照籌碼多寡決定押幾個。',
+    tipDesc: '還沒下注或還沒決定補牌／停牌時，提醒你按下面的按鈕。',
+    hint: function (g, seat) {
+      if (g.res || g.out.indexOf(seat) >= 0) return null;
+      if (g.phase === 'bet' && !g.bets[seat]) {
+        var oth = alive(g).filter(function (s) { return s !== seat; }).map(function (s) { return g.chips[s]; }), top = oth.length ? Math.max.apply(null, oth) : g.chips[seat];
+        return { msg: '你現在有 ' + g.chips[seat] + ' 個籌碼。' + (g.chips[seat] > top ? '你目前領先，押少一點比較保險。' : g.chips[seat] < top ? '你目前落後，可以押多一點追上去，但輸了也會輸得多。' : '大家差不多，可以依照手氣決定押幾個。') + '亮黃框的三個按鈕都可以選。', hl: ['bet1', 'bet2', 'bet3'] };
+      }
+      if (g.phase !== 'play' || g.stood[seat]) return null;
+      var mine = g.hands[seat], v = CFG.value(mine), seen = mine.slice(); if (!CFG.hideAll && g.dealer[0]) seen.push(g.dealer[0]);
+      var rest = PK.deck(0).filter(function (c) { return seen.indexOf(c) < 0; }), bust = 0;
+      rest.forEach(function (c) { if (CFG.value(mine.concat([c])).bust) bust++; });
+      var pct = Math.round(bust / rest.length * 100), rec = CFG.botHit(v, g.dealer[0] || mine[0], 4, mine.length);
+      return { msg: '你現在是 ' + fmt(v.v) + ' 點，再補一張大約有 ' + pct + '% 的機會爆掉。' + (rec ? '風險還可以接受，建議再補一張。' : '風險比較大，建議停牌。') + '（亮黃框的是建議的按鈕）', hl: [rec ? 'hit' : 'stand'] };
+    },
+    nudge: function (g, seat) {
+      if (g.res || g.out.indexOf(seat) >= 0) return null;
+      if (g.phase === 'bet' && !g.bets[seat]) return '請先決定這回合要押幾個籌碼：按下面的「押 1／押 2／押 3」。';
+      if (g.phase === 'play' && !g.stood[seat]) return '要再補一張牌嗎？按「補一張」繼續，或按「停牌」就不再拿牌。';
+      return null;
+    },
     botTurn: function (g, seat, level) { if (g.res || g.out.indexOf(seat) >= 0) return null; return botAct(g, seat, level); },
     hostView: function (g) {
       var h = '<div class="pk-host"><div class="pk-host-tb">' + (g.dealer.length ? g.dealer.map(function (c, i) { return '<span>' + PK.svg(g.phase === 'play' && (i > 0 || CFG.hideAll) ? null : c, { back: g.phase === 'play' && (i > 0 || CFG.hideAll) }) + '</span>'; }).join('') : '<em>下注中</em>') + '</div><div class="pk-host-seats">';
@@ -150,10 +177,10 @@ window.BANKER = function (CFG) {
     wrap.appendChild(me);
     if (!tb.res && !out) {
       var tools = el('div', 'pk-tools');
-      if (v.phase === 'bet' && !v.bets[seat]) [1, 2, 3].forEach(function (b) { var x = ctx.button('pk-btn go', '押 ' + b + ' 🪙', function () { ctx.snd('tap'); send(ctx, 'bet', { b: b }); }); x.disabled = wait; tools.appendChild(x); });
+      if (v.phase === 'bet' && !v.bets[seat]) [1, 2, 3].forEach(function (b) { var x = ctx.button('pk-btn go', '押 ' + b + ' 🪙', function () { ctx.snd('tap'); send(ctx, 'bet', { b: b }); }); x.setAttribute('data-h', 'bet' + b); x.disabled = wait; tools.appendChild(x); });
       if (v.phase === 'play' && !v.stood[seat]) {
-        var h1 = ctx.button('pk-btn go', '🃏 補一張', function () { ctx.snd('move'); send(ctx, 'hit'); }); h1.disabled = wait; tools.appendChild(h1);
-        var h2 = ctx.button('pk-btn', '✋ 停牌', function () { ctx.snd('tap'); send(ctx, 'stand'); }); h2.disabled = wait; tools.appendChild(h2);
+        var h1 = ctx.button('pk-btn go', '🃏 補一張', function () { ctx.snd('move'); send(ctx, 'hit'); }); h1.setAttribute('data-h', 'hit'); h1.disabled = wait; tools.appendChild(h1);
+        var h2 = ctx.button('pk-btn', '✋ 停牌', function () { ctx.snd('tap'); send(ctx, 'stand'); }); h2.setAttribute('data-h', 'stand'); h2.disabled = wait; tools.appendChild(h2);
       }
       if (v.phase === 'show' && !v.ready[seat]) tools.appendChild(ctx.button('pk-btn go', v.round >= v.rounds ? '看結果' : '下一回合 ▶', function () { send(ctx, 'ready'); }));
       if (v.phase === 'show' && v.ready[seat]) tools.appendChild(el('span', 'pk-who', '等其他人…'));

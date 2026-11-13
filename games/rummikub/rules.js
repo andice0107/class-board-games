@@ -66,6 +66,17 @@ window.RK = (function () {
     })(0, {}, [], 0);
     return best;
   }
+  /* 提示用：從手牌湊出「點數合計最大」的一批互不重複的組合（回溯，有步數上限） */
+  function bestBySum(rack) {
+    var ms = melds(rack).map(function (m) { return { m: m, s: analyze(m).sum }; }).sort(function (a, b) { return b.s - a.s; });
+    var best = [], bestS = 0, steps = 0;
+    (function go(i, used, cur, sum) {
+      if (sum > bestS) { bestS = sum; best = cur.slice(); }
+      if (++steps > 6000) return;
+      for (var k = i; k < ms.length; k++) { var x = ms[k]; if (x.m.some(function (id) { return used[id]; })) continue; x.m.forEach(function (id) { used[id] = 1; }); cur.push(x.m); go(k + 1, used, cur, sum + x.s); cur.pop(); x.m.forEach(function (id) { delete used[id]; }); }
+    })(0, {}, [], 0);
+    return { combos: best, sum: bestS };
+  }
   /* 回傳新的桌面（陣列的陣列），或 null 代表要抽牌 */
   function botPlay(table, rack, opened, level) {
     if (level <= 1 && Math.random() < .35) return null;
@@ -100,5 +111,5 @@ window.RK = (function () {
       : '<b style="color:' + COLS[t.c] + '">' + t.n + '</b><i style="background:' + COLS[t.c] + '"></i>';
     return '<span class="rk-tile' + (o.sel ? ' sel' : '') + (o.mine ? ' mine' : '') + '" data-id="' + id + '">' + face + '</span>';
   }
-  return { COLS: COLS, CN: CN, info: info, pool: pool, sortRack: sortRack, sortNum: sortNum, analyze: analyze, rackValue: rackValue, botPlay: botPlay, tile: tile, shuffle: shuffle };
+  return { melds: melds, bestBySum: bestBySum, COLS: COLS, CN: CN, info: info, pool: pool, sortRack: sortRack, sortNum: sortNum, analyze: analyze, rackValue: rackValue, botPlay: botPlay, tile: tile, shuffle: shuffle };
 })();

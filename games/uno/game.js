@@ -95,6 +95,24 @@
       }
       return false;
     },
+    hintDesc: '會亮出你手上「現在可以出」的牌（同顏色、同數字或同符號，或萬用牌）；沒有牌可以出時，會亮出牌堆提醒你抽一張；剩兩張以下時，也會提醒你要先按「最後一張」。',
+    tipDesc: '你沒有牌可以出時，提醒你抽一張牌；剩兩張以下忘了喊「最後一張」時，提醒你喊（不喊會罰抽 2 張）。',
+    hint: function (g, seat) {
+      if (g.res || g.turn !== seat || g.out.indexOf(seat) >= 0) return null;
+      var hand = g.hands[seat], top = g.disc[g.disc.length - 1], shout = hand.length <= 2 && !g.said[seat];
+      if (g.pend && g.pend.seat === seat) return { msg: '你剛抽到的這張牌可以出（亮黃框）！想出就按「出這張」，想留著就按「留著，換下一位」。' + (shout ? '出牌前別忘了先按「最後一張」。' : ''), hl: [g.pend.card, 'playpend'].concat(shout ? ['call'] : []) };
+      var ok = hand.filter(function (c) { return UNO.playable(c, top, g.color); });
+      if (!ok.length) return { msg: '你手上沒有能出的牌（要跟中間那張同顏色、同數字或同符號，或是萬用牌）。請點亮黃框的牌堆，抽一張牌。', hl: ['draw'] };
+      return { msg: '亮黃框的牌現在都可以出。' + (shout ? '你只剩 ' + hand.length + ' 張了，出牌前記得先按「最後一張」，不然會罰抽 2 張！' : '想一想：先出功能牌（+2、跳過、迴轉）可以整對手，先出萬用牌則要留到最後才好用。'), hl: ok.concat(shout ? ['call'] : []) };
+    },
+    nudge: function (g, seat) {
+      if (g.res || g.turn !== seat || g.out.indexOf(seat) >= 0) return null;
+      var hand = g.hands[seat], top = g.disc[g.disc.length - 1];
+      if (g.pend && g.pend.seat === seat) return '你剛抽到的牌可以出喔！按「出這張」，或按「留著，換下一位」。';
+      if (!hand.some(function (c) { return UNO.playable(c, top, g.color); })) return '你手上沒有能出的牌（要同顏色、同數字或同符號，或萬用牌），請點中間的牌堆抽一張。';
+      if (hand.length <= 2 && !g.said[seat]) return '你只剩 ' + hand.length + ' 張牌了！出牌前要先按「📣 最後一張！」，不然會被罰抽 2 張。';
+      return '輪到你了：點一張亮起來的牌（再點一次就出牌），或點牌堆抽一張。';
+    },
     botTurn: function (g, seat, level) {
       if (g.res || g.turn !== seat || g.out.indexOf(seat) >= 0) return null;
       var hand = g.hands[seat], top = g.disc[g.disc.length - 1];
@@ -179,7 +197,7 @@
     // 中間：牌堆和棄牌
     var mid = el('div', 'un-mid');
     var dir = el('div', 'un-dir' + (v.dir < 0 ? ' ccw' : ''), v.dir > 0 ? '↻' : '↺'); mid.appendChild(dir);
-    var pile = el('button', 'un-pile' + (myTurn && !v.pend ? ' can' : '')); pile.type = 'button';
+    var pile = el('button', 'un-pile' + (myTurn && !v.pend ? ' can' : '')); pile.type = 'button'; pile.setAttribute('data-h', 'draw');
     pile.innerHTML = UNO.card(null, { back: true }) + '<span class="un-pile-n">' + v.deckN + '</span>' + (myTurn && !v.pend ? '<span class="un-pile-tip">抽一張</span>' : '');
     pile.addEventListener('click', function () { if (!myTurn || v.pend) return; ctx.snd('tap'); act(ctx, 'draw', {}); });
     mid.appendChild(pile);
@@ -202,7 +220,7 @@
       var row = el('div', 'un-row');
       v.hand.slice(r * per, (r + 1) * per).forEach(function (c) {
         var can = myTurn && UNO.playable(c, v.top, v.color) && (!v.pend || c === v.pend);
-        var cd = el('button', 'un-hc' + (can ? ' can' : myTurn ? ' dim' : '') + (L.sel === c ? ' sel' : '') + (v.pend === c ? ' new' : '')); cd.type = 'button';
+        var cd = el('button', 'un-hc' + (can ? ' can' : myTurn ? ' dim' : '') + (L.sel === c ? ' sel' : '') + (v.pend === c ? ' new' : '')); cd.type = 'button'; cd.setAttribute('data-h', c);
         cd.innerHTML = UNO.card(c);
         cd.addEventListener('click', function () {
           if (!myTurn) return;
@@ -228,10 +246,10 @@
       var tools = el('div', 'un-tools');
       if (myTurn && v.pend) {
         var pc = v.pend;
-        tools.appendChild(ctx.button('un-btn go', '出這張', function () { if (UNO.isWild(pc)) { L.sel = pc; L.wild = pc; ctx.rerender(); } else { ctx.snd('move'); act(ctx, 'play', { c: pc }); } }));
+        var pb0 = ctx.button('un-btn go', '出這張', function () { if (UNO.isWild(pc)) { L.sel = pc; L.wild = pc; ctx.rerender(); } else { ctx.snd('move'); act(ctx, 'play', { c: pc }); } }); pb0.setAttribute('data-h', 'playpend'); tools.appendChild(pb0);
         tools.appendChild(ctx.button('un-btn', '留著，換下一位', function () { act(ctx, 'pass', {}); }));
       }
-      if (v.hand.length <= 2 && !v.said[seat]) tools.appendChild(ctx.button('un-btn shout', '📣 最後一張！', function () { ctx.snd('pop'); ctx.send('call', {}); }));
+      if (v.hand.length <= 2 && !v.said[seat]) { var sb = ctx.button('un-btn shout', '📣 最後一張！', function () { ctx.snd('pop'); ctx.send('call', {}); }); sb.setAttribute('data-h', 'call'); tools.appendChild(sb); }
       tools.appendChild(ctx.button('un-btn', '🏳️ 認輸', function () { if (confirm('確定要認輸嗎？你的牌會收回牌堆。')) ctx.send('resign', {}); }));
       tools.appendChild(ctx.emoteButton('un-btn'));
       wrap.appendChild(tools);
