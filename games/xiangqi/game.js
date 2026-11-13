@@ -196,5 +196,9 @@
   function stamp(t) { var w = el('div', 'xq-stamp'); w.appendChild(el('span', '', t)); document.body.appendChild(w); setTimeout(function () { w.remove(); }, 1200); }
   function splash() { var bx = document.querySelector('.xq-board'); if (!bx) return; var r = bx.getBoundingClientRect(), d = el('div', 'xq-splash'), s = r.width * .5; d.style.cssText = 'left:' + (r.left + r.width / 2 - s / 2) + 'px;top:' + (r.top + r.height / 2 - s / 2) + 'px;width:' + s + 'px;height:' + s + 'px'; document.body.appendChild(d); setTimeout(function () { d.remove(); }, 800); }
 
+  /* 老師端不接受剛剛的動作時，解除「送出中」，讓學生可以重新操作 */
+
+  if (!mod.onReject) mod.onReject = function () { if (typeof L !== 'undefined' && L) { if ('sent' in L) L.sent = -1; if ('pending' in L) L.pending = null; } };
+
   BG.register('xiangqi', mod);
 })();

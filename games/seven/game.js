@@ -214,6 +214,8 @@
       { h: '電腦對手', html: '<table class="g-tbl"><tr><th>強度</th><th>電腦大約多久出一張</th></tr><tr><td>🐣 入門</td><td>約 8～10 秒</td></tr><tr><td>🙂 簡單</td><td>約 6～8 秒</td></tr><tr><td>🤔 普通</td><td>約 4～6 秒</td></tr><tr><td>🔥 困難</td><td>約 2.5～4.5 秒</td></tr></table><p>「電腦出牌速度」也會影響電腦反應。</p>' }
     ]
   };
+  /* 老師端不接受剛剛的動作時，解除「送出中」，讓學生可以重新操作 */
+  if (!mod.onReject) mod.onReject = function () { if (typeof L !== 'undefined' && L) { if ('sent' in L) L.sent = -1; if ('pending' in L) L.pending = null; } };
   BG.register('seven-eat-nine', mod);
   window.S9 = { num: num, md: md, targets: targets };
 })();

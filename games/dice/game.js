@@ -255,5 +255,7 @@
       { h: '電腦對手', html: '<table class="g-tbl"><tr><th>強度</th><th>電腦怎麼玩</th></tr><tr><td>🐣 入門</td><td>亂喊亂開</td></tr><tr><td>🙂 簡單</td><td>會看自己的骰子，但判斷常常出錯</td></tr><tr><td>🤔 普通</td><td>會估算全桌數量再決定</td></tr><tr><td>🔥 困難</td><td>估算很準，偶爾還會唬人</td></tr></table>' }
     ]
   };
+  /* 老師端不接受剛剛的動作時，解除「送出中」，讓學生可以重新操作 */
+  if (!mod.onReject) mod.onReject = function () { if (typeof L !== 'undefined' && L) { if ('sent' in L) L.sent = -1; if ('pending' in L) L.pending = null; } };
   BG.register('dice-bluff', mod);
 })();

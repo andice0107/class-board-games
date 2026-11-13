@@ -190,6 +190,8 @@ window.BANKER = function (CFG) {
     }
     box.appendChild(wrap);
   };
+  /* 老師端不接受剛剛的動作時，解除「送出中」，讓學生可以重新操作 */
+  if (!mod.onReject) mod.onReject = function () { if (typeof L !== 'undefined' && L) { if ('sent' in L) L.sent = -1; if ('pending' in L) L.pending = null; } };
   BG.register(CFG.id, mod);
   mod.guide = CFG.guide;
   return mod;

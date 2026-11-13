@@ -157,7 +157,7 @@
     if (d.t === 'req' && d.k === 'undo' && !othersAllBots(T, seat)) { net.send({ t: 'note', to: p.pid, text: '和同學對戰時不能悔棋喔！' }); return; }
     // 其他動作交給遊戲模組
     var changed = GAME.act(T.g, seat, d, function (toSeat, text) { var id = T.seats[toSeat]; if (id) net.send({ t: 'note', to: id, text: text }); });
-    if (changed) touch(T); else send(p);
+    if (changed) touch(T); else { net.send({ t: 'rej', to: p.pid, a: d.t }); send(p); }   // 不接受這個動作：告訴學生端解除「送出中」
   }
   function othersAllBots(T, seat) { return T.seats.every(function (id, i) { return i === seat || BG.isBot(id); }); }
   function presence(p) {

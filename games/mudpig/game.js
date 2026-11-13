@@ -287,5 +287,7 @@
       { h: '教學重點', html: '<ul><li>規則簡單，適合低年級：認識「保護」和「攻擊」的策略。</li><li>每張牌都有文字說明，可以練習閱讀理解；也可以討論「被搗蛋時怎麼調整心情」。</li><li>牌圖為原創插畫（Canva 生成），玩法參考市售「髒小豬」類遊戲。</li></ul>' }
     ]
   };
+  /* 老師端不接受剛剛的動作時，解除「送出中」，讓學生可以重新操作 */
+  if (!mod.onReject) mod.onReject = function () { if (typeof L !== 'undefined' && L) { if ('sent' in L) L.sent = -1; if ('pending' in L) L.pending = null; } };
   BG.register('mudpig', mod);
 })();

@@ -168,10 +168,12 @@
       var old = {}; v.table.forEach(function (s) { old[s.slice().sort().join()] = 1; });
       W.table.forEach(function (s) { if (!old[s.slice().sort().join()]) newSum += RK.analyze(s).ok ? RK.analyze(s).sum : 0; });
     }
-    return { placed: placed, bad: bad, newSum: newSum, ok: placed > 0 && !bad && (v.opened[seat] || newSum >= 30) };
+    // 用和老師端完全一樣的規則先檢查一次，按「完成」前就知道哪裡不行
+    var err = placed > 0 && !bad ? check({ table: v.table, racks: (function () { var r = []; r[seat] = v.rack; return r; })(), opened: v.opened }, seat, W.table) : '';
+    return { placed: placed, bad: bad, newSum: newSum, err: err, ok: placed > 0 && !bad && !err };
   }
   mod.render = function (box, ctx) {
-    var tb = ctx.tb, v = tb.view, seat = tb.seat, out = v.out.indexOf(seat) >= 0;
+    var tb = ctx.tb, v = tb.view, seat = tb.seat, out = v.out.indexOf(seat) >= 0; mod._ctx = ctx;
     if (!W || W.cnt !== v.cnt) resetWork(v);
     var myTurn = !tb.res && v.turn === seat && !L.pending && !out;
     var ws = workState(v, seat), table = myTurn ? W.table : v.table, rack = myTurn ? W.rack : v.rack;
@@ -180,7 +182,7 @@
     if (tb.res) st.textContent = '這局結束了';
     else if (out) st.textContent = '你已經認輸，正在觀看';
     else if (L.pending) st.textContent = '送出中…';
-    else if (myTurn) { st.textContent = W.sel.length ? '再點桌上的一組，或「＋新的一組」' : (v.opened[seat] ? '點牌選起來，移到桌上；或抽一張' : '第一次出牌要 30 點以上'); st.className = 'rk-status me'; }
+    else if (myTurn) { st.textContent = W.sel.length ? '再點桌上的一組，或「＋新的一組」' : ws.err ? '⚠️ ' + ws.err : (v.opened[seat] ? '點牌選起來，移到桌上；或抽一張' : '第一次出牌要 30 點以上'); st.className = 'rk-status me' + (ws.err && !W.sel.length ? ' warn' : ''); }
     else st.textContent = '等 ' + short(tb, v.turn) + ' 出牌…';
     wrap.appendChild(st);
     wrap.appendChild(PKUI.opps(tb, v, seat, function (i) { return v.opened[i] ? '' : '未開局'; }, short));
@@ -227,10 +229,10 @@
     if (!tb.res && !out) {
       var tools = el('div', 'pk-tools');
       if (myTurn) {
-        var done = ctx.button('pk-btn go', '✔ 完成', function () { if (!ws.ok) return; L.pending = v.cnt; ctx.snd('move'); ctx.send('play', { table: W.table, n: v.cnt }); ctx.rerender(); }); done.disabled = !ws.ok; tools.appendChild(done);
+        var done = ctx.button('pk-btn go', '✔ 完成', function () { if (!ws.ok) return; L.pending = v.cnt; L.pd = { t: 'play', d: { table: W.table, n: v.cnt }, at: Date.now() }; ctx.snd('move'); ctx.send('play', L.pd.d); ctx.rerender(); }); done.disabled = !ws.ok; tools.appendChild(done);
         var db = ctx.button('pk-btn', ws.placed || W.table.length !== v.table.length ? '↩ 重來' : '🀫 抽一張', function () {
           if (ws.placed || W.table.length !== v.table.length || W.sel.length) { resetWork(v); ctx.rerender(); return; }
-          L.pending = v.cnt; ctx.send('draw', { n: v.cnt }); ctx.rerender();
+          L.pending = v.cnt; L.pd = { t: 'draw', d: { n: v.cnt }, at: Date.now() }; ctx.send('draw', L.pd.d); ctx.rerender();
         }); db.setAttribute('data-h', 'draw'); tools.appendChild(db);
         if (W.sel.length) tools.appendChild(ctx.button('pk-btn', '取消選取', function () { W.sel = []; ctx.rerender(); }));
       }
@@ -241,6 +243,9 @@
     }
     box.appendChild(wrap);
   };
+  // 網路掉封包時：3 秒沒有回應就再送一次；老師端說「不行」時（onReject）就解除「送出中」，回到剛剛排好的桌面
+  setInterval(function () { var P = L.pd, c = mod._ctx; if (!L.pending || !P || !c) return; if (Date.now() - P.at > 3000) { P.at = Date.now(); c.send(P.t, P.d); } }, 1000);
+  mod.onReject = function () { L.pending = null; L.pd = null; };
   BG.register('rummikub', mod);
   function row(ids, note) { return '<figure class="g-fig"><div class="rk-set demo">' + ids.map(function (id) { return RK.tile(id); }).join('') + '</div><figcaption>' + note + '</figcaption></figure>'; }
   mod.guide = {

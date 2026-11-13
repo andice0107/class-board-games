@@ -86,6 +86,7 @@
     } else if (d.t === 'gone') hello();
     else if (d.t === 'emo') { bubble(d.from, EMO[d.i] || ''); snd.play('pop'); }
     else if (d.t === 'note') toast(d.text);
+    else if (d.t === 'rej') { if (GAME && GAME.onReject) { try { GAME.onReject(d); } catch (e) {} } if (joined && S) render(); }
   }
 
   /* ---------- 畫面 ---------- */
@@ -305,7 +306,12 @@
     var b = el('div', 'badge', draw ? '🤝' : (win ? '🏆' : '💪')); b.style.background = draw ? '#bfeee9' : (win ? '#ffe7a3' : '#d8e9ff'); c.appendChild(b);
     c.appendChild(el('h2', '', draw ? '平手！' : (win ? '你贏了！' : '這局輸了')));
     c.appendChild(el('p', '', r.ws ? (GAME.reasons[r.why] || '') : r.l != null ? (win ? '別人' + (GAME.reasons[r.why] || '') + '你安全過關！' : '你' + (GAME.reasons[r.why] || '') + '下一局再加油！') : (GAME.reasons[r.why] || '') + (win || draw ? '' : '・下一局再加油！')));
-    if (r.note) c.appendChild(el('p', 'res-note', r.note));
+    // 這局是誰贏／誰輸，寫清楚（遊戲可以用 resultNote 提供更完整的結束資訊，例如麻將誰胡、誰放槍、胡哪張、幾台）
+    var nm = function (i) { var x = tb.seats[i]; return i === tb.seat ? '你' : !x ? '?' : x.bot ? '電腦 ' + (i + 1) : x.name.replace(/（\d{4}）/, ''); };
+    var who = r.ws ? (r.ws.length ? '🏆 獲勝：' + r.ws.map(nm).join('、') : '') : r.l != null ? '💥 ' + nm(r.l) + '：' + (GAME.reasons[r.why] || '輸了') : r.w >= 0 ? '🏆 獲勝：' + nm(r.w) : '';
+    var rn = GAME.resultNote ? GAME.resultNote(tb, nm) : null;
+    if (rn) { var bx = el('div', 'res-info'); rn.forEach(function (line) { bx.appendChild(el('p', 'res-note', line)); }); c.appendChild(bx); }
+    else { if (who) c.appendChild(el('p', 'res-who', who)); if (r.note) c.appendChild(el('p', 'res-note', r.note)); }
     if (r.lose != null && r.lose >= 0) c.appendChild(el('p', 'res-note', r.lose === tb.seat ? '🤡 鬼牌最後在你手上！' : '🤡 鬼牌最後在 ' + tb.seats[r.lose].name + ' 手上'));
     if (S.stat) c.appendChild(el('p', '', '我的積分：' + S.pts + ' 分（' + S.stat.w + ' 勝 ' + S.stat.d + ' 和 ' + S.stat.l + ' 負）'));
     var row = el('div', 'row c'), anyGone = tb.seats.some(function (s) { return s.gone; });

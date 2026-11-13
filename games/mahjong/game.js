@@ -384,6 +384,18 @@
     }
     box.appendChild(wrap);
   };
+  /* 老師端不接受剛剛的動作時，解除「送出中」，讓學生可以重新操作 */
+  if (!mod.onReject) mod.onReject = function () { if (typeof L !== 'undefined' && L) { if ('sent' in L) L.sent = -1; if ('pending' in L) L.pending = null; } };
+  /* 一局結束的資訊：誰胡、誰放槍（或自摸）、胡哪一張、台數 */
+  mod.resultNote = function (tb, nm) {
+    var v = tb.view, w = v.win, r = tb.res, W2 = function (i) { return WIND[i] + '家・' + nm(i); };
+    if (!w) return [r && r.why === 'exhaust' ? '🀫 流局：牌牆只剩最後 16 張，沒有人胡牌，大家平手。' : '這局結束：' + (REASONS[r.why] || '')];
+    var L2 = ['🏆 胡牌：' + W2(w.s) + (w.tsumo ? '（自摸）' : '')];
+    L2.push(w.tsumo ? '🙌 自摸：自己摸到胡的那張，沒有人放槍' : '💥 放槍：' + W2(w.from) + '（打出了 ' + MJ.name(w.t) + '）');
+    L2.push('🀄 胡的牌：' + MJ.name(w.t));
+    L2.push('🧮 台數：' + (w.tai.total ? w.tai.list.map(function (x) { return x[0] + ' ' + x[1]; }).join('、') + '，共 ' + w.tai.total + ' 台' : '沒有台數（屁胡）'));
+    return L2;
+  };
   BG.register('mahjong', mod);
   mod._meld = meldHTML;
 })();
