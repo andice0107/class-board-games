@@ -31,6 +31,7 @@
   /* 同步投影：主持人投影時，蓋住整個畫面、關不掉，主持人關掉才回到自己的畫面 */
   var CAST = null, castEl = null;
   function setCast(c) {
+    if (c && c.ex && c.ex === me.pid) c = null;   // 投影的是自己的畫面：自己繼續玩，不被蓋住
     if (c && CAST && c.id === CAST.id && c.seq < CAST.seq) return;
     CAST = c || null;
     if (!CAST) { if (castEl) { castEl.remove(); castEl = null; } return; }
@@ -55,6 +56,7 @@
   function onDown(d) {
     if (!d || (d.to !== me.pid && !(d.to === '*' && d.t === 'cast'))) return;
     if (d.t === 'cast') { if (joined) setCast(d.c); return; }
+    if (d.t === 'watch') { monSet(d.lv, d.gz); return; }
     if (d.t === 'st') {
       if (S && joined && d.v < S.v) return;
       if (!BG.games[d.gid] || !BG.games[d.gid].guide) { BG.load(d.gid, function () { onDown(d); }); return; }
@@ -71,6 +73,7 @@
       }
       if (!SOLO) BGSfx.force(d.snd !== false);
       if (!SOLO && 'cast' in d) setCast(d.cast);
+      if (!SOLO && 'watch' in d) monSet(d.watch, d.gz);
       d._rt = Date.now(); S = d; me.name = d.name; save(); render();
     } else if (d.t === 'sidtaken') {
       if (joined) return;
@@ -119,6 +122,13 @@
     if (showEmo && (SOLO || !S || S.emo !== false)) emotes();
     placeBubbles();
     aidBanner();
+    pauseVeil();
+  }
+  /* 有新同學加入、老師還在決定時：整個畫面霧化、不能操作 */
+  function pauseVeil() {
+    var v = document.querySelector('.p-pause'), on = joined && S && S.tb && S.tb.paused && !S.tb.res;
+    if (!on) { if (v) v.remove(); return; }
+    if (!v) { v = el('div', 'p-pause'); v.innerHTML = '<div class="pp-box"><div class="pp-ic">⏸️</div><b>遊戲暫停中</b><p>有新同學加入，老師正在決定要讓他接著玩，還是重開新局。<br>請稍等一下，倒數計時也暫停了。</p></div>'; document.body.appendChild(v); snd.play('turn'); }
   }
   /* 遊戲桌自動放大到填滿畫面：找出「整張桌子剛好放得下」的最大倍率。
      只在開新局、換方向／視窗大小時重新計算；遊戲中不會因為牌變少而縮小，
@@ -176,7 +186,7 @@
 
   /* ---------- 提示・倒數計時・溫馨小提醒（由老師端控制） ---------- */
   var dismissed = {};
-  function secsLeft() { var A = S && S.aid; if (!A || A.tl == null) return ''; return Math.max(0, Math.ceil((A.tl - (Date.now() - S._rt)) / 1000)); }
+  function secsLeft() { var A = S && S.aid; if (!A || A.tl == null) return ''; if (A.pz) return Math.ceil(A.tl / 1000); return Math.max(0, Math.ceil((A.tl - (Date.now() - S._rt)) / 1000)); }
   function askHint() {
     var A = S && S.aid; if (!A) return;
     if (A.hint) { delete dismissed['h' + A.hint.k]; aidBanner(); return; }
@@ -212,10 +222,11 @@
   setInterval(function () {
     var A = S && S.aid, bar = document.querySelector('.aid-bar');
     if (!A || A.tl == null || !S.tb || S.tb.res) { if (bar) bar.remove(); return; }
-    var left = A.tl - (Date.now() - S._rt), sec = Math.max(0, Math.ceil(left / 1000)), pill = document.querySelector('.aid-tl');
+    var left = A.pz ? A.tl : A.tl - (Date.now() - S._rt), sec = Math.max(0, Math.ceil(left / 1000)), pill = document.querySelector('.aid-tl');
     if (pill) { pill.textContent = '⏱ ' + sec; pill.classList.toggle('warn2', sec <= 10); pill.classList.toggle('hot', sec <= 5); }
     if (!bar) { bar = el('div', 'aid-bar'); bar.appendChild(el('i')); document.body.appendChild(bar); }
     var fillEl = bar.firstChild; fillEl.style.width = Math.max(0, Math.min(100, left / Math.max(1, A.tt || left) * 100)) + '%'; bar.classList.toggle('hot', sec <= 10);
+    if (A.pz) return;
     if (sec <= 5 && sec > 0 && sec !== lastTick) { lastTick = sec; snd.play('tap'); } else if (sec > 5) lastTick = -1;
   }, 250);
   function dice() { var w = el('div', 'wait-dice'); ['♠', '帥', '●', '★'].forEach(function (t) { w.appendChild(el('span', '', t)); }); return w; }
@@ -251,6 +262,7 @@
     else {
     var gb = el('div', 'gbadge'); gb.innerHTML = '<b style="background:' + m.color + '">' + m.icon + '</b>'; gb.appendChild(document.createTextNode(m.title || '')); c.appendChild(gb);
     c.appendChild(dice());
+    if (S.pend) { c.appendChild(el('h2', '', S.pend.after ? '下一局就輪到你！' : '老師正在幫你安排座位')); c.appendChild(el('p', '', S.pend.after ? '第 ' + S.pend.no + ' 桌這一局由電腦打完後，你就會換掉電腦加入。' : '你要加入第 ' + S.pend.no + ' 桌（換掉電腦的位子），老師正在決定要接著玩還是重開新局，請稍等。')); app.appendChild(c); return; }
     c.appendChild(el('h2', '', '等待配對中'));
     c.appendChild(el('p', '', '你在這裡的名字是「' + S.name + '」' + (S.sid ? '（' + S.sid + '）' : '') + '。系統正在幫你找對手，請稍等一下。' + (S.qn > 1 ? '（目前有 ' + S.qn + ' 人在等）' : '')));
     if (GAME && GAME.guide) c.appendChild(btn('btn', '📖 等待時先看玩法說明', function () { BG.showGuide(m.title + '・玩法說明', GAME.guide.student); }));
@@ -312,6 +324,42 @@
     app.appendChild(g);
   }
 
+
+  /* ---------- 監視牆：老師打開看你的畫面時，才把畫面傳給老師（縮圖約 1.5 秒一次、放大時約 0.35 秒一次） ---------- */
+  var MON = { lv: 0, gz: false, last: '', t: 0, timer: null, mo: null, tap: null, seq: 0, force: false };
+  function monSet(lv, gz) {
+    lv = +lv || 0; MON.gz = !!gz && !!window.CompressionStream;
+    if (lv && !MON.lv) { MON.last = ''; MON.t = 0; }
+    MON.lv = lv;
+    if (lv && !MON.mo) { MON.mo = new MutationObserver(monQ); MON.mo.observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true }); }
+    if (!lv && MON.mo) { MON.mo.disconnect(); MON.mo = null; clearTimeout(MON.timer); MON.timer = null; }
+    if (lv) monQ();
+  }
+  function monQ() {
+    if (!MON.lv || MON.timer) return;
+    var gap = MON.lv >= 2 ? 350 : 1500;
+    MON.timer = setTimeout(monSend, Math.max(30, MON.t + gap - Date.now()));
+  }
+  function monHTML() {
+    var out = [];
+    [].forEach.call(document.body.children, function (c) {
+      if (c.tagName === 'SCRIPT' || c.tagName === 'IFRAME' || c === castEl || /(^|\s)bg-scene(\s|$)/.test(c.className || '')) return;
+      out.push(c.outerHTML);
+    });
+    return out.join('').replace(/ id="/g, ' data-oid="').replace(/<script[\s\S]*?<\/script>/gi, '');
+  }
+  function b64(buf) { var u = new Uint8Array(buf), s = '', CH = 0x8000; for (var i = 0; i < u.length; i += CH) s += String.fromCharCode.apply(null, u.subarray(i, i + CH)); return btoa(s); }
+  function monSend() {
+    MON.timer = null; if (!MON.lv || !net || !joined) return;
+    var h = monHTML(); if (h === MON.last && !MON.force) return;
+    MON.last = h; MON.force = false; MON.t = Date.now();
+    var base = { w: window.innerWidth, hh: window.innerHeight, tap: MON.tap, s: ++MON.seq };
+    if (MON.gz) {
+      new Response(new Blob([h]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer().then(function (buf) { base.z = b64(buf); send('scr', base); }, function () { base.h = h; send('scr', base); });
+    } else { base.h = h; send('scr', base); }
+  }
+  document.addEventListener('pointerdown', function (e) { if (!MON.lv) return; MON.tap = { x: e.clientX / window.innerWidth, y: e.clientY / window.innerHeight, k: Date.now() }; MON.force = true; monQ(); }, true);
+  window.addEventListener('resize', function () { if (MON.lv) { MON.force = true; monQ(); } });
   /* ---------- 特效 ---------- */
   function toast(t) { var d = el('div', 'toast', t); document.body.appendChild(d); setTimeout(function () { d.remove(); }, 2300); }
   var bubbles = {};

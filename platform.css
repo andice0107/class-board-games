@@ -304,3 +304,54 @@ input:focus { border-color: var(--sky); background: #fff; }
 /* 立刻配對：顯眼的對比色大按鈕 */
 #h-pairnow { background: linear-gradient(135deg, #ff7a00, #ff4d2e) !important; color: #fff !important; border: 3px solid #fff !important; font-size: 1.1rem !important; font-weight: 900 !important; padding: 14px 12px !important; width: 100%; white-space: nowrap; min-height: 56px; border-radius: 16px !important; box-shadow: 0 6px 0 #b83200, 0 8px 18px rgba(255,90,0,.45) !important; letter-spacing: .04em; cursor: pointer; }
 #h-pairnow:active { transform: translateY(4px); box-shadow: 0 2px 0 #b83200 !important; }
+
+/* ---------- 電腦陪玩換人 ---------- */
+.fill-lv { flex-wrap: wrap; margin: 4px 0 2px 22px; }
+.joinov { z-index: 70; }
+.joinbox { max-width: 620px; width: 100%; max-height: 90vh; overflow: auto; }
+.joinbox h2 { margin: 0 0 4px; }
+.joincard { border: 2px solid #ffd166; border-radius: 14px; padding: 12px; margin-top: 12px; display: flex; flex-direction: column; gap: 8px; background: #fffaf0; }
+.joincard .jt { margin: 0; font-weight: 900; font-size: 1.05rem; }
+.jbtn { font-size: 1.05rem !important; font-weight: 900 !important; padding: 12px 14px !important; text-align: left; white-space: normal; }
+.jbtn.take { background: #2a9d5c !important; color: #fff !important; }
+.jbtn.new { background: #1d7dd8 !important; color: #fff !important; }
+.jbtn.later { background: #f4a300 !important; color: #fff !important; }
+.jbtn:disabled { opacity: .45; cursor: not-allowed; }
+.p-pause { position: fixed; inset: 0; z-index: 80; background: rgba(20,28,55,.35); backdrop-filter: blur(9px); -webkit-backdrop-filter: blur(9px); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.p-pause .pp-box { background: #fff; color: #1b2440; border-radius: 22px; padding: 22px 26px; text-align: center; max-width: 420px; box-shadow: 0 12px 40px rgba(0,0,0,.35); }
+.p-pause .pp-ic { font-size: 3rem; }
+.p-pause b { font-size: 1.5rem; display: block; margin: 4px 0 6px; }
+.p-pause p { margin: 0; line-height: 1.6; }
+
+/* ---------- 監視牆 ---------- */
+.wall { z-index: 40; align-items: stretch; }
+.wallbox { width: 100%; max-width: 1500px; display: flex; flex-direction: column; max-height: calc(100vh - 36px); overflow: hidden; }
+.wall-hd { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.wall-hd h2 { margin: 0; }
+.wall-hd .sp { flex: 1; }
+.wall-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; overflow: auto; padding: 2px; }
+.wt { background: #eef3ff; border: 2px solid #c9d6f5; border-radius: 14px; padding: 6px; cursor: zoom-in; display: flex; flex-direction: column; }
+.wt.open { border-color: #4ea8ff; }
+.wt-hd { display: flex; align-items: center; gap: 5px; font-size: .85rem; margin-bottom: 6px; }
+.wt-hd b { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wt-hd small { color: #667; white-space: nowrap; }
+.wt-eye { padding: 2px 8px !important; min-height: 0 !important; }
+.wt-sw, .wb-sw { display: flex; justify-content: center; align-items: center; min-height: 160px; background: #1b2a4a; border-radius: 10px; overflow: hidden; }
+.wt-scr, .wb-scr { position: relative; overflow: hidden; }
+.wt-mask { color: #fff; font-weight: 900; font-size: 1.1rem; padding: 50px 10px; text-align: center; opacity: .85; }
+.wt-mask.wait { font-size: .95rem; }
+.wm { position: absolute; left: 0; top: 0; transform-origin: 0 0; overflow: hidden; background: var(--bg2); pointer-events: none; contain: layout paint; text-align: left; }
+.wm .p-app { min-height: 100% !important; height: 100%; }
+.wm .aid-banner, .wm .toast, .wm .p-pause, .wm .aid-bar, .wm .net-warn { position: absolute !important; }
+.wtap { position: absolute; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%; border: 5px solid #ff3b30; box-shadow: 0 0 0 4px rgba(255,59,48,.35); animation: wtap .9s ease-out forwards; z-index: 99; }
+@keyframes wtap { from { transform: scale(.4); opacity: 1; } to { transform: scale(1.5); opacity: 0; } }
+.wbig { z-index: 45; }
+.wbbox { max-width: calc(100vw - 30px); max-height: calc(100vh - 30px); display: flex; flex-direction: column; }
+.wb-sw { min-height: 300px; min-width: 300px; }
+.wcast { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+.wcast-cap { color: #fff; font-weight: 900; font-size: 22px; }
+.wcast-scr { position: relative; overflow: hidden; border-radius: 12px; box-shadow: 0 6px 30px rgba(0,0,0,.4); }
+.joincard .btn.ghost { color: #3a4566 !important; background: #fff !important; border: 2px solid #c9d0e0 !important; align-self: flex-start; }
+.p-cast .wcast button, .p-cast .wcast .btn { visibility: visible; }
+.overlay.wall > .wallbox { width: min(1500px, calc(100vw - 36px)); max-width: none; }
+.overlay.wbig > .wbbox { width: auto; max-width: calc(100vw - 30px); }

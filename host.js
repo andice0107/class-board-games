@@ -69,13 +69,15 @@
   }
   function dname(q) { return q.sid ? q.name + '（' + q.sid + '）' : q.name; }
   function pub(pid) {
-    if (BG.isBot(pid)) { var L = BG.levels[(+pid.split(':')[1] || 1) - 1]; return { name: L.icon + ' 電腦（' + L.name + '）', on: true, bot: true, level: L.n }; }
+    if (BG.isBot(pid)) { var L = BG.levels[Math.max(1, Math.min(BG.levels.length, +pid.split(':')[1] || 1)) - 1]; return { name: L.icon + ' 電腦（' + L.name + '）' + (isTemp(pid) ? '・暫代' : ''), on: true, bot: true, level: L.n, temp: isTemp(pid) }; }
     var q = S.players[pid]; return q ? { name: dname(q), on: online(q) } : { name: '（已離開）', on: false, gone: true }; }
   function names(T) { return T.seats.map(pub); }
   function stOf(p) {
     var s = p.stat || { w: 0, d: 0, l: 0 }, m = { t: 'st', to: p.pid, v: p.ver, name: p.name, sid: p.sid, gid: GID, qn: S.queue.length, stat: s, pts: pts(s), allowBot: SOLO || S.allowBot === true, cast: S.cast || null, emo: SOLO || S.emo === true, snd: SOLO || S.snd !== false, botSeats: GAME.botSeats || null };
     var T = p.table && S.tables[p.table];
-    if (T) { var seat = T.seats.indexOf(p.pid); m.tb = { no: T.no, round: T.round, seat: seat, seats: names(T), view: GAME.view(T.g, seat), res: T.g.res || null, again: T.again }; m.aid = aidFor(T, seat, p); }
+    if (T) { var seat = T.seats.indexOf(p.pid); m.tb = { no: T.no, round: T.round, seat: seat, seats: names(T), view: GAME.view(T.g, seat), res: T.g.res || null, again: T.again, paused: !!T.pz }; m.aid = aidFor(T, seat, p); }
+    var PT = !T && p.pend && S.tables[p.pend]; if (PT) m.pend = { no: PT.no, after: (PT.aft || []).indexOf(p.pid) >= 0 };
+    m.watch = wLv(p.pid); m.gz = !!window.DecompressionStream; wSent[p.pid] = m.watch;
     return m;
   }
   function send(p) { if (p) net.send(stOf(p)); }
@@ -90,7 +92,7 @@
       if (vsBot) { s.bot = s.bot || { w: 0, d: 0, l: 0 }; s = s.bot; }
       if (r.ws) { if (r.ws.indexOf(i) >= 0) s.w++; else s.l++; } else if (r.l != null) { if (r.l === i) s.l++; else s.w++; } else if (r.w < 0) s.d++; else if (r.w === i) s.w++; else s.l++; });
   }
-  function touch(T) { drain(T); score(T); aidSync(T); runBots(T); T.seats.forEach(function (id) { bump(S.players[id]); }); render(); save(); if (ovId === T.id) drawOv(); drawLb(); }
+  function touch(T) { drain(T); score(T); if (T.g.res && T.aft && T.aft.length) swapIn(T); aidSync(T); runBots(T); T.seats.forEach(function (id) { bump(S.players[id]); }); render(); save(); if (ovId === T.id) drawOv(); drawLb(); }
   /* 遊戲可以回報事件（例如天使與惡魔的課後紀錄），用學號存起來 */
   function drain(T) {
     if (!GAME.drain || !T.g) return;
@@ -132,8 +134,11 @@
     if (!wasOn) { p._on = true; presence(p); }
     var T = tblOf(p), seat = T ? T.seats.indexOf(p.pid) : -1;
     if (d.t === 'ping') { if (d.v !== p.ver) send(p); else if ((S.cast ? S.cast.seq : -1) !== (d.cs == null ? -1 : d.cs)) net.send({ t: 'cast', to: p.pid, c: S.cast || null }); return; }
+    if (d.t === 'scr') { wFrame(p, d); return; }
     if (d.t === 'bot') { if (!T && (SOLO || S.allowBot === true)) { botTable(p, d.level, d.n, SOLO ? d.opts : null); var NT = tblOf(p); if (NT && SOLO && SPEEDS[d.speed]) NT.speed = d.speed; } return; }
     if (!T) return;
+    // 有新同學加入、老師還在決定時，整桌暫停：除了表情，其他動作都先不算
+    if (T.pz && d.t !== 'emo') { say(p, '⏸️ 遊戲暫停中，請等老師決定。'); send(p); return; }
     if (d.t === 'hint') { doHint(T, p, seat); return; }
     if (d.t === 'emo') {
       if (S.emo !== true && !SOLO) return;
@@ -189,7 +194,7 @@
   }
   function aidFor(T, seat, p) {
     var A = S.aid, tm = (T.tm || {})[seat], o = { h: A.hint && GAME.hint ? hleft(T, p) : null };
-    if (tm && !T.g.res) { if (tm.dl) { o.tl = Math.max(0, tm.dl - Date.now()); o.tt = tm.dl - tm.at; } if (tm.tip) { o.tip = tm.tip; o.tk = tm.k; } }
+    if (tm && !T.g.res) { if (tm.dl) { o.tl = Math.max(0, tm.dl - (T.pz || Date.now())); o.tt = tm.dl - tm.at; if (T.pz) o.pz = 1; } if (tm.tip) { o.tip = tm.tip; o.tk = tm.k; } }
     var hh = (T.hint || {})[p.pid]; if (hh) o.hint = hh;
     return o;
   }
@@ -216,7 +221,7 @@
   function aidTick() {
     var now = Date.now();
     Object.keys(S.tables).forEach(function (k) {
-      var T = S.tables[k]; if (!T.g || T.g.res || !T.tm) return;
+      var T = S.tables[k]; if (!T.g || T.g.res || !T.tm || T.pz) return;
       Object.keys(T.tm).forEach(function (s) {
         var e = T.tm[s], seat = +s, p = S.players[T.seats[seat]]; if (!e || !p) return;
         if (e.dl && now >= e.dl) return timeUp(T, seat, p);
@@ -257,9 +262,10 @@
   window.BGAidPanel = aidPanel;
 
   /* ---------- 配對 ---------- */
-  function pair() { if (S.auto) pairNow(); }
+  function pair() { if (S.auto) pairNow(); else { fillJoin(); render(); save(); } }
   function seatN() { return GAME.seatOptions ? (S.seatN || GAME.seatDefault || GAME.seatOptions[GAME.seatOptions.length - 1]) : GAME.seats; }
   function pairNow(manual) {
+    fillJoin();
     var N = seatN(), ready = S.queue.filter(function (id) { var p = S.players[id]; return p && online(p); });
     // 老師按「立刻配對」時，不夠一整桌的人也先開小一點的桌（最少 2 人），盡量不留一個人
     var flex = manual === true && GAME.seatOptions, full = N;
@@ -274,6 +280,8 @@
       }
       makeTable(group);
     }
+    // 人數不足：老師有開「電腦陪玩」時，剩下的人先開桌，空位由電腦暫代
+    if (canFill() && ready.length && (manual === true || S.auto) && !oneFull()) makeTable(withBots(ready.splice(0, full)));
     S.queue.forEach(function (id) { bump(S.players[id]); });
     render(); save();
   }
@@ -287,7 +295,7 @@
     group.sort(function () { return Math.random() - .5; });
     var T = { id: 't' + (++S.tn), no: no, round: 0, seats: group };
     S.tables[T.id] = T;
-    group.forEach(function (id) { S.players[id].table = T.id; });
+    group.forEach(function (id) { if (S.players[id]) S.players[id].table = T.id; });
     newRound(T, false);
     if (first) setTimeout(function () { openOv(T.id); }, 50);   // 只有一桌：開好就直接放大
     return T;
@@ -298,10 +306,83 @@
   function manualPair() {
     var r = manualRange(), g = SEL.filter(function (id) { return S.queue.indexOf(id) >= 0; });
     if (oneFull()) { alert('這個遊戲全班只能開一桌。要換人玩，請先在桌子裡按「解散這桌」。'); return; }
+    if (canFill() && g.length >= 1 && g.length < seatN()) { SEL = []; makeTable(withBots(g)); S.queue.forEach(function (id) { bump(S.players[id]); }); render(); save(); return; }
     if (g.length < r[0] || g.length > r[1]) { alert(r[0] === r[1] ? '這個遊戲一桌要剛好 ' + r[0] + ' 個人' : '一桌要 ' + r[0] + '～' + r[1] + ' 個人'); return; }
     SEL = []; makeTable(g);
     S.queue.forEach(function (id) { bump(S.players[id]); });
     render(); save();
+  }
+
+  /* ---------- 人數不足時電腦先陪玩，真人加入再換人 ---------- */
+  // 不適合「中途接手」的遊戲：同時搶答、或電腦已經知道的牌／猜測紀錄會讓接手的人不公平
+  var NOTAKE = { 'spot-match': '大家同時搶答，中途換人分數和牌的歸屬容易有爭議', 'spot-zhuyin': '大家同時搶答，中途換人分數和牌的歸屬容易有爭議', 'spot-hanzi': '大家同時搶答，中途換人分數和牌的歸屬容易有爭議',
+    'seven-eat-nine': '大家同時搶出牌，中途換人容易有爭議', guess: '前面的猜測和範圍是電腦猜的，接手的人不公平', 'dice-bluff': '電腦已經喊過的數字和策略，接手的人接不上',
+    cheat: '前面的出牌和吹牛紀錄是電腦記住的，接手的人不公平', blackjack: '這一局的下注已經由電腦決定了', 'ten-half': '這一局的下注已經由電腦決定了', 'dragon-gate': '彩池和下注已經由電腦決定了' };
+  function isTemp(id) { return BG.isBot(id) && /:f\d+$/.test(id); }
+  function canFill() { return !SOLO && S.fill === true && !!GAME.botTurn && !GAME.oneTable; }
+  function withBots(humans) {
+    var g = humans.slice(), lv = S.fillLv || 2, k = 0;
+    while (g.length < seatN()) g.push('bot:' + lv + ':f' + (k++));
+    return g;
+  }
+  function tempCount(T) { return T.seats.filter(isTemp).length; }
+  function tempSeat(T) { for (var i = 0; i < T.seats.length; i++) if (isTemp(T.seats[i])) return i; return -1; }
+  /* 等候中的真人同學，自動找有「電腦暫代」位子的桌子：這局還在玩就整桌暫停，等老師決定 */
+  function fillJoin() {
+    if (!canFill()) return;
+    var ready = S.queue.filter(function (id) { var p = S.players[id]; return p && online(p) && !p.noFill; });
+    ready.forEach(function (id) {
+      var p = S.players[id];
+      var ts = Object.keys(S.tables).map(function (k) { return S.tables[k]; }).filter(function (T) { return !T.join && tempCount(T) > (T.aft || []).length; }).sort(function (a, b) { return a.no - b.no; });
+      var T = ts[0]; if (!T) return;
+      S.queue = S.queue.filter(function (x) { return x !== id; });
+      if (T.g.res) { seatIn(T, p, tempSeat(T)); return; }   // 這局剛好結束：直接坐進去，下一局一起玩
+      T.join = { pid: id, seat: tempSeat(T), at: Date.now() }; p.pend = T.id;
+      pause(T); BGSfx.play('join'); send(p);
+    });
+  }
+  function seatIn(T, p, seat) {
+    var old = T.seats[seat]; T.seats[seat] = p.pid; p.table = T.id; p.pend = null; p.noFill = false;
+    if (T.again) T.again[seat] = false;
+    T.seats.forEach(function (id) { if (id !== p.pid && S.players[id]) say(S.players[id], dname(p).replace(/（\d{4}）/, '') + ' 加入了，換掉' + pub(old).name.replace('・暫代', '')); });
+  }
+  function pause(T) { if (!T.pz) T.pz = Date.now(); clearTimeout(botTimers[T.id]); delete botTimers[T.id]; touch(T); }
+  function resume(T) {
+    if (!T.pz) return; var d = Date.now() - T.pz; T.pz = null;
+    Object.keys(T.tm || {}).forEach(function (s) { var e = T.tm[s]; if (e.dl) e.dl += d; if (e.at) e.at += d; });
+    if (T.g && GAME.onResume) { try { GAME.onResume(T.g, d); } catch (x) {} }
+  }
+  function joinDecide(T, how) {
+    var J = T.join, p = J && S.players[J.pid]; if (!J) return;
+    T.join = null;
+    if (!p) { resume(T); touch(T); return; }
+    if (how === 'take') { seatIn(T, p, J.seat); resume(T); say(p, '你接手了電腦的位子，接著玩到這局結束！'); touch(T); }
+    else if (how === 'new') { seatIn(T, p, J.seat); if (T.aft && T.aft.length) swapIn(T); T.pz = null; T.seats.forEach(function (id) { if (S.players[id]) say(S.players[id], '🔄 老師重開新局，所有人分數重新計算'); }); newRound(T, false); }
+    else if (how === 'later') { (T.aft = T.aft || []).push(p.pid); resume(T); say(p, '這一局先由電腦打完，下一局你就會加入第 ' + T.no + ' 桌。'); send(p); touch(T); }
+    else { p.pend = null; p.noFill = true; S.queue.push(p.pid); resume(T); send(p); touch(T); }
+    fillJoin(); render(); save();
+  }
+  function swapIn(T) { var l = T.aft; T.aft = []; l.forEach(function (pid) { var p = S.players[pid], s = tempSeat(T); if (!p) return; if (s < 0) { p.pend = null; S.queue.push(p.pid); bump(p); return; } seatIn(T, p, s); }); }
+  function drawJoin() {
+    var ov = $('h-joinov'), list = Object.keys(S.tables).map(function (k) { return S.tables[k]; }).filter(function (T) { return T.join; }).sort(function (a, b) { return a.no - b.no; });
+    if (!list.length) { if (ov) ov.remove(); return; }
+    if (!ov) { ov = el('div', 'overlay joinov'); ov.id = 'h-joinov'; document.body.appendChild(ov); }
+    var key = list.map(function (T) { return T.id + T.join.pid; }).join(','); if (ov._k === key) return; ov._k = key;
+    ov.innerHTML = ''; var box = el('div', 'panel joinbox'); ov.appendChild(box);
+    box.appendChild(el('h2', '', '🙋 有真人同學加入了'));
+    box.appendChild(el('p', 'empty', '這一桌已經暫停（倒數也一起暫停），所有玩家的畫面都先霧化，等你決定。'));
+    list.forEach(function (T) {
+      var p = S.players[T.join.pid], c = el('div', 'joincard');
+      c.appendChild(el('p', 'jt', '第 ' + T.no + ' 桌：「' + (p ? dname(p) : '同學') + '」要換掉 ' + pub(T.seats[T.join.seat]).name.replace('・暫代', '') + '（' + GAME.seatName(T.join.seat) + '）'));
+      var why = NOTAKE[GID];
+      var b1 = btn('btn jbtn take', '▶️ 真人接這一局繼續玩到結束（繼承電腦玩家的分數）', function () { joinDecide(T, 'take'); });
+      if (why) { b1.disabled = true; b1.title = why; }
+      c.appendChild(b1);
+      c.appendChild(btn('btn jbtn new', '🔄 重開新局（所有人分數全部重算）', function () { joinDecide(T, 'new'); }));
+      if (why) { c.appendChild(el('small', 'empty', '⚠️ 這個遊戲不建議中途接手：' + why + '。')); c.appendChild(btn('btn jbtn later', '⏭️ 這局先讓電腦打完，下一局再換他', function () { joinDecide(T, 'later'); })); }
+      c.appendChild(btn('btn small ghost', '先不要，讓他回等候區', function () { joinDecide(T, 'back'); }));
+      box.appendChild(c);
+    });
   }
   /* ---------- 電腦玩家 ---------- */
   function botTable(p, level, n, opts) {
@@ -323,7 +404,7 @@
   var botTimers = {}, botCnt = {};
   function runBots(T) {
     if (GAME.botWait && botTimers[T.id] && T.g && botCnt[T.id] !== T.g.cnt) { clearTimeout(botTimers[T.id]); delete botTimers[T.id]; }
-    if (botTimers[T.id] || !T.g || T.g.res || !GAME.botTurn) return;
+    if (botTimers[T.id] || !T.g || T.g.res || !GAME.botTurn || T.pz) return;
     if (GAME.botWait) return raceBots(T);
     for (var i = 0; i < T.seats.length; i++) {
       var id = T.seats[i]; if (!BG.isBot(id)) continue;
@@ -333,7 +414,7 @@
         if (!peek) return;
         botTimers[T.id] = setTimeout(function () {
           delete botTimers[T.id];
-          if (S.tables[T.id] !== T || T.g.res) return;
+          if (S.tables[T.id] !== T || T.g.res || T.pz || !BG.isBot(T.seats[seat])) return;
           var a = GAME.botTurn(T.g, seat, lv);
           if (a && GAME.act(T.g, seat, a, function () {})) touch(T);
         }, (peek.t === 'resp' ? 900 : (GAME.botDelay || 500) + Math.random() * 700) * speedOf(T));
@@ -352,7 +433,7 @@
     if (!best) return;
     botTimers[T.id] = setTimeout(function () {
       delete botTimers[T.id];
-      if (S.tables[T.id] !== T || T.g.res) return;
+      if (S.tables[T.id] !== T || T.g.res || T.pz || !BG.isBot(T.seats[best.seat])) return;
       if (T.g.cnt !== c0) return runBots(T);
       var a = GAME.botTurn(T.g, best.seat, best.lv);
       if (a && GAME.act(T.g, best.seat, a, function () {})) touch(T); else runBots(T);
@@ -380,6 +461,7 @@
     var p = S.players[pid]; if (!p) return;
     if (!confirm('要請「' + dname(p) + '」離開房間嗎？')) return;
     var T = tblOf(p);
+    Object.keys(S.tables).forEach(function (k) { var X = S.tables[k]; if (X.join && X.join.pid === pid) { X.join = null; resume(X); } if (X.aft) X.aft = X.aft.filter(function (x) { return x !== pid; }); });
     delete S.players[pid];
     S.queue = S.queue.filter(function (id) { return id !== pid; });
     net.send({ t: 'kick', to: pid, text: '老師已經請你離開這個房間。' });
@@ -419,6 +501,7 @@
   }
   function doRender() {
     renderT = null;
+    drawJoin(); if (W.on) wallDraw();
     // 只有一桌的遊戲：桌子開了之後，控制台就放在桌子的放大畫面裡（左半邊）
     if (GP && GAME.oneTable && !$('h-ov').classList.contains('wide')) GP.style.display = Object.keys(S.tables).length ? 'none' : '';
     $('h-count').textContent = Object.keys(S.players).length + ' 位學生';
@@ -461,6 +544,113 @@
       box.appendChild(c);
     });
   }
+
+  /* ---------- 監視牆：看每位玩家的即時畫面（玩家端把畫面傳過來，只有老師打開時才傳） ---------- */
+  var W = { on: false, open: {}, big: null, cast: null, fr: {}, sig: '' }, wSent = {};
+  function wLv(pid) { if (W.cast === pid || W.big === pid) return 2; return W.on && W.open[pid] ? 1 : 0; }
+  function wSync() { Object.keys(S.players).forEach(function (k) { var l = wLv(k); if ((wSent[k] || 0) !== l) { wSent[k] = l; net.send({ t: 'watch', to: k, lv: l, gz: !!window.DecompressionStream }); } }); }
+  function unz(d, cb) {
+    if (!d.z) return cb(d.h || '');
+    try { var bin = atob(d.z), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+      new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream('gzip'))).text().then(cb, function () {}); } catch (e) {}
+  }
+  function wFrame(p, d) {
+    var pid = p.pid, seq = d.s | 0;
+    unz(d, function (h) {
+      var f = W.fr[pid]; if (f && f.s > seq && seq > 0) return;
+      W.fr[pid] = { h: h, w: d.w || 390, hh: d.hh || 844, tap: d.tap || null, at: Date.now(), s: seq };
+      wPaint(pid);
+    });
+  }
+  /* 把玩家畫面縮放後放進 box（maxW × maxH） */
+  function mirror(box, f, maxW, maxH) {
+    var k = Math.min(maxW / f.w, maxH / f.hh), m = box.querySelector('.wm');
+    if (!m) { box.innerHTML = ''; m = el('div', 'wm'); box.appendChild(m); m._h = null; }
+    m.style.width = f.w + 'px'; m.style.height = f.hh + 'px'; m.style.transform = 'scale(' + k + ')';
+    box.style.width = Math.round(f.w * k) + 'px'; box.style.height = Math.round(f.hh * k) + 'px';
+    if (m._h !== f.h) { m.innerHTML = f.h; m._h = f.h; }
+    if (f.tap && f.tap.k !== box._tap && Date.now() - f.at < 1500) {
+      box._tap = f.tap.k; var t = el('div', 'wtap'); t.style.left = f.tap.x * f.w + 'px'; t.style.top = f.tap.y * f.hh + 'px'; m.appendChild(t); setTimeout(function () { t.remove(); }, 900);
+    }
+  }
+  function wPaint(pid) {
+    var f = W.fr[pid]; if (!f) return;
+    var t = document.querySelector('#h-wall .wt[data-p="' + pid + '"] .wt-scr');
+    if (t && W.open[pid]) mirror(t, f, t.parentNode.clientWidth - 12, 330);
+    if (W.big === pid) { var b = document.querySelector('#h-wbig .wb-scr'); if (b) mirror(b, f, Math.min(innerWidth - 60, 1500), innerHeight - 150); }
+    if (W.cast === pid && W.castBox) mirror(W.castBox, f, BG.CAST_W - 160, BG.CAST_H - 110);
+  }
+  function wPlayers() {
+    var list = [];
+    Object.keys(S.tables).map(function (k) { return S.tables[k]; }).sort(function (a, b) { return a.no - b.no; }).forEach(function (T) { T.seats.forEach(function (id, i) { if (S.players[id]) list.push({ p: S.players[id], T: T, seat: i }); }); });
+    Object.keys(S.players).forEach(function (k) { var p = S.players[k]; if (!list.some(function (x) { return x.p === p; })) list.push({ p: p, T: null, seat: -1 }); });
+    return list;
+  }
+  function wallOpen() { W.on = true; wallDraw(true); wSync(); }
+  function wallClose() { W.on = false; W.big = null; var o = $('h-wall'); if (o) o.remove(); var b = $('h-wbig'); if (b) b.remove(); wSync(); }
+  function wallDraw(force) {
+    var list = wPlayers(), sig = list.map(function (x) { return x.p.pid + (x.T ? x.T.no : '-') + x.seat + (W.open[x.p.pid] ? 1 : 0) + (online(x.p) ? 1 : 0); }).join('|');
+    var o = $('h-wall');
+    if (!o) { o = el('div', 'overlay wall'); o.id = 'h-wall'; document.body.appendChild(o); force = true; }
+    if (!force && sig === W.sig) return; W.sig = sig;
+    o.innerHTML = '';
+    var box = el('div', 'panel wallbox'), hd = el('div', 'wall-hd');
+    hd.appendChild(el('h2', '', '📺 學生監視牆'));
+    hd.appendChild(el('small', 'empty', '縮圖預設遮蔽；點 👁 打開單一位，點畫面可以放大。'));
+    var sp = el('span', 'sp'); hd.appendChild(sp);
+    hd.appendChild(btn('btn small', '👁 全開', function () { list.forEach(function (x) { W.open[x.p.pid] = true; }); wSync(); wallDraw(true); }));
+    hd.appendChild(btn('btn small', '🙈 全關', function () { W.open = {}; wSync(); wallDraw(true); }));
+    hd.appendChild(btn('btn small btn-sun', '✕ 關閉監視牆', wallClose));
+    box.appendChild(hd);
+    var grid = el('div', 'wall-grid');
+    if (!list.length) grid.appendChild(el('p', 'empty', '還沒有學生加入。'));
+    list.forEach(function (x) {
+      var pid = x.p.pid, op = !!W.open[pid], t = el('div', 'wt' + (op ? ' open' : '')); t.setAttribute('data-p', pid);
+      var th = el('div', 'wt-hd');
+      if (x.T) { var c = el('span', 'chipc'); c.style.background = GAME.seatColor(x.seat); th.appendChild(c); }
+      th.appendChild(el('b', '', dname(x.p)));
+      th.appendChild(el('small', '', x.T ? '第 ' + x.T.no + ' 桌' : (x.p.pend ? '等老師安排' : '等候中')));
+      th.appendChild(el('span', 'dot ' + (online(x.p) ? 'on' : 'off')));
+      th.appendChild(btn('btn small wt-eye', op ? '🙈' : '👁', function (e) { e.stopPropagation(); if (W.open[pid]) delete W.open[pid]; else W.open[pid] = true; wSync(); wallDraw(true); }));
+      t.appendChild(th);
+      var sc = el('div', 'wt-scr');
+      if (!op) sc.appendChild(el('div', 'wt-mask', '🙈 已遮蔽'));
+      else if (!W.fr[pid]) sc.appendChild(el('div', 'wt-mask wait', online(x.p) ? '⏳ 等待畫面…' : '📴 離線中'));
+      var sw = el('div', 'wt-sw'); sw.appendChild(sc); t.appendChild(sw);
+      t.addEventListener('click', function () { wBig(pid); });
+      grid.appendChild(t);
+    });
+    box.appendChild(grid); o.appendChild(box);
+    list.forEach(function (x) { if (W.open[x.p.pid]) wPaint(x.p.pid); });
+  }
+  function wBig(pid) {
+    var p = S.players[pid]; if (!p) return;
+    W.big = pid; wSync();
+    var o = $('h-wbig'); if (o) o.remove();
+    o = el('div', 'overlay wbig'); o.id = 'h-wbig'; document.body.appendChild(o);
+    var box = el('div', 'panel wbbox'), hd = el('div', 'wall-hd'), T = tblOf(p);
+    hd.appendChild(el('h2', '', '🔍 ' + dname(p) + (T ? '・第 ' + T.no + ' 桌' : '')));
+    hd.appendChild(el('span', 'sp'));
+    var cb = btn('btn small btn-sun', W.cast === pid ? '⏹ 停止投影' : '📽️ 投影給其他玩家看', function () { if (W.cast === pid) { var pj = $('h-proj'); if (pj && pj._close) pj._close(); } else wCast(pid); wBig(pid); });
+    hd.appendChild(cb);
+    hd.appendChild(btn('btn small', '✕ 關閉放大', function () { W.big = null; o.remove(); wSync(); }));
+    box.appendChild(hd);
+    var sc = el('div', 'wb-scr'); if (!W.fr[pid]) sc.appendChild(el('div', 'wt-mask wait', online(p) ? '⏳ 等待畫面…（學生的裝置要開著）' : '📴 這位學生目前離線'));
+    var sw = el('div', 'wb-sw'); sw.appendChild(sc); box.appendChild(sw);
+    o.appendChild(box);
+    o.addEventListener('click', function (e) { if (e.target === o) { W.big = null; o.remove(); wSync(); } });
+    wPaint(pid);
+  }
+  /* 把某位玩家的即時畫面投影到其他所有玩家的裝置（他自己繼續玩，不會被蓋住） */
+  function wCast(pid) {
+    var p = S.players[pid]; if (!p) return;
+    var node = el('div', 'wcast'), cap = el('div', 'wcast-cap', '📺 ' + p.name + ' 的畫面'), scr = el('div', 'wcast-scr');
+    node.appendChild(cap); node.appendChild(scr);
+    W.cast = pid; W.castBox = scr; wSync();
+    API.project(node, { cast: true, ex: pid, onClose: function () { W.cast = null; W.castBox = null; wSync(); if (W.big) wBig(W.big); } });
+    wPaint(pid);
+  }
+  $('h-wallbtn') || (function () { var b = btn('btn small ghost', '📺 監視牆', wallOpen); b.id = 'h-wallbtn'; if (!SOLO) $('h-lb').parentNode.insertBefore(b, $('h-lb')); })();
   /* ---------- 同步投影：主持人畫面上的內容，同步出現在每位學生的裝置上（學生關不掉），可以用螢幕畫筆 ---------- */
   function castOpen(o, node, opt) {
     o.classList.add('cast');
@@ -468,12 +658,12 @@
     cv.width = BG.CAST_W; cv.height = BG.CAST_H; cv.className = 'cast-cv';
     var body = el('div', 'cast-html' + (opt.doc ? ' doc' : '')); body.appendChild(node);
     stage.appendChild(body); stage.appendChild(cv); fit.appendChild(stage); o.appendChild(fit);
-    var C = S.cast = { id: Date.now(), seq: 0, html: '', sk: [] }, cur = null, mode = 'op', color = '#ffeb3b', timer = null;
+    var C = S.cast = { id: Date.now(), seq: 0, html: '', sk: [], ex: opt.ex || null }, cur = null, mode = 'op', color = '#ffeb3b', timer = null;
     function ser() { return body.innerHTML.replace(/（\d{4}）/g, ''); }   // 學生畫面不顯示學號
     function push(now) {
       if (timer && !now) return;
       clearTimeout(timer);
-      timer = setTimeout(function () { timer = null; if (S.cast !== C) return; C.seq++; C.html = ser(); C.doc = !!opt.doc; C.st = body.scrollHeight > body.clientHeight ? body.scrollTop / (body.scrollHeight - body.clientHeight) : 0; net.send({ t: 'cast', to: '*', c: { id: C.id, seq: C.seq, html: C.html, doc: C.doc, st: C.st, sk: cur ? C.sk.concat([cur]) : C.sk } }); }, now ? 0 : 120);
+      timer = setTimeout(function () { timer = null; if (S.cast !== C) return; C.seq++; C.html = ser(); C.doc = !!opt.doc; C.st = body.scrollHeight > body.clientHeight ? body.scrollTop / (body.scrollHeight - body.clientHeight) : 0; net.send({ t: 'cast', to: '*', c: { id: C.id, seq: C.seq, html: C.html, doc: C.doc, st: C.st, ex: C.ex, sk: cur ? C.sk.concat([cur]) : C.sk } }); }, now ? 0 : 120);
     }
     body.addEventListener('scroll', function () { push(); });   // 捲動也同步給玩家
     var mo = new MutationObserver(function () { push(); }); mo.observe(body, { subtree: true, childList: true, characterData: true, attributes: true });
@@ -575,6 +765,15 @@
   })();
   $('h-lock').checked = !!S.locked;
   $('h-lock').addEventListener('change', function () { S.locked = this.checked; save(); render(); });
+  if (!SOLO && GAME.botTurn && !GAME.oneTable) (function () {
+    var lb = el('label', 'switch fillsw'), cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = S.fill === true;
+    lb.appendChild(cb); lb.appendChild(document.createTextNode(' 🤖 人數不足時先由電腦陪玩（真人加入再換人）'));
+    var lvr = el('div', 'switch seatsel fill-lv'); lvr.appendChild(el('span', '', '陪玩電腦強度：'));
+    BG.levels.forEach(function (L) { var b = btn('btn small' + ((S.fillLv || 2) === L.n ? ' on' : ''), L.icon + ' ' + L.name, function () { S.fillLv = L.n; save(); [].forEach.call(lvr.querySelectorAll('button'), function (x) { x.classList.toggle('on', x === b); }); }); lvr.appendChild(b); });
+    function paint() { lvr.style.display = cb.checked ? '' : 'none'; }
+    cb.addEventListener('change', function () { S.fill = this.checked; save(); paint(); if (S.fill) fillJoin(); render(); });
+    var hb = $('h-bot').parentNode; hb.parentNode.insertBefore(lb, hb.nextSibling); hb.parentNode.insertBefore(lvr, lb.nextSibling); paint();
+  })();
   $('h-bot').checked = S.allowBot === true;
   $('h-bot').addEventListener('change', function () { S.allowBot = this.checked; save(); S.queue.forEach(function (id) { bump(S.players[id]); }); });
   $('h-pairnow').addEventListener('click', function () { pairNow(true); });

@@ -281,6 +281,8 @@
   };
   mod.render = function (box, ctx) {
     var tb = ctx.tb, v = tb.view, seat = tb.seat, out = v.out.indexOf(seat) >= 0, np = v.np;
+    // 老師暫停（有新同學加入）時，吃碰的 20 秒也跟著停
+    if (tb.paused) { clearTimeout(L.timer); L.pz = L.pz || Date.now(); } else if (L.pz) { L.claimAt += Date.now() - L.pz; L.pz = 0; }
     var myTurn = !tb.res && !out && v.turn === seat && L.sent !== v.cnt;
     var wrap = el('div', 'mj-table');
     // 其他玩家
@@ -362,10 +364,10 @@
         var b3 = ctx.button('mj-btn chi', '', function () { send('resp', { a: 'chi', st: stt }); });
         b3.innerHTML = '吃 <span>' + [stt, stt + 1, stt + 2].map(function (x) { return MJ.svg(x); }).join('') + '</span>'; bar.appendChild(clm(b3, 'c:chi' + stt));
       });
-      var left = Math.max(0, Math.ceil((AUTO - (Date.now() - L.claimAt)) / 1000));
+      var left = Math.max(0, Math.ceil((AUTO - ((L.pz || Date.now()) - L.claimAt)) / 1000));
       bar.appendChild(ctx.button('mj-btn pass', '過（' + left + '）', function () { send('resp', { a: 'pass' }); }));
       clearTimeout(L.timer);
-      L.timer = setTimeout(function () { var cv = (BGPlayer.state().tb || {}).view; if (cv && cv.opts && cv.cnt === v.cnt && L.sent !== v.cnt) { if (Date.now() - L.claimAt >= AUTO) send('resp', { a: 'pass' }); else ctx.rerender(); } }, 1000);
+      L.timer = setTimeout(function () { var cv = (BGPlayer.state().tb || {}).view; if (cv && cv.opts && cv.cnt === v.cnt && L.sent !== v.cnt && !(BGPlayer.state().tb || {}).paused) { if (Date.now() - L.claimAt >= AUTO) send('resp', { a: 'pass' }); else ctx.rerender(); } }, 1000);
     } else if (myTurn) {
       if (v.self.tsumo) bar.appendChild(clm(ctx.button('mj-btn hu', '自摸！', function () { send('tsumo'); }), 'c:tsumo'));
       (v.self.ankan || []).forEach(function (t) { var b4 = ctx.button('mj-btn', '', function () { send('ankan', { tile: t }); }); b4.setAttribute('data-h', 'c:ankan'); b4.innerHTML = '暗槓 ' + MJ.svg(t); bar.appendChild(b4); });
