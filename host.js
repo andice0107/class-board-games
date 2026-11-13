@@ -417,7 +417,7 @@
           if (S.tables[T.id] !== T || T.g.res || T.pz || !BG.isBot(T.seats[seat])) return;
           var a = GAME.botTurn(T.g, seat, lv);
           if (a && GAME.act(T.g, seat, a, function () {})) touch(T);
-        }, (peek.t === 'resp' ? 900 : (GAME.botDelay || 500) + Math.random() * 700) * speedOf(T));
+        }, (peek.t === 'resp' ? 900 : (GAME.botDelay || 500) + Math.random() * 700) * speedOf(T) + (GAME.holdLeft ? GAME.holdLeft(T.g) : 0));
       })(i, lv);
       if (botTimers[T.id]) return;
     }

@@ -10,6 +10,8 @@
   function cnt(h, t) { return h.filter(function (x) { return x === t; }).length; }
   function seen(g) { var c = []; for (var i = 0; i < 34; i++) c.push(0); g.rivers.forEach(function (r) { r.forEach(function (t) { c[t]++; }); }); g.melds.forEach(function (ms) { ms.forEach(function (m) { if (m.k === 'chi') { c[m.t]++; c[m.t + 1]++; c[m.t + 2]++; } else c[m.t] += m.k === 'pon' ? 3 : 4; }); }); return c; }
 
+  var HOLD = 2400; // 吃碰槓之後，放大特效播完（約 2 秒）大家才能繼續動作
+  function holdLeft(g) { return g.hold ? Math.max(0, g.hold - Date.now()) : 0; }
   var BASE = 3, QN = { east: 1, full: 4 }, QNAME = ['東風圈', '南風圈', '西風圈', '北風圈'];
   var MODES = { single: '單局', east: '一圈（東風圈）', full: '全場（東南西北四圈）' };
   function multi(g) { return g.mode === 'east' || g.mode === 'full'; }
@@ -87,7 +89,7 @@
     if (pk != null) {
       var a = g.resp[pk].a; g.rivers[d].pop(); g.cnt++; g.nclaim++;
       rm(g.hands[pk], t, a === 'kan' ? 3 : 2); g.melds[pk].push({ k: a === 'kan' ? 'kan' : 'pon', t: t, from: d });
-      g.log = { k: a, s: pk, t: t, from: d }; g.pend = {}; g.resp = {};
+      g.log = { k: a, s: pk, t: t, from: d }; g.pend = {}; g.resp = {}; g.hold = Date.now() + HOLD;
       if (a === 'kan') { g.kanDraw = true; draw(g, pk, true); } else { g.turn = pk; g.phase = 'discard'; g.drawn = null; if (g.out.indexOf(pk) >= 0) autoOut(g, pk); }
       return;
     }
@@ -96,7 +98,7 @@
       var st = g.resp[cs].st; g.rivers[d].pop(); g.cnt++; g.nclaim++;
       [st, st + 1, st + 2].forEach(function (x) { if (x !== t) rm(g.hands[cs], x); });
       g.melds[cs].push({ k: 'chi', t: st, got: t, from: d });
-      g.log = { k: 'chi', s: cs, t: t, from: d }; g.pend = {}; g.resp = {};
+      g.log = { k: 'chi', s: cs, t: t, from: d }; g.pend = {}; g.resp = {}; g.hold = Date.now() + HOLD;
       g.turn = cs; g.phase = 'discard'; g.drawn = null;
       return;
     }
@@ -194,6 +196,7 @@
       deal(g);
       return g;
     },
+    holdLeft: holdLeft,
     turnSeat: function (g) { return g.phase === 'discard' ? g.turn : -1; },
     /* ---- 提示／小提醒（老師端統一控制）---- */
     acting: function (g) {
@@ -274,8 +277,9 @@
     view: function (g, seat) {
       var me = seat >= 0 && !g.res;
       var fin = !!g.res || g.phase === 'hand';
+      var hl0 = holdLeft(g);
       return { np: g.np, mode: g.mode, M: g.M, wind: g.hands.map(function (x, s) { return windOf(g, s); }), dealer: g.hd,
-        ready: g.phase === 'hand' ? g.ready : null, turn: g.phase === 'discard' ? g.turn : -1, phase: g.phase, cnt: g.cnt, left: Math.max(0, g.wall.length - KEEP),
+        ready: g.phase === 'hand' ? g.ready : null, hold: hl0, turn: g.phase === 'discard' ? g.turn : -1, phase: g.phase, cnt: g.cnt, left: Math.max(0, g.wall.length - KEEP),
         hand: seat >= 0 ? g.hands[seat] : null, drawn: seat >= 0 && g.turn === seat ? g.drawn : null,
         counts: g.hands.map(function (h) { return h.length; }),
         melds: g.melds.map(function (ms, s) { return ms.map(function (m) { return m.k === 'ankan' && s !== seat && !fin ? { k: 'ankan', t: -1 } : m; }); }),
@@ -304,6 +308,7 @@
         resolve(g); return true;
       }
       if (g.phase !== 'discard' || g.turn !== seat) return false;
+      if (holdLeft(g) > 150) return false;   // 特效還在播
       var so = selfOpts(g, seat);
       if (d.t === 'tsumo') { if (!so.tsumo) return false; win(g, seat, g.drawn, true); return true; }
       if (d.t === 'ankan') { if (!so.ankan || so.ankan.indexOf(d.tile) < 0) return false; rm(g.hands[seat], d.tile, 4); g.melds[seat].push({ k: 'ankan', t: d.tile }); g.log = { k: 'ankan', s: seat, t: -1 }; g.cnt++; g.nclaim++; g.kanDraw = true; draw(g, seat, true); return true; }
@@ -379,6 +384,7 @@
   }
   mod.onUpdate = function (prev, tb, fx) {
     var v = tb.view, k0 = hk(tb);
+    if (v.hold > 0 && L.holdCnt !== v.cnt) { L.holdCnt = v.cnt; L.holdEnd = Date.now() + v.hold; clearTimeout(L.htimer); L.htimer = setTimeout(function () { if (mod._ctx) mod._ctx.rerender(); }, v.hold + 50); }
     if (L.round !== k0) { L.round = k0; L.sel = null; L.sent = -1; L.logKey = ''; L.readyAt = 0; }
     if (v.opts && L.claimCnt !== v.cnt) { L.claimCnt = v.cnt; L.claimAt = Date.now(); fx.snd('turn'); }
     var lg = v.log, key = lg ? lg.k + lg.s + ':' + v.cnt + ':' + (lg.t) : '';
@@ -404,7 +410,9 @@
     var tb = ctx.tb, v = tb.view, seat = tb.seat, out = v.out.indexOf(seat) >= 0, np = v.np, fin = !!tb.res || v.phase === 'hand';
     // 老師暫停（有新同學加入）時，吃碰的 20 秒也跟著停
     if (tb.paused) { clearTimeout(L.timer); L.pz = L.pz || Date.now(); } else if (L.pz) { L.claimAt += Date.now() - L.pz; if (L.readyAt) L.readyAt += Date.now() - L.pz; L.pz = 0; }
-    var myTurn = !fin && !out && v.turn === seat && L.sent !== v.cnt;
+    mod._ctx = ctx;
+    var holding = L.holdCnt === v.cnt && Date.now() < (L.holdEnd || 0);
+    var myTurn = !fin && !out && v.turn === seat && L.sent !== v.cnt && !holding;
     var wrap = el('div', 'mj-table');
     // 其他玩家
     var opp = el('div', 'mj-opps');
@@ -431,6 +439,7 @@
     } else if (out) st.textContent = '你已經認輸，正在觀看';
     else if (v.opts) { st.textContent = v.opts.rob ? who(tb, v.last.s) + ' 要加槓「' + MJ.name(v.last.t) + '」，你可以搶槓胡！' : '有人打出 ' + MJ.name(v.last.t) + '，你要吃／碰／胡嗎？'; st.className = 'mj-status me'; }
     else if (myTurn) { st.textContent = v.self.tsumo ? '你可以自摸！' : (L.sel != null ? '再點一次「' + MJ.name(L.sel) + '」或按「打出」' : '輪到你：點一張牌打出去'); st.className = 'mj-status me'; }
+    else if (holding && v.log) st.textContent = '⏸️ ' + who(tb, v.log.s) + ' ' + (ZV[v.log.k] || '') + (v.log.from === seat ? '你的牌' : '') + '，等一下再繼續…';
     else if (v.waiting.length) st.textContent = '等 ' + v.waiting.map(function (s) { return who(tb, s); }).join('、') + ' 決定要不要吃碰…';
     else st.textContent = '輪到 ' + (v.turn >= 0 ? who(tb, v.turn) : '…');
     wrap.appendChild(st);
