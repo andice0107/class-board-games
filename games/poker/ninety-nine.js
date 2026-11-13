@@ -155,7 +155,8 @@
     if (v.last) { var lc = el('div', 'nn-last'); lc.innerHTML = '<span>' + PK.svg(v.last.c) + '</span><small>' + who(tb, v.last.s) + '：' + (v.last.sign === -1 ? (v.last.c[0] === 'T' ? '−10' : '−20') : desc(v.last.c).replace('±', '+')) + (v.last.to != null ? ' → ' + who(tb, v.last.to) : '') + '</small>'; felt.appendChild(lc); }
     wrap.appendChild(felt);
     function send(d) { d.n = v.cnt; d.c = L.sel; L.sent = v.cnt; L.sel = null; ctx.snd('move'); ctx.send('play', d); ctx.rerender(); }
-    var me = PKUI.hand(v.hand, { title: tb.seats[seat].name === '我' ? '我' : tb.seats[seat].name + '・我', color: SEATC[seat], turn: myTurn, sel: L.sel ? [L.sel] : [],
+    var SL = [['rank', '🔀 整理：依點數', PKUI.byRank], ['suit', '🔀 整理：依花色', PKUI.bySuit]], HK = BG.handKey(tb, 'ninety-nine'), ho = BG.handOrder(HK, v.hand, PKUI.sorter(L, SL));
+    var me = PKUI.hand(ho.list, { fresh: ho.fresh, title: tb.seats[seat].name === '我' ? '我' : tb.seats[seat].name + '・我', color: SEATC[seat], turn: myTurn, sel: L.sel ? [L.sel] : [],
       onTap: function (c) { if (!myTurn || !options(c, v.total).length) { if (myTurn) { ctx.snd('error'); ctx.toast('這張出了會超過 99'); } return; }
         if (L.sel === c && options(c, v.total).length === 1 && c[0] !== '5') return send({});
         L.sel = c; ctx.snd('tap'); ctx.rerender(); },
@@ -170,6 +171,7 @@
         else if (r === 'T' || r === 'Q') op.forEach(function (o) { tools.appendChild(ctx.button('pk-btn go', (o.sign > 0 ? '＋' : '－') + (r === 'T' ? 10 : 20) + ' → ' + o.v, function () { send({ sign: o.sign }); })); });
         else tools.appendChild(ctx.button('pk-btn go', '出牌 → ' + op[0].v, function () { send({}); }));
       }
+      PKUI.sortBtns(ctx, tools, L, HK, SL);
       tools.appendChild(ctx.button('pk-btn', '🏳️', function () { if (confirm('確定要認輸嗎？')) ctx.send('resign', {}); }));
       tools.appendChild(ctx.emoteButton('pk-btn'));
       wrap.appendChild(tools);

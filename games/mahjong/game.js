@@ -334,9 +334,8 @@
     mine.appendChild(mt);
     if (v.melds[seat].length) { var mm = el('div', 'mj-mymelds'); mm.innerHTML = v.melds[seat].map(function (m) { return meldHTML(m); }).join(''); mine.appendChild(mm); }
     var hand = el('div', 'mj-hand');
-    var tiles = v.hand.slice(), drawn = v.drawn;
-    if (drawn != null) { tiles.splice(tiles.indexOf(drawn), 1); }
-    MJ.sortHand(tiles);
+    // 手牌順序：摸進來的牌放最右邊並標「新」，按「整理」才依花色（萬、筒、條、字）排到該在的位置
+    var HK = BG.handKey(tb, 'mahjong'), ho = BG.handOrder(HK, v.hand, MJ.sortHand), tiles = ho.list;
     function tileBtn(t, extra) {
       var b2 = el('button', 'mj-tile' + (L.sel === t ? ' sel' : '') + (extra || '')); b2.type = 'button'; b2.setAttribute('data-h', 't' + t); b2.innerHTML = MJ.svg(t);
       if (tb.res && v.win && v.win.s === seat && t === v.win.t) b2.classList.add('win');
@@ -347,8 +346,7 @@
       });
       return b2;
     }
-    tiles.forEach(function (t) { hand.appendChild(tileBtn(t)); });
-    if (drawn != null) hand.appendChild(tileBtn(drawn, ' drawn'));
+    tiles.forEach(function (t, i) { hand.appendChild(tileBtn(t, ho.fresh[i] ? ' drawn fresh-card' : '')); });
     mine.appendChild(hand);
     function send(t, d) { d = d || {}; d.n = v.cnt; L.sent = v.cnt; L.sel = null; ctx.send(t, d); ctx.rerender(); }
     function doDiscard(t) { send('discard', { tile: t }); ctx.snd('move'); }
@@ -379,6 +377,7 @@
     wrap.appendChild(mine);
     if (!tb.res && !out) {
       var tools = el('div', 'mj-tools');
+      tools.appendChild(ctx.button('mj-btn ghost sort-btn', '🔀 整理手牌', function () { BG.handSort(HK, MJ.sortHand); ctx.snd('tap'); ctx.rerender(); }));
       tools.appendChild(ctx.button('mj-btn ghost', '🏳️ 認輸', function () { if (confirm('確定要認輸嗎？電腦會幫你把牌打完，這局算輸。')) ctx.send('resign', {}); }));
       tools.appendChild(ctx.emoteButton('mj-btn ghost'));
       wrap.appendChild(tools);

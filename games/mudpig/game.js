@@ -253,9 +253,11 @@
     // 手牌
     if (v.hand && !out) {
       var hand = el('div', 'mp-hand');
+      // 新抽到的牌會在最右邊並標「新」（伺服器也是把新牌放最後，所以順序一致）
+      var ho = BG.handOrder(BG.handKey(tb, 'mudpig'), v.hand, function (h) { return h; }), nf = ho.fresh.filter(Boolean).length;
       v.hand.forEach(function (c, i) {
         var usable = targets(g, seat, c).length > 0;
-        var b = el('button', 'mp-card' + (L.sel === i ? ' sel' : '') + (myTurn && !usable ? ' dim' : '')); b.type = 'button'; b.setAttribute('data-h', 'c' + i);
+        var b = el('button', 'mp-card' + (L.sel === i ? ' sel' : '') + (myTurn && !usable ? ' dim' : '') + (i >= v.hand.length - nf ? ' fresh-card' : '')); b.type = 'button'; b.setAttribute('data-h', 'c' + i);
         b.innerHTML = '<img src="' + IMG(c) + '" alt=""><b>' + CARDS[c].n + '</b><small>' + CARDS[c].d + '</small>';
         b.addEventListener('click', function () { if (!myTurn) { ctx.toast(CARDS[c].n + '：' + CARDS[c].d); return; } L.sel = L.sel === i ? -1 : i; ctx.snd('tap'); ctx.rerender(); });
         hand.appendChild(b);

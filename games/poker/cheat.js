@@ -181,7 +181,8 @@
       felt.appendChild(lg); }
     if (v.reveal) { var rv = el('div', 'ch2-reveal ' + (v.reveal.lied ? 'lie' : 'true')); rv.innerHTML = '<small>' + who(tb, v.reveal.by) + ' 抓 ' + who(tb, v.reveal.s) + '（喊 ' + PK.label(v.reveal.rank) + '）</small><span>' + v.reveal.cards.map(function (c) { return PK.mini(c); }).join('') + '</span><small>' + (v.reveal.lied ? '😝 吹牛被抓到！' : '😇 沒說謊') + '　' + who(tb, v.reveal.taker) + ' 收 ' + v.reveal.got + ' 張</small>'; felt.appendChild(rv); }
     wrap.appendChild(felt);
-    var me = PKUI.hand(v.hand, { title: tb.seats[seat].name === '我' ? '我' : tb.seats[seat].name + '・我', color: SEATC[seat], turn: myTurn, sel: L.sel,
+    var SL = [['rank', '🔀 整理：依點數', sortH], ['suit', '🔀 整理：依花色', PKUI.bySuit]], HK = BG.handKey(tb, 'cheat'), ho = BG.handOrder(HK, v.hand, PKUI.sorter(L, SL));
+    var me = PKUI.hand(ho.list, { fresh: ho.fresh, title: tb.seats[seat].name === '我' ? '我' : tb.seats[seat].name + '・我', color: SEATC[seat], turn: myTurn, sel: L.sel,
       onTap: function (c) { if (!myTurn) return; var i = L.sel.indexOf(c); if (i >= 0) L.sel.splice(i, 1); else if (L.sel.length < 4) L.sel.push(c); else { ctx.toast('一次最多出 4 張'); return; } ctx.snd('tap'); ctx.rerender(); } });
     wrap.appendChild(me);
     function send(t, d) { d = d || {}; d.n = v.cnt; L.sent = v.cnt; ctx.send(t, d); L.sel = []; L.rank = null; ctx.rerender(); }
@@ -199,6 +200,7 @@
         if (v.rank) { var pb2 = ctx.button('pk-btn', '不出', function () { send('pass'); }); pb2.setAttribute('data-h', 'pass'); tools.appendChild(pb2); }
         if (v.lastPlay) { var cb = ctx.button('pk-btn ch2-call', '🔍 抓！', function () { ctx.snd('check'); send('call'); }); cb.setAttribute('data-h', 'call'); tools.appendChild(cb); }
       }
+      PKUI.sortBtns(ctx, tools, L, HK, SL);
       tools.appendChild(ctx.button('pk-btn', '🏳️', function () { if (confirm('確定要認輸嗎？')) ctx.send('resign', {}); }));
       tools.appendChild(ctx.emoteButton('pk-btn'));
       wrap.appendChild(tools);

@@ -1,6 +1,6 @@
 /* 遊戲清單：每個遊戲是 games/<id>/ 裡獨立的模組，用 BG.register 加進來 */
 window.BG = window.BG || {};
-BG.VER = '202611130915';
+BG.VER = '202611131447';
 BG.games = BG.games || {};
 BG.register = function (id, mod) { mod.id = id; BG.games[id] = mod; };
 BG.catalog = [
@@ -99,6 +99,29 @@ BG.aidGuide = function (G) {
     '<p><b>📺 監視牆</b>（右上角按鈕）：看到每位學生裝置上的<b>即時畫面</b>（選牌、按按鈕都看得到，學生點的位置會出現紅色圓圈）。縮圖預設遮蔽，可按「👁 全開」「🙈 全關」，或單獨打開某一位；點任一張縮圖會放大。放大後可按「📽️ 投影給其他玩家看」，把這位學生的畫面同步投影到其他所有人的裝置上（他自己可以繼續玩），可以用畫筆圈重點，按「關閉投影」就結束。</p>' +
     '<p>只有你打開監視牆看某位學生時，他的裝置才會傳畫面過來，關掉就停止傳送。</p>' });
 };
+
+/* ---------- 手牌順序（學生端自己記）：新抽進來的牌放在最右邊、標「新」，按「整理」才排好 ----------
+   key：每局、每個座位不同；cards：目前手牌（可以有重複的值）；sortFn：整理用的排序（會拿到一份副本）。
+   回傳 { list: 顯示順序, fresh: 和 list 一樣長的 true/false（是不是剛抽到的） } */
+BG.HO = {};
+BG.handOrder = function (key, cards, sortFn) {
+  var st = BG.HO[key];
+  if (!st) {
+    Object.keys(BG.HO).forEach(function (k) { if (k.split('|')[0] === key.split('|')[0]) delete BG.HO[k]; });   // 換局了：舊的順序丟掉
+    st = BG.HO[key] = { o: sortFn(cards.slice()).map(function (c) { return { c: c, f: false }; }) };
+  } else {
+    var pool = cards.slice(), kept = [];
+    st.o.forEach(function (x) { var i = pool.indexOf(x.c); if (i >= 0) { kept.push(x); pool.splice(i, 1); } });
+    if (pool.length) { kept.forEach(function (x) { x.f = false; }); pool.forEach(function (c) { kept.push({ c: c, f: true }); }); }
+    st.o = kept;
+  }
+  return { list: st.o.map(function (x) { return x.c; }), fresh: st.o.map(function (x) { return x.f; }) };
+};
+BG.handSort = function (key, sortFn) {
+  var st = BG.HO[key]; if (!st) return;
+  st.o = sortFn(st.o.map(function (x) { return x.c; })).map(function (c) { return { c: c, f: false }; });
+};
+BG.handKey = function (tb, gid) { return (gid || '') + ':' + tb.seat + '|' + tb.round; };
 
 BG.cats = ['棋類', '撲克牌', '牌類', '麻將', '益智', '社會技巧/溝通訓練'];
 /* 只載入選到的遊戲檔案 */

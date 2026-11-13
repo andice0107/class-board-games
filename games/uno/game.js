@@ -177,6 +177,11 @@
     if (!info.bot && !info.on) w.appendChild(el('div', 'un-off', info.gone ? '已離開' : '離線'));
     return w;
   }
+  /* 整理手牌：依顏色（同色放一起、再看數字）或依數字（同數字放一起、再看顏色） */
+  function sortBy(k) {
+    var CO = { r: 0, y: 1, g: 2, b: 3, w: 4 }, VO = '0123456789SRDWF';
+    return k === 'num' ? function (h) { return h.sort(function (a, b) { return VO.indexOf(a[1]) - VO.indexOf(b[1]) || CO[a[0]] - CO[b[0]]; }); } : function (h) { return UNO.sortHand(h); };
+  }
   mod.render = function (box, ctx) {
     mod._ctx = ctx;
     var tb = ctx.tb, v = tb.view, seat = tb.seat, P = L.pending, out = v.out.indexOf(seat) >= 0;
@@ -215,12 +220,15 @@
     mt.appendChild(el('span', 'un-cnt', v.hand.length + ' 張'));
     if (v.said[seat] && v.hand.length <= 2) mt.appendChild(el('span', 'un-shout', '已喊最後一張'));
     meBox.appendChild(mt);
-    var hand = el('div', 'un-hand'), rows = v.hand.length > 9 ? 2 : 1, per = Math.ceil(v.hand.length / rows);
+    // 手牌順序：新抽到的牌放最右邊並標「新」，按「整理」才排好
+    var HK = BG.handKey(tb, 'uno'), ho = BG.handOrder(HK, v.hand, sortBy(L.sortBy)), hl = ho.list;
+    var hand = el('div', 'un-hand'), rows = hl.length > 9 ? 2 : 1, per = Math.ceil(hl.length / rows);
     for (var r = 0; r < rows; r++) {
       var row = el('div', 'un-row');
-      v.hand.slice(r * per, (r + 1) * per).forEach(function (c) {
+      hl.slice(r * per, (r + 1) * per).forEach(function (c, j) {
+        var fresh = ho.fresh[r * per + j];
         var can = myTurn && UNO.playable(c, v.top, v.color) && (!v.pend || c === v.pend);
-        var cd = el('button', 'un-hc' + (can ? ' can' : myTurn ? ' dim' : '') + (L.sel === c ? ' sel' : '') + (v.pend === c ? ' new' : '')); cd.type = 'button'; cd.setAttribute('data-h', c);
+        var cd = el('button', 'un-hc' + (can ? ' can' : myTurn ? ' dim' : '') + (L.sel === c ? ' sel' : '') + (v.pend === c ? ' new' : '') + (fresh ? ' fresh-card' : '')); cd.type = 'button'; cd.setAttribute('data-h', c);
         cd.innerHTML = UNO.card(c);
         cd.addEventListener('click', function () {
           if (!myTurn) return;
@@ -250,6 +258,7 @@
         tools.appendChild(ctx.button('un-btn', '留著，換下一位', function () { act(ctx, 'pass', {}); }));
       }
       if (v.hand.length <= 2 && !v.said[seat]) { var sb = ctx.button('un-btn shout', '📣 最後一張！', function () { ctx.snd('pop'); ctx.send('call', {}); }); sb.setAttribute('data-h', 'call'); tools.appendChild(sb); }
+      [['color', '🔀 整理：依顏色'], ['num', '🔀 整理：依數字']].forEach(function (o) { tools.appendChild(ctx.button('un-btn sort-btn' + ((L.sortBy || 'color') === o[0] ? ' on' : ''), o[1], function () { L.sortBy = o[0]; BG.handSort(HK, sortBy(o[0])); ctx.snd('tap'); ctx.rerender(); })); });
       tools.appendChild(ctx.button('un-btn', '🏳️ 認輸', function () { if (confirm('確定要認輸嗎？你的牌會收回牌堆。')) ctx.send('resign', {}); }));
       tools.appendChild(ctx.emoteButton('un-btn'));
       wrap.appendChild(tools);

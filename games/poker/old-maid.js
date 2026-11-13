@@ -169,11 +169,12 @@
       felt.appendChild(el('div', 'pk-who', '已經丟掉 ' + v.pairs + ' 對'));
     }
     wrap.appendChild(felt);
-    var hand = v.hand;
-    wrap.appendChild(PKUI.hand(hand, { title: (tb.seats[seat].name === '我' ? '我' : tb.seats[seat].name + '・我'), color: SEATC[seat], count: hand.length, turn: myTurn, sel: L.flash && hand.indexOf(L.flash) >= 0 ? [L.flash] : [], info: hand.indexOf('X1') >= 0 ? '🤡 鬼牌在你手上' : '' }));
+    var SL = [['rank', '🔀 整理：依點數', sortH]], HK = BG.handKey(tb, 'old-maid'), ho = BG.handOrder(HK, v.hand, PKUI.sorter(L, SL)), hand = ho.list;
+    wrap.appendChild(PKUI.hand(hand, { fresh: ho.fresh, title: (tb.seats[seat].name === '我' ? '我' : tb.seats[seat].name + '・我'), color: SEATC[seat], count: hand.length, turn: myTurn, sel: L.flash && hand.indexOf(L.flash) >= 0 ? [L.flash] : [], info: hand.indexOf('X1') >= 0 ? '🤡 鬼牌在你手上' : '' }));
     L.flash = null;
     if (!tb.res && !out) {
       var tools = el('div', 'pk-tools');
+      PKUI.sortBtns(ctx, tools, L, HK, SL);
       tools.appendChild(ctx.button('pk-btn', '🏳️ 認輸', function () { if (confirm('確定要認輸嗎？你的牌會交給下一位。')) ctx.send('resign', {}); }));
       tools.appendChild(ctx.emoteButton('pk-btn'));
       wrap.appendChild(tools);

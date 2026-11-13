@@ -170,9 +170,11 @@
     if (seat >= 0 && v.hand) {
       var me = el('div', 's9-me' + (frozen ? ' frozen' : ''));
       me.appendChild(el('div', 's9-lbl', '我的手牌・牌堆還有 ' + Math.max(0, v.counts[seat] - v.hand.length) + ' 張'));
-      var hand = el('div', 's9-hand');
-      v.hand.forEach(function (c) {
-        var b = el('button', 's9-hc'); b.type = 'button'; b.setAttribute('data-c', c); b.innerHTML = cardHTML(c);
+      var hand = el('div', 's9-hand'), HK = BG.handKey(tb, 'seven'), SF = function (h) { return h.sort(function (a, b) { return num(a) - num(b) || a - b; }); };
+      // 新補進來的牌放最右邊並標「新」，按「整理」才依數字排好
+      var ho = BG.handOrder(HK, v.hand, function (h) { return h; });
+      ho.list.forEach(function (c, i) {
+        var b = el('button', 's9-hc' + (ho.fresh[i] ? ' fresh-card' : '')); b.type = 'button'; b.setAttribute('data-c', c); b.innerHTML = cardHTML(c);
         b.addEventListener('click', function () {
           var t2 = Date.now();
           if (tb.res || out || L.frzUntil > t2 || L.lockUntil > t2 || L.sent === v.cnt) return;
@@ -184,6 +186,7 @@
         hand.appendChild(b);
       });
       me.appendChild(hand);
+      if (!tb.res && !out) { var srt = ctx.button('s9-sort sort-btn', '🔀 整理：依數字', function () { BG.handSort(HK, SF); ctx.snd('tap'); ctx.rerender(); }); me.appendChild(srt); }
       if (v.counts[seat] === 1) me.appendChild(el('div', 's9-lastone', '最後一張！不用算，直接出就贏了'));
       wrap.appendChild(me);
     }

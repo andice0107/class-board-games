@@ -355,3 +355,11 @@ input:focus { border-color: var(--sky); background: #fff; }
 .p-cast .wcast button, .p-cast .wcast .btn { visibility: visible; }
 .overlay.wall > .wallbox { width: min(1500px, calc(100vw - 36px)); max-width: none; }
 .overlay.wbig > .wbbox { width: auto; max-width: calc(100vw - 30px); }
+
+/* 新抽進來的牌：標「新」、放最右邊 */
+.fresh-card { position: relative; }
+.fresh-card::after { content: '新'; position: absolute; top: -8px; right: -6px; background: #ff3b30; color: #fff; font: 900 12px/1 var(--sans); padding: 3px 5px; border-radius: 9px; box-shadow: 0 2px 4px #0005; z-index: 4; pointer-events: none; }
+.fresh-card > svg, .fresh-card > .rk-face { outline: 3px solid #ff3b30; outline-offset: 1px; border-radius: 6px; }
+.sort-btn.on { background: #ffd166 !important; color: #3a2a00 !important; }
+.rk-tile.fresh-card, .s9-card.fresh-card { outline: 3px solid #ff3b30; outline-offset: 1px; }
+.s9-sort { margin: 6px auto 0; display: block; padding: 6px 14px; border-radius: 12px; border: 2px solid #c9d0e0; background: #fff; font-weight: 900; }

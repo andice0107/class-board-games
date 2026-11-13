@@ -96,8 +96,8 @@ window.PKUI = (function () {
     var h = el('div', 'pk-hand'), rows = cards.length > 9 ? 2 : 1, per = Math.ceil(cards.length / rows);
     for (var r = 0; r < rows; r++) {
       var row = el('div', 'pk-row');
-      cards.slice(r * per, (r + 1) * per).forEach(function (c) {
-        var b = el('button', 'pk-hc' + (o.sel && o.sel.indexOf(c) >= 0 ? ' sel' : '') + (o.dim && o.dim(c) ? ' dim' : '')); b.type = 'button'; b.setAttribute('data-c', c);
+      cards.slice(r * per, (r + 1) * per).forEach(function (c, j) {
+        var b = el('button', 'pk-hc' + (o.sel && o.sel.indexOf(c) >= 0 ? ' sel' : '') + (o.dim && o.dim(c) ? ' dim' : '') + (o.fresh && o.fresh[r * per + j] ? ' fresh-card' : '')); b.type = 'button'; b.setAttribute('data-c', c);
         b.innerHTML = PK.svg(c);
         b.addEventListener('click', function () { if (o.onTap) o.onTap(c); });
         row.appendChild(b);
@@ -107,5 +107,15 @@ window.PKUI = (function () {
     me.appendChild(h);
     return me;
   }
-  return { SEATC: SEATC, opps: opps, hand: hand };
+  /* 「整理」按鈕：list = [[key, 文字, 排序函式], ...]；L 是遊戲自己的狀態（記住選了哪一種） */
+  function sortBtns(ctx, tools, L, HK, list) {
+    list.forEach(function (o) {
+      tools.appendChild(ctx.button('pk-btn sort-btn' + ((L.sortBy || list[0][0]) === o[0] ? ' on' : ''), o[1], function () { L.sortBy = o[0]; BG.handSort(HK, o[2]); ctx.snd('tap'); ctx.rerender(); }));
+    });
+  }
+  function sorter(L, list) { var k = L.sortBy || list[0][0]; for (var i = 0; i < list.length; i++) if (list[i][0] === k) return list[i][2]; return list[0][2]; }
+  var RO = 'A23456789TJQKX', SO = 'cdhs1';
+  function byRank(h) { return h.sort(function (a, b) { return RO.indexOf(a[0]) - RO.indexOf(b[0]) || SO.indexOf(a[1]) - SO.indexOf(b[1]); }); }
+  function bySuit(h) { return h.sort(function (a, b) { return SO.indexOf(a[1]) - SO.indexOf(b[1]) || RO.indexOf(a[0]) - RO.indexOf(b[0]); }); }
+  return { SEATC: SEATC, opps: opps, hand: hand, sortBtns: sortBtns, sorter: sorter, byRank: byRank, bySuit: bySuit };
 })();

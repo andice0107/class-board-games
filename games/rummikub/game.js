@@ -209,8 +209,10 @@
     var me = el('div', 'rk-me' + (myTurn ? ' turn' : ''));
     var top = el('div', 'pk-me-top'), dot = el('i'); dot.style.background = SEATC[seat]; top.appendChild(dot); top.appendChild(el('span', 'n', (tb.seats[seat].name === '我' ? '我' : tb.seats[seat].name + '・我'))); top.appendChild(el('span', 'pk-cnt', rack.length + ' 張・牌堆 ' + v.pool));
     me.appendChild(top);
-    var rr = el('div', 'rk-rack'), shown = L.sortNum ? RK.sortNum(rack.slice()) : RK.sortRack(rack.slice());
-    shown.forEach(function (id) { var x = el('span'); x.innerHTML = RK.tile(id, { sel: myTurn && W.sel.indexOf(id) >= 0 }); rr.appendChild(x.firstChild); });
+    // 手牌順序：新抽到的牌放最右邊並標「新」，按「整理」才依數字／依顏色排到該在的位置
+    var rr = el('div', 'rk-rack'), HK = BG.handKey(tb, 'rummikub'), SF = function (r) { return L.sortNum ? RK.sortNum(r) : RK.sortRack(r); };
+    var ho = BG.handOrder(HK, v.rack, SF), shown = ho.list.filter(function (id) { return rack.indexOf(id) >= 0; }).concat(rack.filter(function (id) { return ho.list.indexOf(id) < 0; }));
+    shown.forEach(function (id) { var x = el('span'); x.innerHTML = RK.tile(id, { sel: myTurn && W.sel.indexOf(id) >= 0 }); var t = x.firstChild; if (ho.fresh[ho.list.indexOf(id)]) t.classList.add('fresh-card'); rr.appendChild(t); });
     rr.addEventListener('click', function (e) {
       if (!myTurn) return;
       var t = e.target.closest('.rk-tile');
@@ -232,7 +234,7 @@
         }); db.setAttribute('data-h', 'draw'); tools.appendChild(db);
         if (W.sel.length) tools.appendChild(ctx.button('pk-btn', '取消選取', function () { W.sel = []; ctx.rerender(); }));
       }
-      tools.appendChild(ctx.button('pk-btn', L.sortNum ? '依顏色排' : '依數字排', function () { L.sortNum = !L.sortNum; ctx.rerender(); }));
+      [[true, '🔀 整理：依數字'], [false, '🔀 整理：依顏色']].forEach(function (o) { tools.appendChild(ctx.button('pk-btn sort-btn' + (L.sortNum === o[0] ? ' on' : ''), o[1], function () { L.sortNum = o[0]; BG.handSort(HK, SF); ctx.snd('tap'); ctx.rerender(); })); });
       tools.appendChild(ctx.button('pk-btn', '🏳️', function () { if (confirm('確定要認輸嗎？')) ctx.send('resign', {}); }));
       tools.appendChild(ctx.emoteButton('pk-btn'));
       wrap.appendChild(tools);
