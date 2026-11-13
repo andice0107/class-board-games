@@ -77,6 +77,74 @@ window.RK = (function () {
     })(0, {}, [], 0);
     return { combos: best, sum: bestS };
   }
+  /* ---------- 拆開桌上的牌重組 ----------
+     把「桌上的牌（不含有鬼牌的組合）＋要加進去的手牌」重新分成合法的組合。
+     每次挑數字最小的一張：它不是在「從它開始的同色連號」，就是在「同數字不同色」那一組裡。 */
+  function kk(id) { var t = info(id); return t.c * 13 + t.n - 1; }
+  function solve(cnt, limit) {
+    var steps = 0, fail = {};
+    function go() {
+      if (++steps > limit) throw 0;
+      var x = -1; for (var n0 = 0; n0 < 13 && x < 0; n0++) for (var c0 = 0; c0 < 4; c0++) if (cnt[c0 * 13 + n0]) { x = c0 * 13 + n0; break; }
+      if (x < 0) return [];
+      var sk = cnt.join(''); if (fail[sk]) return null;
+      var c = Math.floor(x / 13), n = x % 13, r, i;
+      // 同色連號，從 x 開始
+      var run = [x]; cnt[x]--;
+      for (var e = n + 1; e < 13 && cnt[c * 13 + e]; e++) {
+        cnt[c * 13 + e]--; run.push(c * 13 + e);
+        if (run.length >= 3) { r = go(); if (r) { run.forEach(function (k) { cnt[k]++; }); return [run.slice()].concat(r); } }
+      }
+      run.forEach(function (k) { cnt[k]++; });
+      // 同數字不同色
+      var oth = []; for (var o = 0; o < 4; o++) if (o !== c && cnt[o * 13 + n]) oth.push(o * 13 + n);
+      var subs = []; if (oth.length === 3) subs.push(oth.slice());
+      for (i = 0; i < oth.length; i++) for (var j = i + 1; j < oth.length; j++) subs.push([oth[i], oth[j]]);
+      for (i = 0; i < subs.length; i++) {
+        var gp = [x].concat(subs[i]); gp.forEach(function (k) { cnt[k]--; });
+        r = go(); gp.forEach(function (k) { cnt[k]++; });
+        if (r) return [gp].concat(r);
+      }
+      fail[sk] = 1; return null;
+    }
+    try { return go(); } catch (er) { return undefined; }
+  }
+  /* 回傳 {table: 新桌面, used: 用到的手牌} 或 null。quick=true 只要找到一個能加的就停 */
+  function rearrange(table, rack, quick) {
+    var fixed = [], free = [];
+    table.forEach(function (s) { if (s.some(function (id) { return id >= 104; })) fixed.push(s.slice()); else free = free.concat(s); });
+    var base = []; for (var i = 0; i < 52; i++) base.push(0);
+    free.forEach(function (id) { base[kk(id)]++; });
+    var cand = rack.filter(function (id) { return id < 104; }), added = [];
+    // 同一種牌（顏色＋數字）只試一次
+    var seenK = {}; cand = cand.filter(function (id) { var k = kk(id); if (seenK[k]) return false; seenK[k] = 1; return true; });
+    function feas(extra) { var c = base.slice(); extra.forEach(function (id) { c[kk(id)]++; }); if (c.some(function (v) { return v > 2; })) return null; return solve(c, 2500); }
+    var changed = true, pairs = 0;
+    while (changed) {
+      changed = false;
+      for (var a = 0; a < cand.length; a++) { if (added.indexOf(cand[a]) >= 0) continue; if (feas(added.concat([cand[a]]))) { added.push(cand[a]); changed = true; if (quick) break; } }
+      if (quick && added.length) break;
+      if (!changed) {
+        outer: for (var p = 0; p < cand.length; p++) for (var q = p + 1; q < cand.length; q++) {
+          if (added.indexOf(cand[p]) >= 0 || added.indexOf(cand[q]) >= 0) continue;
+          if (++pairs > 250) break outer;
+          if (feas(added.concat([cand[p], cand[q]]))) { added.push(cand[p], cand[q]); changed = true; break outer; }
+        }
+      }
+      if (quick && added.length) break;
+    }
+    if (!added.length) return null;
+    var sol = feas(added); if (!sol) return null;
+    var byK = {}; free.concat(added).forEach(function (id) { (byK[kk(id)] = byK[kk(id)] || []).push(id); });
+    return { table: fixed.concat(sol.map(function (s) { return s.map(function (k) { return byK[k].shift(); }); })), used: added };
+  }
+  /* 這一回合還有沒有牌可以出？回傳 'open'｜'combo'｜'attach'｜'rearrange'｜null */
+  function canPlay(table, rack, opened) {
+    if (!opened) return bestBySum(rack).sum >= 30 ? 'open' : null;
+    if (melds(rack).length) return 'combo';
+    for (var i = 0; i < rack.length; i++) for (var k = 0; k < table.length; k++) if (analyze(table[k].concat([rack[i]])).ok) return 'attach';
+    return rearrange(table, rack, true) ? 'rearrange' : null;
+  }
   /* 回傳新的桌面（陣列的陣列），或 null 代表要抽牌 */
   function botPlay(table, rack, opened, level) {
     if (level <= 1 && Math.random() < .35) return null;
@@ -99,6 +167,10 @@ window.RK = (function () {
         }
       }
     }
+    if (level >= 4) { // 困難：再試著把桌上的牌拆開重組，放進更多手牌
+      var rest = rack.filter(function (id) { return !used[id]; }), re = rest.length ? rearrange(nt, rest, false) : null;
+      if (re) { nt = re.table; re.used.forEach(function (id) { used[id] = 1; }); }
+    }
     if (!Object.keys(used).length) return null;
     return nt.map(function (s) { return analyze(s).order || s; });
   }
@@ -111,5 +183,5 @@ window.RK = (function () {
       : '<b style="color:' + COLS[t.c] + '">' + t.n + '</b><i style="background:' + COLS[t.c] + '"></i>';
     return '<span class="rk-tile' + (o.sel ? ' sel' : '') + (o.mine ? ' mine' : '') + '" data-id="' + id + '">' + face + '</span>';
   }
-  return { melds: melds, bestBySum: bestBySum, COLS: COLS, CN: CN, info: info, pool: pool, sortRack: sortRack, sortNum: sortNum, analyze: analyze, rackValue: rackValue, botPlay: botPlay, tile: tile, shuffle: shuffle };
+  return { melds: melds, bestBySum: bestBySum, COLS: COLS, CN: CN, info: info, pool: pool, sortRack: sortRack, sortNum: sortNum, analyze: analyze, rackValue: rackValue, botPlay: botPlay, rearrange: rearrange, canPlay: canPlay, tile: tile, shuffle: shuffle };
 })();

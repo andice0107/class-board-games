@@ -100,7 +100,10 @@
       var ap = mod._append(g, seat);
       if (ap.length) { var a = ap[0]; return { msg: '亮黃框的這張牌，可以加到桌上亮黃框的那一組裡面（組合仍然合法）。', hl: [a.id, 'set' + a.set] }; }
       if (best.combos.length) { var m = best.combos[0]; return { msg: '你手上亮黃框的 ' + m.length + ' 張牌，已經可以自己組成一組（同數字不同顏色，或同顏色連號）。', hl: m.slice() }; }
-      return { msg: '你手上目前沒有牌可以放到桌上，也湊不出新的一組。請按亮黃框的「抽一張」。', hl: ['draw'] };
+      var re = RK.rearrange(g.table, rack, true);
+      if (re) { var gid = re.used[0], sets = []; g.table.forEach(function (st, i) { if (!st.some(function (id) { return id >= 104; })) sets.push('set' + i); });
+        return { msg: '沒辦法直接接上去，但是如果把桌上的組合「拆開重新排」，亮黃框的這張牌就放得進去！想一想：桌上哪幾張可以換到別組，讓這張也湊成一組？（排完每一組都要合法才能按「完成」）', hl: [gid] }; }
+      return { msg: '你手上目前沒有牌可以放到桌上，也湊不出新的一組，連把桌上的牌拆開重組也放不進去。請按亮黃框的「' + (g.pool.length ? '抽一張' : '跳過') + '」。', hl: ['draw'] };
     },
     nudge: function (g, seat) {
       if (g.res || g.turn !== seat || g.out.indexOf(seat) >= 0) return null;
@@ -245,6 +248,8 @@
         var done = ctx.button('pk-btn go', '✔ 完成', function () { if (!ws.ok) return; L.pending = v.cnt; L.pd = { t: 'play', d: { table: W.table, n: v.cnt }, at: Date.now() }; ctx.snd('move'); ctx.send('play', L.pd.d); ctx.rerender(); }); done.disabled = !ws.ok; tools.appendChild(done);
         var db = ctx.button('pk-btn', ws.placed || W.table.length !== v.table.length ? '↩ 重來' : v.pool ? '🀫 抽一張' : '⏭ 沒牌可抽，跳過', function () {
           if (ws.placed || W.table.length !== v.table.length || W.sel.length) { resetWork(v); ctx.rerender(); return; }
+          // 牌堆抽完後按「跳過」：系統先幫忙看看是不是其實還有牌能出（不說是哪一張）
+          if (!v.pool && L.warn !== v.cnt) { var cp = RK.canPlay(v.table, v.rack, v.opened[seat]); if (cp) { L.warn = v.cnt; L.warnK = cp; ctx.snd('tap'); ctx.rerender(); return; } }
           L.pending = v.cnt; L.pd = { t: 'draw', d: { n: v.cnt }, at: Date.now() }; ctx.send('draw', L.pd.d); ctx.rerender();
         }); db.setAttribute('data-h', 'draw'); tools.appendChild(db);
         if (W.sel.length) tools.appendChild(ctx.button('pk-btn', '取消選取', function () { W.sel = []; ctx.rerender(); }));
@@ -253,6 +258,15 @@
       tools.appendChild(ctx.button('pk-btn', '🏳️', function () { if (confirm('確定要認輸嗎？')) ctx.send('resign', {}); }));
       tools.appendChild(ctx.emoteButton('pk-btn'));
       wrap.appendChild(tools);
+      if (myTurn && L.warn === v.cnt && !L.pending) {
+        var WM = { open: '你手上的牌其實可以湊到 30 點破冰喔！', combo: '你手上的牌其實可以自己湊成一組喔！', attach: '你有牌可以直接接到桌上的組合喔！', rearrange: '如果把桌上的組合拆開重新排，你還有牌放得進去喔！' };
+        var wb = el('div', 'rk-warn'); wb.appendChild(el('b', '', '🤔 等一下！' + (WM[L.warnK] || '你好像還有牌可以出。')));
+        wb.appendChild(el('span', '', '牌堆已經抽完了，大家都跳過的話遊戲就會結束、開始比點數。要再看看嗎？（可以按 💡 提示）'));
+        var wr = el('div', 'row c');
+        wr.appendChild(ctx.button('pk-btn go', '👀 我再看看', function () { L.warn = -2; ctx.rerender(); }));
+        wr.appendChild(ctx.button('pk-btn', '⏭ 確定跳過', function () { L.warn = -1; L.pending = v.cnt; L.pd = { t: 'draw', d: { n: v.cnt }, at: Date.now() }; ctx.send('draw', L.pd.d); ctx.rerender(); }));
+        wb.appendChild(wr); wrap.appendChild(wb);
+      }
     }
     box.appendChild(wrap);
   };
@@ -283,11 +297,13 @@
       { h: '怎麼玩', html: '<ol><li>每人先拿 <b>14 張</b>。輪到你時，可以把牌組成「一組」放到桌上，或<b>抽一張</b>。</li><li><b>第一次出牌</b>：放出去的組合點數加起來要 <b>30 點以上</b>，而且只能用自己的牌。</li><li>開局後，可以把牌<b>接到桌上別人的組合</b>，也可以把桌上的牌重新拆開、重組，只要回合結束時桌上每一組都合法。</li><li>第一個把手牌全部放完的人獲勝！</li></ol>' +
         '<h4>操作方法</h4><ul><li>點一張或好幾張牌（會浮起來），再點<b>桌上的某一組</b>把牌加進去，或點「<b>＋ 新的一組</b>」。</li><li>放錯了：選起來再點自己的手牌區可以收回（只限本回合從手上拿出去的牌），或按「<b>↩ 重來</b>」。</li><li>不合法的組合會用紅框標示。全部合法才能按「<b>✔ 完成</b>」。</li></ul>' },
       { h: '合法的組合', html: '<div class="g-figs">' + row([6, 19, 32], '同數字、不同顏色（3～4 張）') + row([0, 1, 2, 3], '同顏色、連續數字（3 張以上）') + row([22, 104, 24], '鬼牌 😀 可以當作任何一張牌') + '</div><p>1 不能接在 13 後面。</p>' },
-      { h: '計分方式', html: '<p><b>誰先把手上的牌全部出完，誰就贏</b>（積分榜 +3 分），這是正常的結束方式。如果牌堆被抽完了，遊戲<b>還會繼續</b>：能出牌就繼續出，沒有牌可以出就按「跳過」。要等到牌堆抽完、而且大家連續一整輪都出不了牌，才會結束，這時候把大家的牌翻開，手上點數最少的人獲勝（數字多少算幾點，鬼牌算 30 點）。</p>' }
+      { h: '計分方式', html: '<p><b>誰先把手上的牌全部出完，誰就贏</b>（積分榜 +3 分），這是正常的結束方式。如果牌堆被抽完了，遊戲<b>還會繼續</b>：能出牌就繼續出，沒有牌可以出就按「跳過」（如果你其實還有牌能出，系統會先提醒你）。要等到牌堆抽完、而且大家連續一整輪都出不了牌，才會結束，這時候把大家的牌翻開，手上點數最少的人獲勝（數字多少算幾點，鬼牌算 30 點）。</p>' }
     ],
     teacher: [
       { h: '主持流程', html: '<ol><li>首頁點「拉密」開房間，每桌 2～4 人（預設 4 人）。</li><li>大螢幕顯示桌上所有組合、每人剩幾張、誰還沒開局（還沒滿 30 點的第一手）。</li></ol>' },
       { h: '規則說明', html: '<ul><li>106 張牌：1～13 四種顏色各兩套，加上 2 張鬼牌。</li><li>第一次出牌要 30 點以上，而且只能用自己的牌。</li><li>開局後可以自由重組桌上的牌，但桌上的牌不能收回手上。</li><li>系統會檢查：回合結束時每一組都合法、至少從手上放一張牌，才能送出。</li><li>結束方式：先把牌全部出完的人贏（正式規則）。牌堆抽完後遊戲繼續，沒牌可出的人按「跳過」；大家連續一整輪都出不了牌才結束，翻開所有人剩下的牌比點數（鬼牌 30 點），最少的人贏。結束時每個人剩下的牌都會翻開顯示。</li><li>本工具沒有計時沙漏，老師可用「電腦出牌速度」調整電腦節奏。</li></ul>' },
+      { h: '電腦對手', html: '<table class="g-tbl"><tr><th>強度</th><th>電腦怎麼打</th></tr><tr><td>🐣 入門</td><td>會用手上的牌湊組合，但常常故意不出（約 3 成），讓學生比較容易贏</td></tr><tr><td>🙂 簡單</td><td>用手上的牌湊新的一組</td></tr><tr><td>🤔 普通</td><td>湊新的一組，再把剩下的單張接到桌上的組合</td></tr><tr><td>🔥 困難</td><td>以上都會，還會像真人一樣<b>把桌上的牌拆開重新排</b>，放進更多手牌</td></tr></table>' },
+      { h: '跳過提醒', html: '<p>牌堆抽完後，學生按「⏭ 跳過」時，如果系統發現他其實還有牌能出（包含把桌上的牌拆開重組才放得進去），會先跳出「🤔 等一下！」提醒（只說還有牌能出，不說是哪一張），學生可以選「我再看看」或「確定跳過」。按 💡 提示會亮出可以放的那張牌。</p>' },
       { h: '教學重點', html: '<ul><li>數字分類（同數字／連續數字）、加法（開局 30 點）。</li><li>重組桌上的牌是很好的邏輯與規劃練習，可以把一桌投影出來，全班討論「這張牌還能放哪裡」。</li></ul>' }
     ]
   };

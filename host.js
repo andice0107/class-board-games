@@ -818,6 +818,6 @@
     $('h-lbbox').innerHTML = h + '</table>';
   }
   function esc(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
-  window.BGHost = { state: function () { return S; } }; // 測試用
+  window.BGHost = { state: function () { return S; }, touch: function (T) { touch(T); } }; // 測試用
   }
 })();
