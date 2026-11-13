@@ -33,3 +33,11 @@
 .rk-host-tb em { color: #fff4e0; font-style: normal; font-weight: 800; }
 .big-view .rk-host-tb .rk-tile { width: 32px; height: 46px; } .big-view .rk-host-tb .rk-tile b { font-size: 20px; }
 .rk-status.me.warn { background: #ffe1dc; color: #a3200f; white-space: normal; }
+/* 結束：所有人剩下的牌翻開 */
+.rk-reveal { background: #0003; border-radius: 14px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+.rk-rvt { font-weight: 900; color: #ffe08a; text-align: center; font-size: 16px; }
+.rk-rvrow { display: flex; align-items: center; gap: 10px; background: #fff1; border-radius: 10px; padding: 4px 8px; }
+.rk-rvrow.win { background: #ffe08a33; box-shadow: 0 0 0 2px #ffd54f; }
+.rk-rvrow.out { opacity: .55; }
+.rk-rvn { min-width: 92px; display: flex; flex-direction: column; color: #fff; } .rk-rvn small { color: #f4d27a; font-weight: 700; }
+.rk-rvts { display: flex; flex-wrap: wrap; gap: 3px; } .rk-rv0 { color: #fff; font-weight: 800; }
