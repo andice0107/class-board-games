@@ -44,3 +44,5 @@
 .rk-warn { position: fixed; left: 50%; top: 24%; transform: translateX(-50%); z-index: 700; width: min(520px, 92vw); background: #fff8e1; color: #3b2a00; border: 4px solid #ffb300; border-radius: 18px; padding: 12px 16px; box-shadow: 0 12px 40px rgba(0,0,0,.4); display: flex; flex-direction: column; gap: 6px; text-align: center; animation: pop .35s; }
 .rk-warn b { font-size: 19px; } .rk-warn span { font-size: 15px; font-weight: 700; }
 .rk-put { border: 0; border-radius: 8px; background: #ffd54f; color: #3b2a00; font-weight: 900; font-size: 13px; padding: 6px 8px; margin-left: 4px; cursor: pointer; box-shadow: 0 2px 0 #0004; align-self: stretch; }
+.rk-status.watch { background: #e3f2fd; color: #0d3b66; }
+.rk-tile.dnew { box-shadow: 0 0 0 3px #ffd54f, 0 3px 6px rgba(0,0,0,.35); }

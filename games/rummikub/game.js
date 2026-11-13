@@ -55,12 +55,20 @@
     teacherDraw: function (g) { g.res = { w: -1, why: 'teacher' }; },
     view: function (g, seat) {
       return { np: g.np, rack: seat >= 0 ? g.racks[seat] : [], counts: g.racks.map(function (r) { return r.length; }), opened: g.opened, table: g.table, pool: g.pool.length,
-        turn: g.turn, out: g.out, cnt: g.cnt, last: g.last, reveal: g.res ? g.racks.map(function (r) { return RK.rackValue(r); }) : null, racks: g.res ? g.racks.map(function (r) { return RK.sortRack(r.slice()); }) : null };
+        turn: g.turn, out: g.out, cnt: g.cnt, last: g.last, draft: !g.res && g.draft && g.draft.n === g.cnt && g.draft.s === g.turn ? g.draft : null, reveal: g.res ? g.racks.map(function (r) { return RK.rackValue(r); }) : null, racks: g.res ? g.racks.map(function (r) { return RK.sortRack(r.slice()); }) : null };
     },
     act: function (g, seat, d, notify) {
       if (g.res || g.out.indexOf(seat) >= 0) return false;
       if (d.t === 'resign') { notify(seat, '你已經認輸，可以繼續觀看'); knock(g, seat, 'resign'); g.cnt++; return true; }
       if (g.turn !== seat || d.n !== g.cnt) return false;
+      /* 正在排（還沒按完成）：把桌面的樣子給其他人看，牌架上的牌不會送出去 */
+      if (d.t === 'draft') {
+        if (!Array.isArray(d.table) || d.table.length > 60) return false;
+        var ok = {}, seen = {}; g.table.forEach(function (st) { st.forEach(function (id) { ok[id] = 1; }); }); g.racks[seat].forEach(function (id) { ok[id] = 1; });
+        for (var q = 0; q < d.table.length; q++) { var st = d.table[q]; if (!Array.isArray(st)) return false; for (var r = 0; r < st.length; r++) { if (!ok[st[r]] || seen[st[r]]) return false; seen[st[r]] = 1; } }
+        g.draft = { s: seat, n: g.cnt, table: d.table.map(function (st) { return st.slice(); }), sel: (Array.isArray(d.sel) ? d.sel : []).filter(function (id) { return seen[id]; }) };
+        return true;
+      }
       if (d.t === 'draw') {
         var got = null;
         if (g.pool.length) { got = g.pool.pop(); g.racks[seat].push(got); RK.sortRack(g.racks[seat]); g.passes = 0; }
@@ -180,23 +188,32 @@
     var tb = ctx.tb, v = tb.view, seat = tb.seat, out = v.out.indexOf(seat) >= 0; mod._ctx = ctx;
     if (!W || W.cnt !== v.cnt) resetWork(v);
     var myTurn = !tb.res && v.turn === seat && !L.pending && !out;
-    var ws = workState(v, seat), table = myTurn ? W.table : v.table, rack = myTurn ? W.rack : v.rack;
+    var ws = workState(v, seat), dr = !myTurn && v.draft && v.draft.s !== seat ? v.draft : null, table = myTurn ? W.table : dr ? dr.table : v.table, rack = myTurn ? W.rack : v.rack;
+    var onTb = {}; v.table.forEach(function (st) { st.forEach(function (id) { onTb[id] = 1; }); });
+    // 輪到我排牌時：每動一下就把桌面送出去給其他人看（只有桌面，牌架上的牌不送）
+    if (myTurn) {
+      var dsel = W.sel.filter(function (id) { return W.table.some(function (st) { return st.indexOf(id) >= 0; }); });
+      var sig = v.cnt + '|' + JSON.stringify(W.table) + '|' + dsel.join(',');
+      if (L.dbase !== v.cnt) { L.dbase = v.cnt; L.dsig = v.cnt + '|' + JSON.stringify(v.table) + '|'; }
+      if (sig !== L.dsig) { L.dsig = sig; clearTimeout(L.dtimer); var tsend = W.table.map(function (st) { return st.slice(); }), n0 = v.cnt; L.dtimer = setTimeout(function () { ctx.send('draft', { table: tsend, sel: dsel, n: n0 }); }, 150); }
+    }
     var wrap = el('div', 'rk-table');
     var st = el('div', 'rk-status');
     if (tb.res) st.textContent = '這局結束了：' + (tb.res.w >= 0 ? who(tb, tb.res.w) + ' 獲勝' : '平手');
     else if (out) st.textContent = '你已經認輸，正在觀看';
     else if (L.pending) st.textContent = '送出中…';
     else if (myTurn) { st.textContent = W.sel.length ? '已選 ' + W.sel.length + ' 張：可以再點其他牌一起選，選好按「⬇ 放這裡」或「＋新的一組」' : ws.err ? '⚠️ ' + ws.err : (!v.pool ? '牌堆抽完了：能出就繼續出，出不了就按「跳過」' : v.opened[seat] ? '點牌選起來，移到桌上；或抽一張' : '第一次出牌要 30 點以上'); st.className = 'rk-status me' + (ws.err && !W.sel.length ? ' warn' : ''); }
+    else if (dr) { st.textContent = '👀 ' + short(tb, v.turn) + ' 正在排牌…（還沒按「完成」，可以一起看他怎麼拆、怎麼放）'; st.className = 'rk-status watch'; }
     else st.textContent = '等 ' + short(tb, v.turn) + ' 出牌…';
     wrap.appendChild(st);
     wrap.appendChild(PKUI.opps(tb, v, seat, function (i) { return v.opened[i] ? '' : '未開局'; }, short));
     [].forEach.call(wrap.querySelectorAll('.pk-mini'), function (e) { e.className = 'rk-mini'; });
     // 桌面
     var felt = el('div', 'rk-felt');
-    var lastPlaced = {}; if (v.last && v.last.k === 'play' && !myTurn) (v.last.placed || []).forEach(function (id) { lastPlaced[id] = 1; });
+    var lastPlaced = {}; if (v.last && v.last.k === 'play' && !myTurn && !dr) (v.last.placed || []).forEach(function (id) { lastPlaced[id] = 1; });
     table.forEach(function (s, i) {
-      var a = RK.analyze(s), row = el('div', 'rk-set' + (myTurn && !a.ok ? ' bad' : '') + (myTurn && W.sel.length ? ' target' : '')); row.setAttribute('data-h', 'set' + i);
-      (a.ok ? a.order : s).forEach(function (id) { var x = el('span'); x.innerHTML = RK.tile(id, { sel: myTurn && W.sel.indexOf(id) >= 0, mine: myTurn && W.orig[id] }); var t = x.firstChild; if (lastPlaced[id]) t.classList.add('new'); row.appendChild(t); });
+      var a = RK.analyze(s), row = el('div', 'rk-set' + ((myTurn || dr) && !a.ok ? ' bad' : '') + (myTurn && W.sel.length ? ' target' : '')); row.setAttribute('data-h', 'set' + i);
+      (a.ok ? a.order : s).forEach(function (id) { var x = el('span'); x.innerHTML = RK.tile(id, { sel: myTurn ? W.sel.indexOf(id) >= 0 : !!(dr && dr.sel.indexOf(id) >= 0), mine: myTurn && W.orig[id] }); var t = x.firstChild; if (lastPlaced[id]) t.classList.add('new'); if (dr && !onTb[id]) t.classList.add('dnew'); row.appendChild(t); });
       if (myTurn && !a.ok) row.appendChild(el('small', 'rk-why', a.why || '不合法'));
       // 有選牌時，每一組後面出現「放這裡」：點牌是「多選／取消」，點「放這裡」（或這組的空白處）才把選好的牌一次移過去
       var allSel = s.every(function (id) { return W.sel.indexOf(id) >= 0; });
@@ -274,7 +291,7 @@
   };
   // 網路掉封包時：3 秒沒有回應就再送一次；老師端說「不行」時（onReject）就解除「送出中」，回到剛剛排好的桌面
   setInterval(function () { var P = L.pd, c = mod._ctx; if (!L.pending || !P || !c) return; if (Date.now() - P.at > 3000) { P.at = Date.now(); c.send(P.t, P.d); } }, 1000);
-  mod.onReject = function () { L.pending = null; L.pd = null; };
+  mod.onReject = function (d) { if (d && d.a === 'draft') return; L.pending = null; L.pd = null; };
   /* 結束資訊：誰贏、為什麼贏、每個人剩幾張、幾點（剩下的牌已經翻開在牌桌上） */
   mod.resultNote = function (tb, nm) {
     var v = tb.view, r = tb.res, L2 = [];
@@ -297,7 +314,7 @@
   mod.guide = {
     student: [
       { h: '怎麼玩', html: '<ol><li>每人先拿 <b>14 張</b>。輪到你時，可以把牌組成「一組」放到桌上，或<b>抽一張</b>。</li><li><b>第一次出牌（破冰）</b>：這一回合可以放<b>好幾組</b>，只要全部是自己手上的牌、點數加起來 <b>30 點以上</b>就可以。破冰這一回合還不能接別人的組合、也不能拆桌上的牌，要等下一回合才可以。</li><li>開局後，可以把牌<b>接到桌上別人的組合</b>，也可以把桌上的牌重新拆開、重組，只要回合結束時桌上每一組都合法。</li><li>第一個把手牌全部放完的人獲勝！</li></ol>' +
-        '<h4>操作方法</h4><ul><li>點一張或好幾張牌（會浮起來）。手上的牌和桌上的牌可以<b>一起多選</b>（例如從桌上不同組拆出好幾張），再點那一組後面的「<b>⬇ 放這裡</b>」一次移過去，或點「<b>＋ 新的一組</b>」。再點一次已選的牌就取消。</li><li>放錯了：選起來再點自己的手牌區可以收回（只限本回合從手上拿出去的牌），或按「<b>↩ 重來</b>」。</li><li>不合法的組合會用紅框標示。全部合法才能按「<b>✔ 完成</b>」。</li></ul>' },
+        '<h4>操作方法</h4><ul><li>點一張或好幾張牌（會浮起來）。手上的牌和桌上的牌可以<b>一起多選</b>（例如從桌上不同組拆出好幾張），再點那一組後面的「<b>⬇ 放這裡</b>」一次移過去，或點「<b>＋ 新的一組</b>」。再點一次已選的牌就取消。</li><li>放錯了：選起來再點自己的手牌區可以收回（只限本回合從手上拿出去的牌），或按「<b>↩ 重來</b>」。</li><li>不合法的組合會用紅框標示。全部合法才能按「<b>✔ 完成</b>」。</li><li>你在排牌時，其他人會<b>即時看到桌面</b>怎麼變（拆了哪組、放了哪幾張，從手上拿出來的牌用黃框標示）；你牌架上的牌他們看不到。等別人排牌時，你也可以一起看。</li></ul>' },
       { h: '合法的組合', html: '<div class="g-figs">' + row([6, 19, 32], '同數字、不同顏色（3～4 張）') + row([0, 1, 2, 3], '同顏色、連續數字（3 張以上）') + row([22, 104, 24], '鬼牌 😀 可以當作任何一張牌') + '</div><p>1 不能接在 13 後面。</p>' },
       { h: '計分方式', html: '<p><b>誰先把手上的牌全部出完，誰就贏</b>（積分榜 +3 分），這是正常的結束方式。如果牌堆被抽完了，遊戲<b>還會繼續</b>：能出牌就繼續出，沒有牌可以出就按「跳過」（如果你其實還有牌能出，系統會先提醒你）。要等到牌堆抽完、而且大家連續一整輪都出不了牌，才會結束，這時候把大家的牌翻開，手上點數最少的人獲勝（數字多少算幾點，鬼牌算 30 點）。</p>' }
     ],
