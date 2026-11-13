@@ -302,5 +302,5 @@ input:focus { border-color: var(--sky); background: #fff; }
 @keyframes hintpulse { 50% { box-shadow: 0 0 0 7px rgba(255,212,0,.35), 0 0 26px 10px rgba(255,200,0,.65); } }
 
 /* 立刻配對：顯眼的對比色大按鈕 */
-#h-pairnow { background: linear-gradient(135deg, #ff7a00, #ff4d2e) !important; color: #fff !important; border: 3px solid #fff !important; font-size: 1.25rem !important; font-weight: 900 !important; padding: 14px 22px !important; min-height: 56px; border-radius: 16px !important; box-shadow: 0 6px 0 #b83200, 0 8px 18px rgba(255,90,0,.45) !important; letter-spacing: .04em; cursor: pointer; }
+#h-pairnow { background: linear-gradient(135deg, #ff7a00, #ff4d2e) !important; color: #fff !important; border: 3px solid #fff !important; font-size: 1.1rem !important; font-weight: 900 !important; padding: 14px 12px !important; width: 100%; white-space: nowrap; min-height: 56px; border-radius: 16px !important; box-shadow: 0 6px 0 #b83200, 0 8px 18px rgba(255,90,0,.45) !important; letter-spacing: .04em; cursor: pointer; }
 #h-pairnow:active { transform: translateY(4px); box-shadow: 0 2px 0 #b83200 !important; }
