@@ -2,7 +2,7 @@
    - 每個生字拆成兩個部件；每個部件各有一張紅色、一張黑色 → 每個生字 4 張牌，可以湊出 2 次這個字。
    - 每人手牌 3 張（開房可改），桌上翻開 4 張，其餘當牌堆。順時鐘輪流。
    - 輪到你：手牌的一張＋桌上翻開的一張能組成生字 → 兩張收到自己桌邊；不能（或不想）就打一張到桌上。之後從牌堆補一張（牌堆沒牌就不補）。
-   - 所有人手牌都出完：桌上還能組成生字的牌，由最後出牌的人收走。
+   - 所有人手牌都出完就結束：桌上剩下的牌作廢，誰都不算分（和撲克牌撿紅點一樣，比較公平）。
    - 計分（開房時選，遊戲中不能改）：一組生字 10 分，或一張紅色部件 10 分。 */
 (function () {
   'use strict';
@@ -129,7 +129,7 @@
     g.sweep = { s: s, w: got };
   }
   function finish(g) {
-    sweep(g);
+    g.sweep = { s: null, w: [], n: g.table.length };   // 桌上剩下的牌作廢
     var a = alive(g), best = -1, bv = -1, tie = false;
     a.forEach(function (s) { var v = score(g, s); if (v > bv) { bv = v; best = s; tie = false; } else if (v === bv) tie = true; });
     g.res = tie ? { w: -1, why: 'tie' } : { w: best, why: 'most', note: bv + ' 分' };
@@ -285,7 +285,7 @@
     var lg = el('span', 'bj-log');
     if (v.last) lg.innerHTML = esc(who(tb, v.last.s)) + (v.last.t ? ' 用「' + esc(v.last.c.p) + '」＋「' + esc(v.last.t.p) + '」組成 <b class="bj-big">' + esc(v.words[v.last.w][0]) + '</b>' : ' 打出「' + esc(v.last.c.p) + '」到桌上');
     else lg.textContent = '桌上翻開 ' + v.table.length + ' 張部件';
-    if (tb.res && v.sweep && v.sweep.w.length) lg.innerHTML += '<br>最後桌上的牌組成 ' + v.sweep.w.map(function (w) { return '「' + esc(v.words[w][0]) + '」'; }).join('') + (v.sweep.s != null ? '，給最後出牌的 ' + esc(who(tb, v.sweep.s)) : '');
+    if (tb.res && v.sweep && v.sweep.n) lg.innerHTML += '<br>桌上剩下 ' + v.sweep.n + ' 張牌作廢，不算分';
     info.appendChild(lg);
     felt.appendChild(info);
     var tbl = el('div', 'bj-board' + (v.table.length > 10 ? ' many' : ''));
@@ -344,7 +344,7 @@
     var h = '<div class="bj-sum">';
     for (var s = 0; s < v.np; s++) h += '<div class="bj-sumrow"><b>' + esc(nm(s)) + '：' + v.scores[s] + ' 分</b>' + (v.won[s].length ? v.won[s].map(function (x) { var w = v.words[x.w]; return '<span class="bj-word"><b>' + esc(w[0]) + '</b><small><em class="' + (x.r[0] ? 'r' : '') + '">' + esc(x.p[0]) + '</em><em class="' + (x.r[1] ? 'r' : '') + '">' + esc(x.p[1]) + '</em></small></span>'; }).join('') : '<span class="bj-none">沒有組成字</span>') + '</div>';
     lines.push({ html: h + '</div>' });
-    if (v.sweep && v.sweep.w.length && v.sweep.s != null) lines.push('最後桌上剩的牌組成 ' + v.sweep.w.map(function (w) { return '「' + v.words[w][0] + '」'; }).join('') + '，給最後出牌的 ' + nm(v.sweep.s));
+    if (v.sweep && v.sweep.n) lines.push('桌上剩下 ' + v.sweep.n + ' 張牌作廢，誰都不算分');
     return lines;
   };
   mod.onReject = function () { L.sent = -1; L.pick = null; };
@@ -454,7 +454,7 @@
   BG.register('bujian', mod);
   mod.guide = {
     student: [
-      { h: '怎麼玩', html: '<ol><li>每張牌上面是一個<b>部件</b>，兩個部件可以組成一個<b>生字</b>，例如「亻」＋「尔」＝「你」。</li><li>每人先拿 3 張手牌，桌上翻開 4 張。</li><li>輪到你時，<b>點一張手牌</b>，桌上可以和它組成生字的部件會發亮，點那一張就把兩張收到自己這邊。</li><li>組不成生字，就選一張按「打到桌上」。</li><li>出完牌後，系統自動幫你從牌堆補一張，換下一位（順時鐘）。</li><li>牌堆沒牌了就不再補牌，大家把手牌出完。最後桌上還能組成生字的牌，給<b>最後出牌的人</b>。</li></ol>' },
+      { h: '怎麼玩', html: '<ol><li>每張牌上面是一個<b>部件</b>，兩個部件可以組成一個<b>生字</b>，例如「亻」＋「尔」＝「你」。</li><li>每人先拿 3 張手牌，桌上翻開 4 張。</li><li>輪到你時，<b>點一張手牌</b>，桌上可以和它組成生字的部件會發亮，點那一張就把兩張收到自己這邊。</li><li>組不成生字，就選一張按「打到桌上」。</li><li>出完牌後，系統自動幫你從牌堆補一張，換下一位（順時鐘）。</li><li>牌堆沒牌了就不再補牌，大家把手牌出完。大家都出完就結束，<b>桌上剩下的牌作廢</b>，誰都不算分。</li></ol>' },
       { h: '注意', html: '<ul><li>一定要用「<b>手上的一張</b>」配「<b>桌上的一張</b>」。</li><li>每個生字有兩組牌，所以同一個字可以組兩次。</li><li>按「🔤 生字表」可以看這次有哪些生字。</li></ul>' },
       { h: '計分方式', html: '<p>老師開桌時會選一種，這一局不會改：</p><table class="g-tbl"><tr><th>計分方式</th><th>怎麼算</th></tr><tr><td>🀄 一組生字 10 分</td><td>組成幾個字，就是幾個 10 分</td></tr><tr><td>🔴 一張紅色部件 10 分</td><td>每個部件有一張<b style="color:#c8102e">紅色</b>、一張黑色；收回來的紅色部件一張 10 分，黑色不算分</td></tr></table><p>分數最高的人獲勝（積分榜 +3 分）。和電腦玩的不列入總分。</p>' }
     ],
@@ -462,7 +462,7 @@
       { h: '主持流程', html: '<ol><li>首頁「語文」→「部件撿紅點」開房間。</li><li>在 QR code 上方先選好<b>這次要玩的生字題庫</b>、<b>計分方式</b>和<b>手牌張數</b>，再讓學生掃碼。</li><li>每桌 2～4 人，人數不夠可以讓電腦補位。</li><li>老師端每桌會顯示桌上的部件，以及每個人組成的字和分數。</li></ol>' },
       { h: '做部件資料、匯入、開始玩', html: HOWTO + '<p>每個字只能拆成兩個部件，系統會自動做出 4 張牌（每個部件一紅一黑）。不同的字可以共用部件（例如「你」「他」都有「亻」）。建議至少 5 個生字。部件資料來自你的漢字部件庫（hanzi-component-detective 的 hanzi_db.json）。</p><p>內建的「範例（試玩用）」是 Claude 自己挑的 10 個字，只是讓老師先試玩，上課請換成課本的生字。</p>' },
       { h: '給 AI 的提示詞', html: '<p>老師頁面的「🤖 複製給 AI 的提示詞」可以一鍵複製。內容如下：</p><pre class="bj-pre">' + esc(AI_PROMPT) + '</pre>' },
-      { h: '規則說明', html: '<p>以下幾點是依老師的實體卡牌玩法設計，有些細節是 Claude 先自訂的，可以再調整：</p><ul><li>一次只能組一個字，組完一樣要補一張牌。</li><li>一定要「手牌＋桌上」配對，手上兩張或桌上兩張剛好能組成字都不算。</li><li>組得出字的時候也可以選擇不組、直接打到桌上。</li><li>最後桌上剩下還能組成字的牌，給最後出牌的人。</li></ul><h4>教學重點</h4><ul><li>認識生字的<b>部件</b>與<b>結構</b>（左右、上下）。</li><li>組字時可以請學生說出這個字、造一個詞，加深印象。</li><li>形近字放在同一份題庫（例如「清、晴、請」），學生要分辨部件才能組對。</li></ul>' }
+      { h: '規則說明', html: '<p>以下幾點是依老師的實體卡牌玩法設計，有些細節是 Claude 先自訂的，可以再調整：</p><ul><li>一次只能組一個字，組完一樣要補一張牌。</li><li>一定要「手牌＋桌上」配對，手上兩張或桌上兩張剛好能組成字都不算。</li><li>組得出字的時候也可以選擇不組、直接打到桌上。</li><li>所有人手牌出完就結束，桌上剩下的牌作廢、誰都不算分（老師確認，和撲克牌撿紅點一樣，比較公平）。</li></ul><h4>教學重點</h4><ul><li>認識生字的<b>部件</b>與<b>結構</b>（左右、上下）。</li><li>組字時可以請學生說出這個字、造一個詞，加深印象。</li><li>形近字放在同一份題庫（例如「清、晴、請」），學生要分辨部件才能組對。</li></ul>' }
     ]
   };
 })();
