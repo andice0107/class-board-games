@@ -130,9 +130,11 @@
   }
   function finish(g) {
     g.sweep = { s: null, w: [], n: g.table.length };   // 桌上剩下的牌作廢
-    var a = alive(g), best = -1, bv = -1, tie = false;
-    a.forEach(function (s) { var v = score(g, s); if (v > bv) { bv = v; best = s; tie = false; } else if (v === bv) tie = true; });
-    g.res = tie ? { w: -1, why: 'tie' } : { w: best, why: 'most', note: bv + ' 分' };
+    var a = alive(g), bv = -1, top = [];
+    a.forEach(function (s) { var v = score(g, s); if (v > bv) { bv = v; top = [s]; } else if (v === bv) top.push(s); });
+    if (top.length === a.length && a.length > 1) g.res = { w: -1, why: 'tie' };            // 大家同分才算平手
+    else if (top.length > 1) g.res = { ws: top, why: 'most', note: bv + ' 分' };          // 幾個人並列最高分：都算贏
+    else g.res = { w: top[0], why: 'most', note: bv + ' 分' };
   }
   function afterPlay(g, s) {
     if (g.deck.length) { g.hands[s].push(g.deck.pop()); g.drew = 1; } else g.drew = 0;
@@ -220,21 +222,18 @@
       });
       return { t: 'play', c: best.c.i, take: null, n: g.cnt };
     },
-    hintDesc: '會亮出「手牌裡可以和桌上的部件組成生字」的牌，以及桌上對應的牌；如果都湊不出來，會亮出比較適合打出去的牌。',
-    tipDesc: '輪到你卻還沒出牌時，提醒你先找能組成生字的部件；湊不出來時提醒你打一張牌到桌上。',
+    hintDesc: '按一次會顯示 6 秒：列出所有生字是哪個部件加哪個部件；如果手牌和桌上的牌可以組成生字，也會把那幾張牌亮起來。提示用完就不會再出現。',
+    tipDesc: '輪到你卻還沒出牌時，提醒你怎麼操作（不會告訴你哪幾張能組成生字）。',
     hint: function (g, seat) {
       if (g.res || g.turn !== seat || g.out.indexOf(seat) >= 0) return null;
       var ps = pairs(g, g.hands[seat]), hl = [];
-      if (ps.length) {
-        ps.forEach(function (p) { if (hl.indexOf(String(p.c.i)) < 0) hl.push(String(p.c.i)); if (hl.indexOf(String(p.t.i)) < 0) hl.push(String(p.t.i)); });
-        return { msg: '亮黃框的手牌可以和桌上亮黃框的部件組成生字。想一想：兩個部件合起來是哪一個字？', hl: hl };
-      }
-      var h = g.hands[seat].slice().sort(function (a, b) { return (g.mode === 'red' ? a.r - b.r : 0) || partnerLeft(g, a, seat) - partnerLeft(g, b, seat); });
-      return { msg: '你的手牌和桌上的部件都組不成生字，這一輪要打一張到桌上。' + (g.mode === 'red' ? '亮黃框的是比較適合打出去的牌（黑色的不算分）。' : '亮黃框的是比較適合打出去的牌。'), hl: [String(h[0].i)] };
+      ps.forEach(function (p) { if (hl.indexOf(String(p.c.i)) < 0) hl.push(String(p.c.i)); if (hl.indexOf(String(p.t.i)) < 0) hl.push(String(p.t.i)); });
+      var list = g.words.map(function (w) { return Array.from(w[0] + '＝' + w[1] + '＋' + w[2]).join('\u2060'); }).join('　');   // \u2060：同一個生字的拆法不要被斷行切開
+      return { msg: list + (ps.length ? '　👉 亮框的手牌和桌上的牌可以組成生字！' : '　👉 這一輪你的手牌組不成生字，打一張到桌上吧。'), hl: hl, dur: 6000 };
     },
     nudge: function (g, seat) {
       if (g.res || g.turn !== seat || g.out.indexOf(seat) >= 0) return null;
-      return pairs(g, g.hands[seat]).length ? '輪到你了：先點一張手牌，桌上能和它組成生字的部件會發亮，點那一張就能收回來。' : '你的手牌都組不成生字喔！請選一張牌，按「打到桌上」。';
+      return '輪到你了：看看手上的部件和桌上的部件，能不能組成生字？能的話先點手牌、再點桌上那張；不能的話把一張手牌點兩下，打到桌上。';
     },
     hostView: function (g) {
       var h = '<div class="bj-host"><div class="bj-host-tb">' + g.table.map(function (c) { return '<span class="bj-mini' + (c.r ? ' red' : '') + '">' + esc(c.p) + '</span>'; }).join('') + '</div><div class="bj-host-seats">';
@@ -270,12 +269,11 @@
   mod.render = function (box, ctx) {
     var tb = ctx.tb, v = tb.view, seat = tb.seat, out = v.out.indexOf(seat) >= 0, myTurn = !tb.res && !out && v.turn === seat && L.sent !== v.cnt;
     var sel = L.sel != null ? cardOf(v.hand, L.sel) : null; if (!sel) L.sel = null;
-    var can = sel ? v.table.filter(function (t) { return combosV(v, sel, t).length; }) : [];
     var wrap = el('div', 'pk-table bj-table');
     var st = el('div', 'pk-status');
     if (tb.res) st.textContent = '這局結束了';
     else if (out) st.textContent = '你已經認輸，正在觀看';
-    else if (myTurn) { st.textContent = !sel ? '輪到你：先點一張手牌' : can.length ? '點桌上發亮的部件，組成生字收回來' : '這張組不成生字，按「打到桌上」'; st.className = 'pk-status me'; }
+    else if (myTurn) { st.textContent = !sel ? '輪到你：先點一張手牌' : '點桌上的部件組成生字，或再點一次這張打到桌上'; st.className = 'pk-status me'; }
     else st.textContent = '輪到 ' + who(tb, v.turn);
     wrap.appendChild(st);
     wrap.appendChild(PKUI.opps(tb, { np: v.np, counts: v.counts, out: v.out, turn: v.turn }, seat, function (i) { return '⭐ ' + v.scores[i] + ' 分'; }, short));
@@ -290,10 +288,12 @@
     felt.appendChild(info);
     var tbl = el('div', 'bj-board' + (v.table.length > 10 ? ' many' : ''));
     v.table.forEach(function (c) {
-      var b = card(c, (can.indexOf(c) >= 0 && myTurn ? 'can' : '') + (v.last && !v.last.t && v.last.c.i === c.i ? ' new' : ''));
+      var b = card(c, (v.last && !v.last.t && v.last.c.i === c.i ? ' new' : ''));
       b.addEventListener('click', function () {
-        if (!myTurn || !sel || can.indexOf(c) < 0) return;
+        if (!myTurn) return;
+        if (!sel) { ctx.toast('先點一張自己的手牌，再點桌上的部件'); return; }
         var ws = combosV(v, sel, c);
+        if (!ws.length) { ctx.toast('「' + sel.p + '」和「' + c.p + '」組不成生字，再想想看！'); ctx.snd('error'); return; }
         if (ws.length > 1) { L.pick = { c: sel.i, t: c.i, ws: ws }; ctx.snd('tap'); ctx.rerender(); return; }
         send({ t: 'play', c: sel.i, take: c.i, w: ws[0] });
       });
@@ -310,9 +310,12 @@
     var hd = el('div', 'bj-hand');
     hd.style.setProperty('--hn', Math.max(3, v.hn));
     v.hand.forEach(function (c) {
-      var ok = v.table.some(function (t) { return combosV(v, c, t).length; });
-      var b = card(c, (sel && sel.i === c.i ? 'sel' : '') + (myTurn && !ok ? ' dim' : ''));
-      b.addEventListener('click', function () { if (!myTurn) return; L.sel = L.sel === c.i ? null : c.i; L.pick = null; ctx.snd('tap'); ctx.rerender(); });
+      var b = card(c, sel && sel.i === c.i ? 'sel' : '');
+      b.addEventListener('click', function () {
+        if (!myTurn) return;
+        if (L.sel === c.i) { send({ t: 'play', c: c.i, take: null }); return; }   // 同一張點兩次：打到桌上
+        L.sel = c.i; L.pick = null; ctx.snd('tap'); ctx.rerender();
+      });
       hd.appendChild(b);
     });
     for (var k = v.hand.length; k < v.hn; k++) hd.appendChild(el('span', 'bj-card ghost'));
@@ -329,8 +332,8 @@
     }
     if (!tb.res && !out) {
       var tools = el('div', 'pk-tools');
-      if (myTurn && sel) tools.appendChild(ctx.button('pk-btn' + (can.length ? '' : ' go'), can.length ? '不組，打到桌上' : '打到桌上', function () { send({ t: 'play', c: sel.i, take: null }); }));
-      tools.appendChild(ctx.button('pk-btn', '🔤 生字表', function () { ctx.toast('這次的生字：' + v.words.map(function (w) { return w[0] + '（' + w[1] + '＋' + w[2] + '）'; }).join('、')); }));
+      if (myTurn && sel) tools.appendChild(ctx.button('pk-btn go', '打到桌上', function () { send({ t: 'play', c: sel.i, take: null }); }));
+      tools.appendChild(ctx.button('pk-btn', '🔤 生字表', function () { ctx.toast('這次的生字：' + v.words.map(function (w) { return w[0]; }).join('、')); }));
       tools.appendChild(ctx.button('pk-btn', '🏳️', function () { if (confirm('確定要認輸嗎？')) ctx.send('resign', {}); }));
       tools.appendChild(ctx.emoteButton('pk-btn'));
       wrap.appendChild(tools);
@@ -340,7 +343,7 @@
   function combosV(v, a, b) { var out = []; v.words.forEach(function (w, i) { if ((w[1] === a.p && w[2] === b.p) || (w[1] === b.p && w[2] === a.p)) out.push(i); }); return out; }
   mod.resultNote = function (tb, nm) {
     var v = tb.view, r = tb.res; if (!v || !v.won || !r) return null;
-    var lines = [r.w >= 0 ? '🏆 獲勝：' + nm(r.w) + '（' + v.scores[r.w] + ' 分）' : '🤝 分數一樣，平手', v.mode === 'red' ? '計分：一張紅色部件 10 分' : '計分：一組生字 10 分'];
+    var lines = [r.ws ? '🏆 並列最高分，一起獲勝：' + r.ws.map(nm).join('、') + '（' + v.scores[r.ws[0]] + ' 分）' : r.w >= 0 ? '🏆 獲勝：' + nm(r.w) + '（' + v.scores[r.w] + ' 分）' : '🤝 大家分數一樣，平手', v.mode === 'red' ? '計分：一張紅色部件 10 分' : '計分：一組生字 10 分'];
     var h = '<div class="bj-sum">';
     for (var s = 0; s < v.np; s++) h += '<div class="bj-sumrow"><b>' + esc(nm(s)) + '：' + v.scores[s] + ' 分</b>' + (v.won[s].length ? v.won[s].map(function (x) { var w = v.words[x.w]; return '<span class="bj-word"><b>' + esc(w[0]) + '</b><small><em class="' + (x.r[0] ? 'r' : '') + '">' + esc(x.p[0]) + '</em><em class="' + (x.r[1] ? 'r' : '') + '">' + esc(x.p[1]) + '</em></small></span>'; }).join('') : '<span class="bj-none">沒有組成字</span>') + '</div>';
     lines.push({ html: h + '</div>' });
@@ -454,8 +457,8 @@
   BG.register('bujian', mod);
   mod.guide = {
     student: [
-      { h: '怎麼玩', html: '<ol><li>每張牌上面是一個<b>部件</b>，兩個部件可以組成一個<b>生字</b>，例如「亻」＋「尔」＝「你」。</li><li>每人先拿 3 張手牌，桌上翻開 4 張。</li><li>輪到你時，<b>點一張手牌</b>，桌上可以和它組成生字的部件會發亮，點那一張就把兩張收到自己這邊。</li><li>組不成生字，就選一張按「打到桌上」。</li><li>出完牌後，系統自動幫你從牌堆補一張，換下一位（順時鐘）。</li><li>牌堆沒牌了就不再補牌，大家把手牌出完。大家都出完就結束，<b>桌上剩下的牌作廢</b>，誰都不算分。</li></ol>' },
-      { h: '注意', html: '<ul><li>一定要用「<b>手上的一張</b>」配「<b>桌上的一張</b>」。</li><li>每個生字有兩組牌，所以同一個字可以組兩次。</li><li>按「🔤 生字表」可以看這次有哪些生字。</li></ul>' },
+      { h: '怎麼玩', html: '<ol><li>每張牌上面是一個<b>部件</b>，兩個部件可以組成一個<b>生字</b>，例如「亻」＋「尔」＝「你」。</li><li>每人先拿 3 張手牌，桌上翻開 4 張。</li><li>輪到你時，自己看看手上的部件和桌上的部件能不能組成生字：可以的話，<b>先點手牌、再點桌上那張</b>，兩張就收到自己這邊。</li><li>組不成生字，就把一張手牌<b>點兩下</b>（或點一下再按「打到桌上」），打到桌上。</li><li>出完牌後，系統自動幫你從牌堆補一張，換下一位（順時鐘）。</li><li>牌堆沒牌了就不再補牌，大家把手牌出完。大家都出完就結束，<b>桌上剩下的牌作廢</b>，誰都不算分。</li></ol>' },
+      { h: '注意', html: '<ul><li>一定要用「<b>手上的一張</b>」配「<b>桌上的一張</b>」。</li><li>每個生字有兩組牌，所以同一個字可以組兩次。</li><li>按「🔤 生字表」可以看這次有哪些生字。</li><li>想不出來可以按「💡 提示」：6 秒內會列出每個生字是哪兩個部件，能組的牌也會亮起來。提示次數有限，用完就沒有了。</li></ul>' },
       { h: '計分方式', html: '<p>老師開桌時會選一種，這一局不會改：</p><table class="g-tbl"><tr><th>計分方式</th><th>怎麼算</th></tr><tr><td>🀄 一組生字 10 分</td><td>組成幾個字，就是幾個 10 分</td></tr><tr><td>🔴 一張紅色部件 10 分</td><td>每個部件有一張<b style="color:#c8102e">紅色</b>、一張黑色；收回來的紅色部件一張 10 分，黑色不算分</td></tr></table><p>分數最高的人獲勝（積分榜 +3 分）。和電腦玩的不列入總分。</p>' }
     ],
     teacher: [

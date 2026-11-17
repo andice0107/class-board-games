@@ -190,13 +190,13 @@
   function secsLeft() { var A = S && S.aid; if (!A || A.tl == null) return ''; if (A.pz) return Math.ceil(A.tl / 1000); return Math.max(0, Math.ceil((A.tl - (Date.now() - S._rt)) / 1000)); }
   function askHint() {
     var A = S && S.aid; if (!A) return;
-    if (A.hint) { delete dismissed['h' + A.hint.k]; aidBanner(); return; }
+    if (A.hint && !A.hint.dur) { delete dismissed['h' + A.hint.k]; aidBanner(); return; }
     if (A.h === 0) { toast('這局的提示次數用完了，自己想想看！'); snd.play('error'); return; }
     send('hint'); snd.play('tap');
   }
   /* 被提示指到的牌／棋子加上閃亮框（遊戲用 data-h 或撲克牌的 data-c 標記） */
   function hintMark() {
-    var h = S && S.aid && S.aid.hint; if (!h || !h.hl || !h.hl.length) return;
+    var h = S && S.aid && S.aid.hint; if (!h || !h.hl || !h.hl.length || dismissed['h' + h.k]) return;
     var set = {}; h.hl.forEach(function (x) { set[x] = 1; });
     [].forEach.call(app.querySelectorAll('[data-h],[data-c],[data-id]'), function (n) {
       var a = n.getAttribute('data-h'), b = n.getAttribute('data-c'), c = n.getAttribute('data-id');
@@ -207,7 +207,10 @@
     [].forEach.call(document.querySelectorAll('.aid-banner'), function (n) { n.remove(); });
     var A = S && S.aid; if (!A || !S.tb || S.tb.res) return;
     var items = [];
-    if (A.hint && !dismissed['h' + A.hint.k]) items.push({ c: 'hint', t: '💡 提示：' + A.hint.msg, k: 'h' + A.hint.k });
+    if (A.hint && !dismissed['h' + A.hint.k]) {
+      items.push({ c: 'hint', t: '💡 提示：' + A.hint.msg, k: 'h' + A.hint.k });
+      if (A.hint.dur && aidBanner.dk !== A.hint.k) { var hk = A.hint.k; aidBanner.dk = hk; setTimeout(function () { dismissed['h' + hk] = 1; aidBanner(); [].forEach.call(app.querySelectorAll('.hint-hl'), function (n) { n.classList.remove('hint-hl'); }); }, A.hint.dur); }   // 限時提示：時間到自動收起來
+    }
     if (A.tip && !dismissed['t' + A.tip + A.tk]) items.push({ c: 'tip', t: '🌟 溫馨小提醒：' + A.tip, k: 't' + A.tip + A.tk });
     if (!items.length) return;
     var box = el('div', 'aid-banner');

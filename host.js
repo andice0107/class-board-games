@@ -203,13 +203,13 @@
     if (!A.hint || !GAME.hint) return say(p, A.hint ? '這個遊戲目前沒有提示。' : '老師目前沒有開放提示功能。');
     if (T.g.res) return;
     T.hint = T.hint || {};
-    if (T.hint[p.pid]) { T.hint[p.pid].k = Date.now(); return send(p); }   // 已經有提示了：再顯示一次，不重複扣次數
+    if (T.hint[p.pid] && !T.hint[p.pid].dur) { T.hint[p.pid].k = Date.now(); return send(p); }   // 有時間限制的提示（例如只顯示 6 秒），再按一次算新的一次   // 已經有提示了：再顯示一次，不重複扣次數
     var left = hleft(T, p); if (left === 0) return say(p, '這局的提示次數用完了，自己想想看！');
     var ac = actingSeats(T); if (ac.indexOf(seat) < 0 && watchSeats(T, ac).indexOf(seat) < 0) return say(p, '還沒輪到你喔，輪到你的時候再按 💡 提示。');
     var r = null; try { r = GAME.hint(T.g, seat); } catch (e) {}
     if (!r || !r.msg) return say(p, '目前想不到特別的提示，自己再看看。');
     if (!r.free) { T.hu = T.hu || {}; T.hu[p.pid] = (T.hu[p.pid] || 0) + 1; }
-    T.hint[p.pid] = { msg: r.msg, hl: r.hl || [], k: Date.now() };
+    T.hint[p.pid] = { msg: r.msg, hl: r.hl || [], k: Date.now() }; if (r.dur) T.hint[p.pid].dur = r.dur;
     send(p); render(); save();
   }
   function timeUp(T, seat, p) {
