@@ -406,6 +406,18 @@
     if (GAME.botWait && botTimers[T.id] && T.g && botCnt[T.id] !== T.g.cnt) { clearTimeout(botTimers[T.id]); delete botTimers[T.id]; }
     if (botTimers[T.id] || !T.g || T.g.res || !GAME.botTurn || T.pz) return;
     if (GAME.botWait) return raceBots(T);
+    if (GAME.autoAct) for (var j = 0; j < T.seats.length; j++) {   // 例如麻將聽牌：真人玩家交給系統自動摸打
+      var aa = GAME.autoAct(T.g, j); if (!aa) continue;
+      (function (seat, c0) {
+        botTimers[T.id] = setTimeout(function () {
+          delete botTimers[T.id];
+          if (S.tables[T.id] !== T || T.g.res || T.pz || T.g.cnt !== c0) return runBots(T);
+          var x = GAME.autoAct(T.g, seat);
+          if (x && GAME.act(T.g, seat, x.a, function () {})) touch(T); else runBots(T);
+        }, aa.wait + (GAME.holdLeft ? GAME.holdLeft(T.g) : 0));
+      })(j, T.g.cnt);
+      return;
+    }
     for (var i = 0; i < T.seats.length; i++) {
       var id = T.seats[i]; if (!BG.isBot(id)) continue;
       var lv = +id.split(':')[1];

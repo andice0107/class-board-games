@@ -25,9 +25,7 @@
     }
     g.turn = s; g.phase = 'discard'; g.kanDraw = !!back && g.kanDraw;
     if (g.out.indexOf(s) >= 0) autoOut(g, s);
-    else if (g.ting && g.ting[s]) { // 聽牌中：摸到能胡就自動自摸，不能胡就自動把摸到的牌打出去
-      if (MJ.isWin(MJ.counts(g.hands[s]))) win(g, s, g.drawn, true); else autoOut(g, s);
-    }
+    else if (g.ting && g.ting[s]) g.tingWait = 1000 + Math.floor(Math.random() * 2000); // 聽牌中：老師端隨機等 1～3 秒再自動摸打（看起來像在想）
     return true;
   }
   /* 八仙過海：一個人收齊 8 張花；七搶一：你有 7 張花，別人摸到第 8 張，你直接胡 */
@@ -214,6 +212,11 @@
       return g;
     },
     holdLeft: holdLeft,
+    /* 聽牌中的真人玩家：由老師端代為自摸或打出剛摸到的牌 */
+    autoAct: function (g, seat) {
+      if (g.res || !g.ting || !g.ting[seat] || g.phase !== 'discard' || g.turn !== seat || g.drawn == null) return null;
+      return { a: MJ.isWin(MJ.counts(g.hands[seat])) ? { t: 'tsumo', n: g.cnt } : { t: 'discard', tile: g.drawn, n: g.cnt }, wait: g.tingWait || 1500 };
+    },
     turnSeat: function (g) { return g.phase === 'discard' ? g.turn : -1; },
     /* ---- 提示／小提醒（老師端統一控制）---- */
     acting: function (g) {
