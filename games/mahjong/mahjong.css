@@ -121,3 +121,7 @@
 .mj-tingask { display: flex; flex-direction: column; align-items: center; gap: 6px; background: #fff8e1; color: #3b2a00; border: 3px solid #ff8a3d; border-radius: 14px; padding: 8px 12px; width: 100%; box-sizing: border-box; }
 .mj-tingask small { font-weight: 700; color: #7a2e00; text-align: center; }
 .mj-tingask .mj-btn.ghost { background: #eee; color: #333; }
+
+.mj-cmp { width: 100%; box-sizing: border-box; background: #fff8e1; color: #3b2a00; border: 2px solid #ff8a3d; border-radius: 12px; padding: 4px 10px; display: flex; flex-direction: column; gap: 1px; font-size: 14px; line-height: 1.35; }
+.mj-cmprow { display: flex; gap: 6px; align-items: baseline; } .mj-cmprow b { white-space: nowrap; color: #7a2e00; } .mj-cmprow em { font-style: normal; font-weight: 900; color: #c2410c; } .mj-cmprow i { color: #888; }
+.mj-cmp small { font-weight: 700; color: #7a2e00; }
