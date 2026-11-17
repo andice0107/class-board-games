@@ -1,0 +1,62 @@
+/* 部件撿紅點 */
+.bj-table { background: radial-gradient(ellipse at 50% 35%, #2f6b4f, #1d4a36 70%, #163a2b); }
+.bj-card { --w: 64px; position: relative; width: var(--w); height: calc(var(--w) * 1.3); flex: none; padding: 0; border: 0; border-radius: 10px; background: linear-gradient(#fffdf6, #f3ead2); box-shadow: 0 3px 0 #b9a77a, 0 4px 8px rgba(0,0,0,.25); display: flex; align-items: center; justify-content: center; color: #1b1b22; transition: transform .15s, box-shadow .15s; -webkit-tap-highlight-color: transparent; }
+.bj-card b { font-family: 'LXGW WenKai TC', 'BiauKai', 'DFKai-SB', 'Kaiti TC', serif; font-weight: 700; font-size: calc(var(--w) * .62); line-height: 1; }
+.bj-card.red { color: #c8102e; }
+.bj-card .bj-dot { position: absolute; left: 6px; top: 6px; width: 9px; height: 9px; border-radius: 50%; background: #333; }
+.bj-card.red .bj-dot { background: #c8102e; }
+.bj-card.sel { transform: translateY(-10px); box-shadow: 0 0 0 3px #f4d27a, 0 0 14px #f4d27a; }
+.bj-card.can { transform: translateY(-6px); box-shadow: 0 0 0 3px #f4d27a, 0 0 14px #f4d27a; cursor: pointer; animation: pkIn .3s; }
+.bj-card.dim { opacity: .55; }
+.bj-card.new { animation: pkIn .4s cubic-bezier(.2,1.3,.4,1); }
+.bj-card.ghost { background: rgba(255,255,255,.08); box-shadow: inset 0 0 0 2px rgba(255,255,255,.2); }
+.bj-info { display: flex; align-items: center; gap: 10px; width: 100%; justify-content: center; }
+.bj-deck { position: relative; width: 44px; height: 56px; flex: none; border-radius: 8px; background: repeating-linear-gradient(45deg, #8a2c2c 0 6px, #a33a3a 6px 12px); border: 2px solid #fdf6e3; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; text-shadow: 0 1px 2px #000; }
+.bj-deck b { font-size: 18px; } .bj-deck small { font-size: 10px; }
+.bj-log { font-size: 14px; line-height: 1.45; color: #fff4e0; text-align: left; }
+.bj-big { font-family: 'LXGW WenKai TC', serif; font-size: 24px; color: #ffe08a; }
+.bj-board { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; padding: 6px 4px 2px; min-height: 92px; }
+.bj-board .bj-card { --w: 56px; }
+.bj-board.many .bj-card { --w: 46px; }
+.bj-hand { display: flex; justify-content: center; gap: 10px; padding: 8px 4px 4px; }
+.bj-hand .bj-card { --w: 74px; }
+.bj-won { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 6px 4px 0; font-size: 13px; color: #fff4e0; min-height: 40px; }
+.bj-wl { font-weight: 800; } .bj-none { opacity: .6; }
+.bj-word { display: inline-flex; flex-direction: column; align-items: center; background: #fdf6e3; color: #1b1b22; border-radius: 8px; padding: 1px 5px 2px; line-height: 1.05; box-shadow: 0 2px 0 #b9a77a; }
+.bj-word b { font-family: 'LXGW WenKai TC', serif; font-size: 22px; }
+.bj-word small { font-size: 10px; display: flex; gap: 2px; } .bj-word em { font-style: normal; color: #333; } .bj-word em.r { color: #c8102e; font-weight: 900; }
+.bj-pick { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; background: #fff8e1; color: #3b2a00; border-radius: 12px; padding: 8px; font-weight: 800; width: 100%; box-sizing: border-box; }
+.bj-pick .pk-btn { font-family: 'LXGW WenKai TC', serif; font-size: 24px; }
+.bj-sum { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+.bj-sumrow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.bj-sumrow > b { margin-right: 4px; }
+/* 老師端 */
+.bj-host-tb { display: flex; flex-wrap: wrap; gap: 3px; justify-content: center; }
+.bj-mini { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 30px; border-radius: 5px; background: #fffdf6; color: #1b1b22; font-family: 'LXGW WenKai TC', serif; font-size: 17px; box-shadow: 0 1px 0 #b9a77a; }
+.bj-mini.red { color: #c8102e; }
+.bj-host-seats { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 4px; font-size: 13px; }
+.bj-hs { display: inline-flex; align-items: center; gap: 3px; } .bj-hs i { width: 9px; height: 9px; border-radius: 50%; } .bj-hs.out { opacity: .5; }
+.bj-panel { background: #fff8e1; color: #3b2a00; border: 3px solid #ff8a3d; border-radius: 14px; padding: 10px 12px; margin: 8px 0; display: flex; flex-direction: column; gap: 6px; }
+.bj-panel h3 { margin: 0; font-size: 17px; }
+.bj-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.bj-chip { background: #fff; border: 1px solid #e5c98a; border-radius: 8px; padding: 1px 6px; font-family: 'LXGW WenKai TC', serif; font-size: 16px; }
+.bj-note { color: #7a4a00; }
+.bj-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.bj-edit-ov { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 300; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.bj-edit { background: #fff; color: #222; border-radius: 16px; padding: 16px; width: min(560px, 100%); max-height: 92vh; overflow: auto; display: flex; flex-direction: column; gap: 6px; }
+.bj-edit h3 { margin: 0 0 4px; } .bj-edit label { font-weight: 800; font-size: 14px; }
+.bj-edit input, .bj-edit textarea { font-size: 17px; padding: 8px; border-radius: 10px; border: 2px solid #ddd; font-family: 'LXGW WenKai TC', inherit; box-sizing: border-box; width: 100%; }
+.bj-edit input[type=file] { border: 0; padding: 0; width: auto; font-size: 14px; }
+.bj-msg { white-space: pre-wrap; background: #f1fbf4; color: #155c3a; border-radius: 8px; padding: 6px 8px; margin: 0; font-size: 14px; font-family: inherit; }
+.bj-msg.err { background: #fff1f0; color: #a61b1b; }
+/* 用滿整個畫面：牌桌往下撐開，牌的大小跟著螢幕高度 */
+.bj-table { justify-content: space-between; }
+.bj-table .bj-felt { flex: 1 1 auto; }
+.bj-board .bj-card { --w: min(calc(var(--vh, 1vh) * 10), 110px); }
+.bj-board.many .bj-card { --w: min(calc(var(--vh, 1vh) * 7.5), 84px); }
+.bj-hand .bj-card { --w: min(calc(var(--vh, 1vh) * 12), calc((var(--vw, 1vw) * 100 - 60px) / var(--hn, 3) - 12px), 140px); }
+.bj-word b { font-size: max(22px, calc(var(--vh, 1vh) * 2.8)); }
+.bj-tip { margin: 0; font-size: 14px; color: #555; }
+.bj-howto { padding-left: 20px; line-height: 1.6; } .bj-howto li { margin-bottom: 6px; } .bj-howto ul { padding-left: 18px; }
+.bj-edit .bj-auto { flex: 1; min-width: 160px; width: auto; }
+.bj-pre { white-space: pre-wrap; background: #f6f6f6; border-radius: 8px; padding: 8px; font-size: 13px; }
