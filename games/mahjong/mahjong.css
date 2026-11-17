@@ -108,3 +108,12 @@
 @keyframes mjfall { 0% { transform: translateY(-20px) rotate(0); } 100% { transform: translateY(110vh) rotate(720deg); } }
 @keyframes mjhupop { 0% { transform: scale(.1) rotate(-20deg); opacity: 0; } 100% { transform: scale(1) rotate(0); opacity: 1; } }
 @keyframes mjhupulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+
+/* 聽牌 */
+.mj-btn.ting { background: linear-gradient(#ff8a3d, #e8590c); color: #fff; }
+.mj-ting { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; background: #0003; border-radius: 12px; padding: 4px 8px; font-weight: 800; }
+.mj-ting.on { background: #ffe8cc; color: #7a2e00; box-shadow: 0 0 0 2px #ff8a3d; }
+.mj-ting span { display: inline-flex; align-items: center; gap: 2px; } .mj-ting .mj-t { width: 24px; height: auto; } .mj-ting small { font-weight: 700; opacity: .8; }
+.mj-ting.on .mj-btn.ghost { background: #fff; color: #7a2e00; }
+.mj-tingauto { font-weight: 800; color: #ffe08a; padding: 6px; }
+.mj-ting { margin-top: 8px; position: relative; z-index: 1; }
