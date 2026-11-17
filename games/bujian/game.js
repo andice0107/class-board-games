@@ -112,7 +112,7 @@
   function combos(g, a, b) { var out = []; g.words.forEach(function (w, i) { if ((w[1] === a.p && w[2] === b.p) || (w[1] === b.p && w[2] === a.p)) out.push(i); }); return out; }
   function cardOf(list, id) { for (var i = 0; i < list.length; i++) if (list[i].i === id) return list[i]; return null; }
   function setPts(g, set) { return g.mode === 'red' ? (set.r[0] + set.r[1]) * 10 : 10; }
-  function score(g, s) { return g.won[s].reduce(function (a, x) { return a + setPts(g, x); }, 0); }
+  function score(g, s) { return g.won[s].reduce(function (a, x) { return a + setPts(g, x) + (x.b || 0); }, 0); }   // x.b：老師給的寫字加分
   function alive(g) { var a = []; for (var s = 0; s < g.np; s++) if (g.out.indexOf(s) < 0) a.push(s); return a; }
   function nextSeat(g, s) { for (var k = 1; k <= g.np; k++) { var n = (s + k) % g.np; if (g.out.indexOf(n) < 0) return n; } return s; }
   function pairs(g, hand) { var o = []; hand.forEach(function (c) { g.table.forEach(function (t) { var w = combos(g, c, t); if (w.length) o.push({ c: c, t: t, w: w[0] }); }); }); return o; }
@@ -147,6 +147,7 @@
   }
   function knock(g, seat, why) {
     if (g.out.indexOf(seat) >= 0) return;
+    if (g.wr && g.wr.s === seat) g.wr = null;   // 正在寫字的人離開：直接跳過寫字
     g.out.push(seat); g.table = g.table.concat(g.hands[seat]); g.hands[seat] = [];
     var a = alive(g); if (a.length <= 1) { g.res = { w: a.length ? a[0] : -1, why: why }; return; }
     if (g.turn === seat) { var n = nextSeat(g, seat), guard = 0; while (!g.hands[n].length && guard++ < g.np) n = nextSeat(g, n); g.turn = n; }
@@ -175,7 +176,7 @@
       words.forEach(function (w) { [w[1], w[2]].forEach(function (p) { deck.push({ i: id++, p: p, r: 1 }); deck.push({ i: id++, p: p, r: 0 }); }); });
       shuffle(deck);
       var hn = +o.hand || 3; while (hn > 1 && n * hn + 2 > deck.length) hn--;
-      var g = { np: n, mode: o.score === 'red' ? 'red' : 'set', hn: hn, bank: bank.name || '', words: words, deck: deck, hands: [], won: [], table: [], out: [], turn: 0, last: null, cnt: 0, res: null, lastS: null, sweep: null };
+      var g = { write: !o._solo && !!(o._x && o._x.write), wr: null, np: n, mode: o.score === 'red' ? 'red' : 'set', hn: hn, bank: bank.name || '', words: words, deck: deck, hands: [], won: [], table: [], out: [], turn: 0, last: null, cnt: 0, res: null, lastS: null, sweep: null };
       for (var s = 0; s < n; s++) { g.hands.push(deck.splice(0, hn)); g.won.push([]); }
       g.table = deck.splice(0, Math.min(4, Math.max(0, deck.length)));
       g.turn = Math.floor(Math.random() * n);
@@ -187,12 +188,18 @@
     view: function (g, seat) {
       return { np: g.np, mode: g.mode, hn: g.hn, bank: g.bank, words: g.words, turn: g.turn, table: g.table, hand: seat >= 0 ? g.hands[seat] : null,
         counts: g.hands.map(function (h) { return h.length; }), won: g.won, scores: g.won.map(function (x, s) { return score(g, s); }),
-        left: g.deck.length, last: g.last, sweep: g.sweep, out: g.out, cnt: g.cnt, res: !!g.res };
+        left: g.deck.length, wr: g.wr, wlast: g.wlast || null, write: g.write, last: g.last, sweep: g.sweep, out: g.out, cnt: g.cnt, res: !!g.res };
     },
     act: function (g, seat, d, notify) {
       if (g.res || g.out.indexOf(seat) >= 0) return false;
       if (d.t === 'resign') { notify(seat, '你已經認輸，可以繼續觀看'); knock(g, seat, 'resign'); g.cnt++; return true; }
-      if (d.t !== 'play' || g.turn !== seat || d.n !== g.cnt) return false;
+      if (d.t === 'wstk' || d.t === 'wdone') {   // 田字格寫字：筆畫同步、寫好了
+        if (!g.wr || g.wr.s !== seat) return false;
+        if (d.t === 'wdone') { g.wr.done = 1; return true; }
+        if (!Array.isArray(d.st) || d.st.length > 400 || JSON.stringify(d.st).length > 60000) return false;
+        g.wr.st = d.st; g.wr.v = (g.wr.v || 0) + 1; g.wr.done = 0; return true;
+      }
+      if (d.t !== 'play' || g.turn !== seat || d.n !== g.cnt || g.wr) return false;
       var h = g.hands[seat], c = cardOf(h, d.c); if (!c) return false;
       if (d.take != null) {
         var t = cardOf(g.table, d.take); if (!t) return false;
@@ -200,6 +207,7 @@
         var w = ws.indexOf(d.w) >= 0 ? d.w : ws[0];
         h.splice(h.indexOf(c), 1); g.table.splice(g.table.indexOf(t), 1); take(g, seat, c, t, w);
         g.last = { s: seat, c: c, t: t, w: w };
+        if (g.write && d.hu) { g.wr = { s: seat, w: w, st: [], done: 0, k: g.cnt, v: 0 }; g.cnt++; return true; }   // 老師開了寫字：先寫字、老師打分後才換人
       } else {
         h.splice(h.indexOf(c), 1); g.table.push(c); g.last = { s: seat, c: c, t: null };
       }
@@ -207,6 +215,7 @@
       return true;
     },
     botTurn: function (g, seat, lv) {
+      if (g.wr) return null;
       if (g.res || g.turn !== seat || !g.hands[seat].length) return null;
       var h = g.hands[seat], ps = pairs(g, h);
       if (lv <= 1 && Math.random() < .45) { var c0 = h[Math.floor(Math.random() * h.length)], p0 = ps.filter(function (p) { return p.c === c0; })[0]; return { t: 'play', c: c0.i, take: p0 && Math.random() < .6 ? p0.t.i : null, w: p0 ? p0.w : null, n: g.cnt }; }
@@ -224,7 +233,22 @@
     },
     hintDesc: '按一次會顯示 6 秒：列出所有生字是哪個部件加哪個部件；如果手牌和桌上的牌可以組成生字，也會把那幾張牌亮起來。提示用完就不會再出現。',
     tipDesc: '輪到你卻還沒出牌時，提醒你怎麼操作（不會告訴你哪幾張能組成生字）。',
+    acting: function (g) { return g.res || g.wr ? [] : [g.turn]; },
+    hostAct: function (g, d, notify) {
+      if (d.t === 'wcfg') { g.write = !!d.on; return true; }
+      if (!g.wr || g.res) return false;
+      var s = g.wr.s;
+      if (d.t === 'wredo') { g.wr.st = []; g.wr.done = 0; g.wr.v++; g.wr.redo = (g.wr.redo || 0) + 1; notify(s, '老師請你再寫一次「' + g.words[g.wr.w][0] + '」，慢慢寫、照著範字寫'); return true; }
+      if (d.t === 'wscore') {
+        var n = Math.max(0, Math.min(5, d.n | 0)), set = g.won[s][g.won[s].length - 1];
+        if (set) set.b = n;
+        g.wlast = { s: s, w: g.wr.w, n: n, k: g.cnt, st: g.wr.st };
+        g.wr = null; afterPlay(g, s); return true;
+      }
+      return false;
+    },
     hint: function (g, seat) {
+      if (g.wr) return null;
       if (g.res || g.turn !== seat || g.out.indexOf(seat) >= 0) return null;
       var ps = pairs(g, g.hands[seat]), hl = [];
       ps.forEach(function (p) { if (hl.indexOf(String(p.c.i)) < 0) hl.push(String(p.c.i)); if (hl.indexOf(String(p.t.i)) < 0) hl.push(String(p.t.i)); });
@@ -232,6 +256,7 @@
       return { msg: list + (ps.length ? '　👉 亮框的手牌和桌上的牌可以組成生字！' : '　👉 這一輪你的手牌組不成生字，打一張到桌上吧。'), hl: hl, dur: 6000 };
     },
     nudge: function (g, seat) {
+      if (g.wr) return null;
       if (g.res || g.turn !== seat || g.out.indexOf(seat) >= 0) return null;
       return '輪到你了：看看手上的部件和桌上的部件，能不能組成生字？能的話先點手牌、再點桌上那張；不能的話把一張手牌點兩下，打到桌上。';
     },
@@ -240,7 +265,7 @@
       for (var s = 0; s < g.np; s++) h += '<span class="bj-hs' + (g.out.indexOf(s) >= 0 ? ' out' : '') + '"><i style="background:' + SEATC[s] + '"></i>' + (g.out.indexOf(s) >= 0 ? '認輸' : g.won[s].map(function (x) { return esc(g.words[x.w][0]); }).join('') + ' ' + score(g, s) + ' 分') + '</span>';
       return h + '</div></div>';
     },
-    hostStatus: function (g) { return { t: '牌堆剩 ' + g.deck.length + ' 張', c: '' }; }
+    hostStatus: function (g) { return g.wr && !g.res ? { t: '✍️ 寫字中「' + g.words[g.wr.w][0] + '」（右下角審核）', c: '' } : { t: '牌堆剩 ' + g.deck.length + ' 張', c: '' }; }
   };
 
   /* ---------- 學生端 ---------- */
@@ -251,8 +276,73 @@
   function wordTile(v, x, big) {
     var w = v.words[x.w], d = el('span', 'bj-word' + (big ? ' big' : ''));
     d.appendChild(el('b', '', w[0]));
+    if (x.b) d.appendChild(el('i', 'bj-wb', '✍️+' + x.b));
     var p = el('small'); p.innerHTML = '<em class="' + (x.r[0] ? 'r' : '') + '">' + esc(x.p[0]) + '</em><em class="' + (x.r[1] ? 'r' : '') + '">' + esc(x.p[1]) + '</em>'; d.appendChild(p);
     return d;
+  }
+  /* ---------- 田字格手寫板 ---------- */
+  var PENC = ['#1b1b22', '#c8102e', '#1d5fd1'], PENW = [10, 18, 30];
+  function drawStrokes(cv, st) {
+    var x = cv.getContext('2d'), W = cv.width; x.clearRect(0, 0, W, W); x.lineCap = 'round'; x.lineJoin = 'round';
+    (st || []).forEach(function (k) {
+      var p = k.p || []; if (!p.length) return;
+      x.globalCompositeOperation = k.e ? 'destination-out' : 'source-over';
+      x.strokeStyle = PENC[k.c] || PENC[0]; x.fillStyle = x.strokeStyle; x.lineWidth = (k.e ? 60 : PENW[k.w] || PENW[1]) * W / 1000;
+      if (p.length <= 2) { x.beginPath(); x.arc(p[0] * W / 1000, p[1] * W / 1000, x.lineWidth / 2, 0, 7); x.fill(); return; }
+      x.beginPath(); x.moveTo(p[0] * W / 1000, p[1] * W / 1000);
+      for (var i = 2; i < p.length; i += 2) x.lineTo(p[i] * W / 1000, p[i + 1] * W / 1000);
+      x.stroke();
+    });
+    x.globalCompositeOperation = 'source-over';
+  }
+  function gridBox(cls) { var g = el('div', 'bj-grid ' + (cls || '')); return g; }
+  var P = { el: null, key: '', st: [], tool: 'pen', c: 0, w: 1, cv: null, lastSend: 0, timer: null };
+  function closePad() { if (P.el) { P.el.remove(); P.el = null; } P.key = ''; clearTimeout(P.timer); }
+  function pad(tb, ctx) {
+    var v = tb.view, wr = v.wr, mine = wr && wr.s === tb.seat;
+    if (!wr || tb.res) { closePad(); return; }
+    var key = wr.k + ':' + tb.round + ':' + (wr.redo || 0) + ':' + (mine ? 1 : 0);
+    var ch = v.words[wr.w][0];
+    if (P.key !== key) {
+      closePad(); P.key = key; P.st = mine ? (wr.st || []).slice() : [];
+      var o = el('div', 'bj-pad' + (mine ? ' mine' : '')), card0 = el('div', 'bj-padbox');
+      o.appendChild(card0);
+      card0.appendChild(el('div', 'bj-padtitle', mine ? '✍️ 你組成了「' + ch + '」！照著範字，在田字格寫一次' : '✍️ ' + who(tb, wr.s) + ' 組成了「' + ch + '」，正在寫字…'));
+      var row = el('div', 'bj-padrow');
+      var mdl = gridBox('model'); mdl.appendChild(el('b', '', ch)); mdl.appendChild(el('small', '', '範字'));
+      var g = gridBox('write'), cv = document.createElement('canvas'); cv.width = cv.height = 800; g.appendChild(cv);
+      row.appendChild(mdl); row.appendChild(g); card0.appendChild(row);
+      P.cv = cv; P.el = o;
+      var stat = el('div', 'bj-padstat'); card0.appendChild(stat); P.stat = stat;
+      if (mine) {
+        var tools = el('div', 'bj-padtools');
+        var mk = function (lab, fn, cls) { var b = el('button', 'pk-btn small ' + (cls || ''), lab); b.type = 'button'; b.addEventListener('click', function (e) { e.preventDefault(); fn(b); }); tools.appendChild(b); return b; };
+        var penB = [], refresh = function () { penB.forEach(function (x) { x.b.classList.toggle('on', P.tool === 'pen' && P.c === x.c); }); szB.forEach(function (x) { x.b.classList.toggle('on', P.w === x.w); }); erB.classList.toggle('on', P.tool === 'eraser'); };
+        ['⚫ 黑', '🔴 紅', '🔵 藍'].forEach(function (t, i) { penB.push({ c: i, b: mk(t, function () { P.tool = 'pen'; P.c = i; refresh(); }) }); });
+        var szB = []; ['細', '中', '粗'].forEach(function (t, i) { szB.push({ w: i, b: mk(t, function () { P.w = i; if (P.tool !== 'pen') P.tool = 'pen'; refresh(); }) }); });
+        var erB = mk('🧽 橡皮擦', function () { P.tool = 'eraser'; refresh(); });
+        mk('↩️ 上一步', function () { P.st.pop(); drawStrokes(cv, P.st); sendSt(true); });
+        mk('🗑️ 全部擦掉', function () { if (!P.st.length) return; P.st = []; drawStrokes(cv, P.st); sendSt(true); });
+        card0.appendChild(tools); refresh();
+        var done = el('button', 'pk-btn go bj-done', '✅ 寫好了，交給老師'); done.type = 'button';
+        done.addEventListener('click', function () { if (!P.st.length) { ctx.toast('還沒寫字喔'); return; } sendSt(true); setTimeout(function () { ctx.send('wdone', {}); }, 120); ctx.snd('cap'); });
+        card0.appendChild(done); P.done = done;
+        // 畫圖
+        var cur = null;
+        var pt = function (e) { var r = cv.getBoundingClientRect(); return [Math.round(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * 1000), Math.round(Math.max(0, Math.min(1, (e.clientY - r.top) / r.height)) * 1000)]; };
+        cv.addEventListener('pointerdown', function (e) { e.preventDefault(); try { cv.setPointerCapture(e.pointerId); } catch (x) {} var q = pt(e); cur = { c: P.c, w: P.w, p: q }; if (P.tool === 'eraser') cur.e = 1; P.st.push(cur); drawStrokes(cv, P.st); });
+        cv.addEventListener('pointermove', function (e) { if (!cur) return; e.preventDefault(); var q = pt(e), p = cur.p, dx = q[0] - p[p.length - 2], dy = q[1] - p[p.length - 1]; if (dx * dx + dy * dy < 36) return; p.push(q[0], q[1]); drawStrokes(cv, P.st); if (Date.now() - P.lastSend > 400) sendSt(); });
+        var up = function () { if (!cur) return; cur = null; sendSt(true); };
+        cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up); cv.addEventListener('lostpointercapture', up);
+        var sendSt = function (now) { clearTimeout(P.timer); var go = function () { P.lastSend = Date.now(); ctx.send('wstk', { st: P.st }); }; if (now) go(); else P.timer = setTimeout(go, 50); };
+      }
+      document.body.appendChild(o);
+    }
+    if (!mine) drawStrokes(P.cv, wr.st);
+    else if (!P.st.length && wr.st && wr.st.length) { P.st = wr.st.slice(); }
+    if (mine) drawStrokes(P.cv, P.st);
+    P.stat.textContent = wr.done ? (mine ? '已經交給老師，等老師打分數…（還可以再修改，改完要再按一次「寫好了」）' : '寫好了，等老師打分數…') : (mine ? '寫好後按「✅ 寫好了，交給老師」' : '');
+    if (P.done) P.done.textContent = wr.done ? '✅ 已交出（改完再按一次）' : '✅ 寫好了，交給老師';
   }
   mod.onUpdate = function (prev, tb, fx) {
     var v = tb.view;
@@ -264,6 +354,7 @@
       if (v.turn === tb.seat && !tb.res) setTimeout(function () { fx.snd('turn'); }, 400);
     }
     L.key = key;
+    if (v.wlast && v.wlast.k !== L.wk) { if (L.wk != null || prev) { fx.toast('老師看完 ' + who(tb, v.wlast.s) + ' 寫的「' + v.words[v.wlast.w][0] + '」' + (v.wlast.n ? '：寫得很好，加 ' + v.wlast.n + ' 分！' : '：通過！')); fx.snd(v.wlast.n ? 'win' : 'cap'); } L.wk = v.wlast.k; }
     if (prev === null || (prev && prev.round !== tb.round)) fx.toast((tb.round > 1 ? '第 ' + tb.round + ' 局開始！' : '開始囉！') + '用手上的部件和桌上的部件組成生字');
   };
   mod.render = function (box, ctx) {
@@ -302,7 +393,7 @@
     if (!v.table.length) tbl.appendChild(el('div', 'pk-empty', '桌上沒有牌'));
     felt.appendChild(tbl);
     wrap.appendChild(felt);
-    function send(d) { d.n = v.cnt; L.sent = v.cnt; L.sel = null; L.pick = null; ctx.snd(d.take != null ? 'cap' : 'move'); if (d.take != null) ctx.toast('組成「' + v.words[d.w][0] + '」！'); ctx.send('play', d); ctx.rerender(); }
+    function send(d) { d.n = v.cnt; d.hu = 1; L.sent = v.cnt; L.sel = null; L.pick = null; ctx.snd(d.take != null ? 'cap' : 'move'); if (d.take != null) ctx.toast('組成「' + v.words[d.w][0] + '」！'); ctx.send('play', d); ctx.rerender(); }
     // 我的手牌
     var me = el('div', 'pk-me bj-me' + (myTurn ? ' turn' : ''));
     var top = el('div', 'pk-me-top'), dot = el('i'); dot.style.background = SEATC[seat]; top.appendChild(dot);
@@ -339,6 +430,7 @@
       wrap.appendChild(tools);
     }
     box.appendChild(wrap);
+    pad(tb, ctx);
   };
   function combosV(v, a, b) { var out = []; v.words.forEach(function (w, i) { if ((w[1] === a.p && w[2] === b.p) || (w[1] === b.p && w[2] === a.p)) out.push(i); }); return out; }
   mod.resultNote = function (tb, nm) {
@@ -356,6 +448,30 @@
   var LS = 'bg-bujian-banks';
   function loadBanks() { try { var a = JSON.parse(localStorage.getItem(LS) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
   function saveBanks(a) { try { localStorage.setItem(LS, JSON.stringify(a)); } catch (e) {} }
+  /* 老師審核寫字：畫面右下角浮出來 */
+  var RV = { el: null, key: '' };
+  function review(api) {
+    var list = api.tables().filter(function (T) { return T.g && T.g.wr && !T.g.res; });
+    var key = list.map(function (T) { return T.id + ':' + T.g.wr.k + ':' + T.g.wr.v + ':' + T.g.wr.done; }).join('|');
+    if (key === RV.key) return; RV.key = key;
+    if (!list.length) { if (RV.el) { RV.el.remove(); RV.el = null; } return; }
+    if (!RV.el) { RV.el = el('div', 'bj-rev'); document.body.appendChild(RV.el); try { BGSfx && BGSfx.play && BGSfx.play('turn'); } catch (e) {} }
+    RV.el.innerHTML = '';
+    RV.el.appendChild(el('h3', '', '✍️ 寫字審核（' + list.length + '）'));
+    list.forEach(function (T) {
+      var g = T.g, wr = g.wr, ch = g.words[wr.w][0], it = el('div', 'bj-revit' + (wr.done ? ' done' : ''));
+      it.appendChild(el('div', 'bj-revh', '第 ' + T.no + ' 桌・' + api.name(T, wr.s) + '・「' + ch + '」' + (wr.done ? '　✅ 寫好了' : '　✏️ 寫字中…')));
+      var row = el('div', 'bj-padrow small'), m = el('div', 'bj-grid model'); m.appendChild(el('b', '', ch)); row.appendChild(m);
+      var gb = el('div', 'bj-grid write'), cv = document.createElement('canvas'); cv.width = cv.height = 400; gb.appendChild(cv); row.appendChild(gb); it.appendChild(row);
+      drawStrokes(cv, wr.st);
+      var br = el('div', 'bj-row');
+      br.appendChild(api.btn('btn small', '👍 通過（不加分）', function () { api.act(T, { t: 'wscore', n: 0 }); }));
+      [1, 2, 3, 4, 5].forEach(function (n) { br.appendChild(api.btn('btn small bj-plus', '+' + n, function () { api.act(T, { t: 'wscore', n: n }); })); });
+      br.appendChild(api.btn('btn small', '🔁 請他再寫一次', function () { api.act(T, { t: 'wredo' }); }));
+      it.appendChild(br); RV.el.appendChild(it);
+    });
+  }
+  mod.hostPanelUpdate = function (api) { if (api._bjRev) api._bjRev(); };
   mod.hostPanel = function (api) {
     var box = api.el('div', 'bj-panel');
     function cur() { var c = api.cfg(); return c.bank || SAMPLE; }
@@ -375,6 +491,10 @@
         row.appendChild(api.btn('btn small' + (x.name === b.name ? ' on' : ''), x.name, function () { use(x); }));
       });
       box.appendChild(row);
+      var wsw = api.el('label', 'bj-wsw'), wcb = api.el('input'); wcb.type = 'checkbox'; wcb.checked = !!api.cfg().write;
+      wcb.addEventListener('change', function () { api.cfg().write = wcb.checked; api.save(); api.actAll({ t: 'wcfg', on: wcb.checked }); });
+      wsw.appendChild(wcb); wsw.appendChild(api.el('span', '', '✍️ 組成生字後要在田字格寫一次（老師看完可加 1～5 分）'));
+      box.appendChild(wsw);
       var r2 = api.el('div', 'bj-row');
       r2.appendChild(api.btn('btn small', '➕ 新增題庫', function () { edit(null); }));
       r2.appendChild(api.btn('btn small', '🤖 複製給 AI 的提示詞', function () { showPrompt(); }));
@@ -449,6 +569,7 @@
       ta.focus();
     }
     draw();
+    api._bjRev = function () { review(api); };
     // 放到 QR code 上面，開房時一眼就看到
     setTimeout(function () { var q = document.getElementById('h-qr'); if (q && q.parentNode) { var f = q.parentNode.querySelector('.gopt') || q; q.parentNode.insertBefore(box, f); } }, 0);
     return box;
@@ -458,12 +579,13 @@
   mod.guide = {
     student: [
       { h: '怎麼玩', html: '<ol><li>每張牌上面是一個<b>部件</b>，兩個部件可以組成一個<b>生字</b>，例如「亻」＋「尔」＝「你」。</li><li>每人先拿 3 張手牌，桌上翻開 4 張。</li><li>輪到你時，自己看看手上的部件和桌上的部件能不能組成生字：可以的話，<b>先點手牌、再點桌上那張</b>，兩張就收到自己這邊。</li><li>組不成生字，就把一張手牌<b>點兩下</b>（或點一下再按「打到桌上」），打到桌上。</li><li>出完牌後，系統自動幫你從牌堆補一張，換下一位（順時鐘）。</li><li>牌堆沒牌了就不再補牌，大家把手牌出完。大家都出完就結束，<b>桌上剩下的牌作廢</b>，誰都不算分。</li></ol>' },
-      { h: '注意', html: '<ul><li>一定要用「<b>手上的一張</b>」配「<b>桌上的一張</b>」。</li><li>每個生字有兩組牌，所以同一個字可以組兩次。</li><li>按「🔤 生字表」可以看這次有哪些生字。</li><li>想不出來可以按「💡 提示」：6 秒內會列出每個生字是哪兩個部件，能組的牌也會亮起來。提示次數有限，用完就沒有了。</li></ul>' },
+      { h: '注意', html: '<ul><li>一定要用「<b>手上的一張</b>」配「<b>桌上的一張</b>」。</li><li>每個生字有兩組牌，所以同一個字可以組兩次。</li><li>按「🔤 生字表」可以看這次有哪些生字。</li><li>如果老師有開「寫字」：組成生字後會跳出田字格，照著旁邊的範字寫一次（有畫筆顏色粗細、橡皮擦、上一步、全部擦掉），寫好按「✅ 寫好了，交給老師」。你寫字的時候，同桌的人都看得到；老師看完會給「通過」或加 1～5 分，然後換下一個人。</li><li>想不出來可以按「💡 提示」：6 秒內會列出每個生字是哪兩個部件，能組的牌也會亮起來。提示次數有限，用完就沒有了。</li></ul>' },
       { h: '計分方式', html: '<p>老師開桌時會選一種，這一局不會改：</p><table class="g-tbl"><tr><th>計分方式</th><th>怎麼算</th></tr><tr><td>🀄 一組生字 10 分</td><td>組成幾個字，就是幾個 10 分</td></tr><tr><td>🔴 一張紅色部件 10 分</td><td>每個部件有一張<b style="color:#c8102e">紅色</b>、一張黑色；收回來的紅色部件一張 10 分，黑色不算分</td></tr></table><p>分數最高的人獲勝（積分榜 +3 分）。和電腦玩的不列入總分。</p>' }
     ],
     teacher: [
       { h: '主持流程', html: '<ol><li>首頁「語文」→「部件撿紅點」開房間。</li><li>在 QR code 上方先選好<b>這次要玩的生字題庫</b>、<b>計分方式</b>和<b>手牌張數</b>，再讓學生掃碼。</li><li>每桌 2～4 人，人數不夠可以讓電腦補位。</li><li>老師端每桌會顯示桌上的部件，以及每個人組成的字和分數。</li></ol>' },
       { h: '做部件資料、匯入、開始玩', html: HOWTO + '<p>每個字只能拆成兩個部件，系統會自動做出 4 張牌（每個部件一紅一黑）。不同的字可以共用部件（例如「你」「他」都有「亻」）。建議至少 5 個生字。部件資料來自你的漢字部件庫（hanzi-component-detective 的 hanzi_db.json）。</p><p>內建的「範例（試玩用）」是 Claude 自己挑的 10 個字，只是讓老師先試玩，上課請換成課本的生字。</p>' },
+      { h: '✍️ 田字格寫字＋加分', html: '<ul><li>在 QR code 上方的橘色框勾選「✍️ 組成生字後要在田字格寫一次」，隨時可以開或關，立刻套用到每一桌。</li><li>學生組成生字後，畫面會跳出田字格手寫板，旁邊有這個字的完整範字。工具有：黑／紅／藍畫筆、細／中／粗、橡皮擦、上一步、全部擦掉。</li><li>學生寫字的時候，同桌其他玩家的畫面會同步看到他寫的字（不能動手）。</li><li>學生按「寫好了」後，老師畫面右下角會跳出「✍️ 寫字審核」：可以按「👍 通過（不加分）」、「+1」～「+5」，或「🔁 請他再寫一次」。學生還在寫的時候也看得到即時的筆畫。</li><li>老師打完分數，所有人的畫面就還給大家，輪到下一位。加的分數會算進總分，結束畫面會在那個字上標「✍️+幾分」。</li><li>電腦玩家組字不用寫字；學生在家單人練習時也不會出現寫字（沒有老師可以打分）。</li></ul>' },
       { h: '給 AI 的提示詞', html: '<p>老師頁面的「🤖 複製給 AI 的提示詞」可以一鍵複製。內容如下：</p><pre class="bj-pre">' + esc(AI_PROMPT) + '</pre>' },
       { h: '規則說明', html: '<p>以下幾點是依老師的實體卡牌玩法設計，有些細節是 Claude 先自訂的，可以再調整：</p><ul><li>一次只能組一個字，組完一樣要補一張牌。</li><li>一定要「手牌＋桌上」配對，手上兩張或桌上兩張剛好能組成字都不算。</li><li>組得出字的時候也可以選擇不組、直接打到桌上。</li><li>所有人手牌出完就結束，桌上剩下的牌作廢、誰都不算分（老師確認，和撲克牌撿紅點一樣，比較公平）。</li></ul><h4>教學重點</h4><ul><li>認識生字的<b>部件</b>與<b>結構</b>（左右、上下）。</li><li>組字時可以請學生說出這個字、造一個詞，加深印象。</li><li>形近字放在同一份題庫（例如「清、晴、請」），學生要分辨部件才能組對。</li></ul>' }
     ]
