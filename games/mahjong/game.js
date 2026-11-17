@@ -25,7 +25,10 @@
     }
     g.turn = s; g.phase = 'discard'; g.kanDraw = !!back && g.kanDraw;
     if (g.out.indexOf(s) >= 0) autoOut(g, s);
-    else if (g.ting && g.ting[s]) g.tingWait = 1000 + Math.floor(Math.random() * 2000); // 聽牌中：老師端隨機等 1～3 秒再自動摸打（看起來像在想）
+    else if (g.ting && g.ting[s]) { // 聽牌中：能暗槓／加槓、或換一張打會更好時，先停下來問玩家；不然老師端隨機等 1～3 秒再自動摸打
+      g.tingWait = 1000 + Math.floor(Math.random() * 2000);
+      g.tingAsk = g.tingAsk || {}; g.tingAsk[s] = MJ.isWin(MJ.counts(g.hands[s])) ? null : tingAsk(g, s);
+    }
     return true;
   }
   /* 八仙過海：一個人收齊 8 張花；七搶一：你有 7 張花，別人摸到第 8 張，你直接胡 */
@@ -59,7 +62,14 @@
           if (ch.length) o.chi = ch;
         }
       }
-      if (g.ting && g.ting[s]) { if (o.hu) o = { hu: 1 }; else o = {}; }   // 聽牌中不吃不碰，只等胡
+      if (g.ting && g.ting[s] && !o.hu) { // 聽牌中：只有「吃碰槓之後還能聽牌」才問玩家（會跳通知確認），否則自動過
+        var o2 = {};
+        if (o.kan) o2.kan = 1;
+        var still = function (rmv) { var r = h.slice(); rmv.forEach(function (x) { r.splice(r.indexOf(x), 1); }); return r.some(function (x, i) { var r2 = r.slice(); r2.splice(i, 1); return MJ.waitsOf(r2).length > 0; }); };
+        if (o.pon && still([t, t])) o2.pon = 1;
+        if (o.chi) { var ch2 = o.chi.filter(function (st) { return still([st, st + 1, st + 2].filter(function (x) { return x !== t; })); }); if (ch2.length) o2.chi = ch2; }
+        o = o2; if (Object.keys(o).length) o.tq = 1;
+      }
       if (Object.keys(o).length) { pend[s] = o; any = true; }
     }
     g.pend = pend; g.resp = {};
@@ -69,8 +79,34 @@
   function autoTing(g) {
     if (!g.ting) return;
     var did = false;
-    Object.keys(g.pend).forEach(function (k) { var s = +k; if (g.ting[s] && !(s in g.resp)) { g.resp[s] = { a: g.pend[s].hu ? 'hu' : 'pass' }; did = true; } });
+    Object.keys(g.pend).forEach(function (k) { var s = +k; if (g.ting[s] && !(s in g.resp) && g.pend[s].hu) { g.resp[s] = { a: 'hu' }; did = true; } });
     if (did) resolve(g);
+  }
+  /* 聽牌中摸到牌：有沒有值得問玩家的選擇（暗槓、加槓、改打別張可以聽更多張或台數更高） */
+  function waitInfo(g, s, h16, vis) {
+    var ws = MJ.waitsOf(h16), cnt = 0, tai = 0;
+    ws.forEach(function (w) {
+      cnt += Math.max(0, 4 - vis[w] - h16.filter(function (x) { return x === w; }).length);
+      var r = MJ.tai({ hand: h16.concat([w]), melds: g.melds[s], flowers: g.flowers[s], wind: windOf(g, s), round: g.M.quan % 4, tsumo: false, win: w });
+      if (r.total > tai) tai = r.total;
+    });
+    return { waits: ws, cnt: cnt, tai: tai };
+  }
+  function tingAsk(g, s) {
+    var so = selfOpts(g, s), h = g.hands[s], d = g.drawn, vis = seen(g), ask = {};
+    if (so.ankan) ask.an = so.ankan;
+    if (so.kakan) ask.ka = so.kakan;
+    var cur0 = h.slice(); cur0.splice(cur0.indexOf(d), 1);
+    var cur = waitInfo(g, s, cur0, vis), better = [];
+    h.forEach(function (t) {
+      if (t === d || better.some(function (b) { return b.t === t; })) return;
+      var r = h.slice(); r.splice(r.indexOf(t), 1);
+      var wi = waitInfo(g, s, r, vis); if (!wi.waits.length) return;
+      if (wi.cnt > cur.cnt || wi.tai > cur.tai) { wi.t = t; better.push(wi); }
+    });
+    better.sort(function (a, b) { return b.tai - a.tai || b.cnt - a.cnt; });
+    if (better.length) { ask.sw = better.slice(0, 2); ask.cur = cur; }
+    return ask.an || ask.ka || ask.sw ? ask : null;
   }
   function tingTiles(g, s) { // 打出哪幾張牌之後就聽牌
     var h = g.hands[s], out = [];
@@ -105,6 +141,7 @@
       var a = g.resp[pk].a; g.rivers[d].pop(); g.cnt++; g.nclaim++;
       rm(g.hands[pk], t, a === 'kan' ? 3 : 2); g.melds[pk].push({ k: a === 'kan' ? 'kan' : 'pon', t: t, from: d });
       g.log = { k: a, s: pk, t: t, from: d }; g.pend = {}; g.resp = {}; g.hold = Date.now() + HOLD;
+      if (a === 'pon' && g.ting && g.ting[pk]) { g.ting[pk] = 0; g.log.unting = 1; }   // 碰了要自己重新打一張，聽牌先取消
       if (a === 'kan') { g.kanDraw = true; draw(g, pk, true); } else { g.turn = pk; g.phase = 'discard'; g.drawn = null; if (g.out.indexOf(pk) >= 0) autoOut(g, pk); }
       return;
     }
@@ -114,6 +151,7 @@
       [st, st + 1, st + 2].forEach(function (x) { if (x !== t) rm(g.hands[cs], x); });
       g.melds[cs].push({ k: 'chi', t: st, got: t, from: d });
       g.log = { k: 'chi', s: cs, t: t, from: d }; g.pend = {}; g.resp = {}; g.hold = Date.now() + HOLD;
+      if (g.ting && g.ting[cs]) { g.ting[cs] = 0; g.log.unting = 1; }
       g.turn = cs; g.phase = 'discard'; g.drawn = null;
       return;
     }
@@ -170,7 +208,7 @@
     var n = g.np, D = g.M.dealer;
     g.wall = MJ.wall(); g.hands = []; g.melds = []; g.flowers = []; g.rivers = [];
     g.turn = D; g.phase = 'discard'; g.drawn = null; g.last = null; g.last0 = null; g.pend = {}; g.resp = {}; g.kanDraw = false; g.log = null; g.win = null; g.ready = {}; g.nclaim = 0;
-    g.M.no++; g.hd = D; g.ting = {};
+    g.M.no++; g.hd = D; g.ting = {}; g.tingAsk = {};
     for (var s = 0; s < n; s++) { g.hands.push([]); g.melds.push([]); g.flowers.push([]); g.rivers.push([]); }
     for (var r = 0; r < 16; r++) for (var k = 0; k < n; k++) g.hands[(D + k) % n].push(g.wall.pop());
     for (var k2 = 0; k2 < n; k2++) { // 補花（從莊家開始）
@@ -215,6 +253,7 @@
     /* 聽牌中的真人玩家：由老師端代為自摸或打出剛摸到的牌 */
     autoAct: function (g, seat) {
       if (g.res || !g.ting || !g.ting[seat] || g.phase !== 'discard' || g.turn !== seat || g.drawn == null) return null;
+      if (g.tingAsk && g.tingAsk[seat]) return null;   // 正在問玩家要不要槓／換牌
       return { a: MJ.isWin(MJ.counts(g.hands[seat])) ? { t: 'tsumo', n: g.cnt } : { t: 'discard', tile: g.drawn, n: g.cnt }, wait: g.tingWait || 1500 };
     },
     turnSeat: function (g) { return g.phase === 'discard' ? g.turn : -1; },
@@ -238,6 +277,7 @@
       if (g.phase === 'claim') { var o = g.pend[seat]; if (!o || seat in g.resp) return null; return { t: 'resp', a: o.hu ? 'hu' : 'pass' }; }
       if (g.phase !== 'discard' || g.turn !== seat) return null;
       if (selfOpts(g, seat).tsumo) return { t: 'tsumo' };
+      if (g.ting && g.ting[seat] && g.drawn != null) return { t: 'discard', tile: g.drawn };
       return { t: 'discard', tile: MJ.pickDiscard(g.hands[seat], need(g, seat), 2, null) };
     },
     hintDesc: '輪到你打牌時：先看能不能自摸／槓；沒有的話，會用黃框亮出「現在比較沒用、可以優先考慮打出去」的幾張牌（不會直接指定答案），如果打其中一張就會聽牌也會告訴你。別人打出牌時：如果你可以胡、碰、槓、吃，會亮出對應的按鈕、那張牌和你手上要用到的牌，並說明怎麼吃碰；如果你不能吃也不能碰，會直接告訴你原因。',
@@ -307,9 +347,9 @@
         opts: me && g.phase === 'claim' && g.pend[seat] && !(seat in g.resp) ? g.pend[seat] : null,
         waiting: g.phase === 'claim' ? Object.keys(g.pend).filter(function (s) { return !(s in g.resp); }).map(Number) : [],
         self: me ? selfOpts(g, seat) : {},
-        ting: me && g.ting && g.ting[seat] ? 1 : 0,
+        ting: me && g.ting && g.ting[seat] ? 1 : 0, tingAsk: me && g.tingAsk && g.tingAsk[seat] && g.phase === 'discard' && g.turn === seat ? g.tingAsk[seat] : null,
         tingT: me && !(g.ting && g.ting[seat]) && g.phase === 'discard' && g.turn === seat ? tingTiles(g, seat) : [],
-        waits: me && g.hands[seat].length % 3 === 1 ? MJ.waitsOf(g.hands[seat]) : [],
+        waits: me && g.hands[seat].length % 3 === 1 ? MJ.waitsOf(g.hands[seat]) : me && g.ting && g.ting[seat] && g.drawn != null ? (function () { var r = g.hands[seat].slice(); r.splice(r.indexOf(g.drawn), 1); return MJ.waitsOf(r); })() : [],
         win: g.win || null, hands: fin ? g.hands : null };
     },
     act: function (g, seat, d, notify) {
@@ -321,6 +361,13 @@
         g.ready[seat] = true; g.cnt++;
         if (alive(g).every(function (s) { return g.ready[s]; })) deal(g);
         return true;
+      }
+      if (d.t === 'tingskip' || d.t === 'tingswap') {
+        var tk = g.tingAsk && g.tingAsk[seat];
+        if (!tk || g.phase !== 'discard' || g.turn !== seat || !g.ting || !g.ting[seat]) return false;
+        if (d.t === 'tingskip') { g.tingAsk[seat] = null; g.tingWait = 300; return true; }
+        if (!tk.sw || !tk.sw.some(function (x) { return x.t === d.tile; })) return false;
+        g.tingAsk[seat] = null; discard(g, seat, d.tile); return true;
       }
       if (d.t === 'unting') { if (!g.ting || !g.ting[seat]) return false; g.ting[seat] = 0; return true; }
       if (d.t === 'ting') {
@@ -347,9 +394,10 @@
       if (holdLeft(g) > 150) return false;   // 特效還在播
       var so = selfOpts(g, seat);
       if (d.t === 'tsumo') { if (!so.tsumo) return false; win(g, seat, g.drawn, true); return true; }
+      if ((d.t === 'ankan' || d.t === 'kakan') && g.tingAsk) g.tingAsk[seat] = null;
       if (d.t === 'ankan') { if (!so.ankan || so.ankan.indexOf(d.tile) < 0) return false; rm(g.hands[seat], d.tile, 4); g.melds[seat].push({ k: 'ankan', t: d.tile }); g.log = { k: 'ankan', s: seat, t: -1 }; g.cnt++; g.nclaim++; g.hold = Date.now() + HOLD; g.kanDraw = true; draw(g, seat, true); return true; }
       if (d.t === 'kakan') { if (!so.kakan || so.kakan.indexOf(d.tile) < 0) return false; kakan(g, seat, d.tile); return true; }
-      if (d.t === 'discard') { if (g.hands[seat].indexOf(d.tile) < 0) return false; if (g.ting && g.ting[seat] && d.tile !== g.drawn) return false; discard(g, seat, d.tile); return true; }
+      if (d.t === 'discard') { if (g.hands[seat].indexOf(d.tile) < 0) return false; if (g.ting && g.ting[seat] && d.tile !== g.drawn) return false; if (g.tingAsk) g.tingAsk[seat] = null; discard(g, seat, d.tile); return true; }
       return false;
     },
     botTurn: function (g, seat, lv) {
@@ -453,6 +501,7 @@
       else if (lg.k === 'kan') zoom(tb, 'kan', lg.s, lg.t, -1, 'kakan');
       else if (lg.k === 'ankan') zoom(tb, 'kan', lg.s, -1, -1, 'ankan');
       else if (lg.k === 'kakan?') fx.toast(who(tb, lg.s) + ' 要加槓「' + MJ.name(lg.t) + '」');
+      if (lg.unting && lg.s === tb.seat) fx.toast('吃碰之後聽牌先取消了：請自己打一張，打完想聽牌可以再按「🀄 聽牌」');
       if (lg.k === 'discard') fx.snd('move'); else if (lg.k !== 'flower') fx.snd('cap');
     }
     L.logKey = key;
@@ -498,6 +547,7 @@
       st.className = 'mj-status end';
     } else if (out) st.textContent = '你已經認輸，正在觀看';
     else if (v.opts) { st.textContent = v.opts.rob ? who(tb, v.last.s) + ' 要加槓「' + MJ.name(v.last.t) + '」，你可以搶槓胡！' : '有人打出 ' + MJ.name(v.last.t) + '，你要吃／碰／胡嗎？'; st.className = 'mj-status me'; }
+    else if (myTurn && v.ting) { st.textContent = v.tingAsk ? '🔔 聽牌中：有可以槓或換牌的機會，看下面再決定' : '🀄 聽牌中…'; st.className = 'mj-status me'; }
     else if (myTurn) { st.textContent = v.self.tsumo ? '你可以自摸！' : (L.sel != null ? '再點一次「' + MJ.name(L.sel) + '」或按「打出」' : '輪到你：點一張牌打出去'); st.className = 'mj-status me'; }
     else if (holding && v.log) st.textContent = '⏸️ ' + who(tb, v.log.s) + ' ' + (ZV[v.log.k] || '') + (v.log.from === seat ? '你的牌' : v.log.from != null && v.log.from >= 0 ? who(tb, v.log.from) + '的牌' : '') + '，等一下再繼續…';
     else if (v.waiting.length) st.textContent = '等 ' + v.waiting.map(function (s) { return who(tb, s); }).join('、') + ' 決定要不要吃碰…';
@@ -549,6 +599,7 @@
     var bar = el('div', 'mj-acts');
     if (v.opts && !fin && L.sent !== v.cnt) {
       var o = v.opts;
+      if (o.tq) bar.appendChild(el('div', 'mj-tingauto', '🔔 你在聽牌，但這張可以' + (o.kan ? '槓（聽牌繼續）' : '') + (o.pon ? '碰' : '') + (o.chi ? '吃' : '') + (o.pon || o.chi ? '（吃碰後還能聽牌，但要自己重新打一張，聽牌會先取消）' : '') + '，要嗎？不要就按「過」'));
       if (o.hu) bar.appendChild(clm(ctx.button('mj-btn hu', '胡！', function () { send('resp', { a: 'hu' }); }), 'c:hu'));
       if (o.kan) bar.appendChild(clm(ctx.button('mj-btn', '槓', function () { send('resp', { a: 'kan' }); }), 'c:kan'));
       if (o.pon) bar.appendChild(clm(ctx.button('mj-btn', '碰', function () { send('resp', { a: 'pon' }); }), 'c:pon'));
@@ -560,6 +611,21 @@
       bar.appendChild(ctx.button('mj-btn pass', '過（' + left + '）', function () { send('resp', { a: 'pass' }); }));
       clearTimeout(L.timer);
       L.timer = setTimeout(function () { var cv = (BGPlayer.state().tb || {}).view; if (cv && cv.opts && cv.cnt === v.cnt && L.sent !== v.cnt && !(BGPlayer.state().tb || {}).paused) { if (Date.now() - L.claimAt >= AUTO) send('resp', { a: 'pass' }); else ctx.rerender(); } }, 1000);
+    } else if (myTurn && v.ting && v.tingAsk) {
+      var tk = v.tingAsk, box2 = el('div', 'mj-tingask');
+      box2.appendChild(el('b', '', '🔔 聽牌中，摸到「' + MJ.name(v.drawn) + '」，先停下來問你：'));
+      (tk.an || []).forEach(function (t) { var b6 = ctx.button('mj-btn hu', '', function () { send('ankan', { tile: t }); }); b6.innerHTML = '暗槓 ' + MJ.svg(t); box2.appendChild(b6); });
+      (tk.ka || []).forEach(function (t) { var b7 = ctx.button('mj-btn hu', '', function () { send('kakan', { tile: t }); }); b7.innerHTML = '加槓 ' + MJ.svg(t); box2.appendChild(b7); });
+      if (tk.an || tk.ka) box2.appendChild(el('small', '', '槓了會再補摸一張，聽牌繼續（槓也可以多拿台數的機會，例如槓上開花）'));
+      (tk.sw || []).forEach(function (x) {
+        var why = [];
+        if (x.cnt > tk.cur.cnt) why.push('可以聽 ' + x.waits.map(MJ.name).join('、') + '（還剩約 ' + x.cnt + ' 張，現在只剩 ' + tk.cur.cnt + ' 張）');
+        if (x.tai > tk.cur.tai) why.push('胡牌最多可能 ' + x.tai + ' 台（現在最多 ' + tk.cur.tai + ' 台）');
+        var b8 = ctx.button('mj-btn ting', '', function () { send('tingswap', { tile: x.t }); }); b8.innerHTML = '改打 ' + MJ.svg(x.t) + ' 留下「' + MJ.name(v.drawn) + '」';
+        box2.appendChild(b8); box2.appendChild(el('small', '', '👉 ' + why.join('；')));
+      });
+      box2.appendChild(ctx.button('mj-btn ghost', '不用，照樣打出「' + MJ.name(v.drawn) + '」', function () { send('tingskip'); }));
+      bar.appendChild(box2);
     } else if (myTurn && v.ting) {
       bar.appendChild(el('span', 'mj-tingauto', '🀄 聽牌中，系統自動摸牌、打牌…'));
     } else if (myTurn && picking) {
@@ -579,7 +645,7 @@
     }
     // 聽牌狀態列：聽哪幾張；不是我的回合但手上已經聽牌，也可以按「聽牌」
     if (!fin && !out) {
-      if (v.ting) {
+      if (v.ting && !(myTurn && v.tingAsk)) {
         var tg = el('div', 'mj-ting on'); tg.innerHTML = '<b>🀄 聽牌中</b><span>等：' + v.waits.map(function (t) { return MJ.svg(t); }).join('') + '</span><small>摸到不能胡會自動打出、能胡會自動胡</small>';
         tg.appendChild(ctx.button('mj-btn ghost', '✋ 取消聽牌', function () { ctx.send('unting', {}); ctx.snd('tap'); }));
         mine.appendChild(tg);

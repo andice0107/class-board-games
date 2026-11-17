@@ -117,3 +117,7 @@
 .mj-ting.on .mj-btn.ghost { background: #fff; color: #7a2e00; }
 .mj-tingauto { font-weight: 800; color: #ffe08a; padding: 6px; }
 .mj-ting { margin-top: 8px; position: relative; z-index: 1; }
+
+.mj-tingask { display: flex; flex-direction: column; align-items: center; gap: 6px; background: #fff8e1; color: #3b2a00; border: 3px solid #ff8a3d; border-radius: 14px; padding: 8px 12px; width: 100%; box-sizing: border-box; }
+.mj-tingask small { font-weight: 700; color: #7a2e00; text-align: center; }
+.mj-tingask .mj-btn.ghost { background: #eee; color: #333; }
