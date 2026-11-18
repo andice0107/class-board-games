@@ -1,6 +1,6 @@
 /* 遊戲清單：每個遊戲是 games/<id>/ 裡獨立的模組，用 BG.register 加進來 */
 window.BG = window.BG || {};
-BG.VER = '202611181548';
+BG.VER = '202611181643';
 BG.games = BG.games || {};
 BG.register = function (id, mod) { mod.id = id; BG.games[id] = mod; };
 BG.catalog = [
@@ -33,6 +33,7 @@ BG.catalog = [
   { id: 'angel', cat: '社會技巧/溝通訓練', files: ['games/angel/angel.css', 'games/angel/game.js'], title: '天使與惡魔', icon: '😇', color: '#7c4dff', players: '3–6 人', desc: '社會技巧卡牌：用天使的話讓圖像心情變好、惡魔的話讓心情變差，誰的圖像是誰都保密', ready: true },
   { id: 'saynext', cat: '社會技巧/溝通訓練', files: ['games/saynext/saynext.css', 'games/saynext/game.js'], title: '你說我接', icon: '🗣️', color: '#e8772e', players: '3–6 人', desc: '對話接話卡牌：聽念題的人用指定的語氣說一句話，大家挑最適合的回應，再匿名投票', ready: true },
   { id: 'zhuyin-chain', cat: '語文', files: ['games/poker/poker.css', 'games/poker/cards.js', 'games/zychain/zychain.css', 'games/zychain/syllables.js', 'games/zychain/game.js'], title: '拼音大挑戰', icon: 'ㄅ', color: '#0e7490', players: '3–6 人', desc: '用聲母、介音、韻母、聲調卡，輪流在底版上拼出真的拼音，先出完手牌的人贏', ready: true },
+  { id: 'zhuyin-pair', cat: '語文', files: ['games/poker/poker.css', 'games/poker/cards.js', 'games/zypair/zypair.css', 'games/zypair/game.js'], title: '注音配對撿紅點', icon: 'ㄅ', color: '#0f9d8a', players: '2–6 人', desc: '37 個注音符號配對撿牌！手牌和桌上同一個符號就能收走，黃色牌最值錢。可選 2 色或 4 色', ready: true },
   { id: 'bujian', cat: '語文', files: ['games/poker/poker.css', 'games/poker/cards.js', 'games/bujian/bujian.css', 'games/bujian/game.js'], title: '部件撿紅點', icon: '你', color: '#c2410c', players: '2–4 人', desc: '用手上的部件和桌上的部件組成生字！老師可以自己上傳每一課的生字和部件', ready: true },
   { id: 'mahjong', cat: '麻將', files: ['games/mahjong/mahjong.css', 'games/mahjong/rules.js', 'games/mahjong/game.js', 'games/mahjong/guide.js'], title: '台灣麻將', icon: '中', color: '#1b7f5a', players: '2–4 人', desc: '台灣 16 張：吃碰槓胡、花牌、算台數', ready: true },
   { id: 'chinese-checkers', cat: '棋類', files: ['games/checkers/checkers.css', 'games/checkers/rules.js', 'games/checkers/game.js', 'games/checkers/guide.js'], title: '三色跳棋', icon: '✦', color: '#2a9d8f', players: '2–3 人', desc: '跳過彈珠連跳，先把對面的角填滿就贏', ready: true }
