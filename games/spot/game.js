@@ -8,8 +8,8 @@
   var SEATC = ['#e63946', '#1d7dd8', '#f4a300', '#2a9d5c', '#8e44ad', '#e76f51'];
   var THEMES = {
     'spot-match': { name: '圖案', text: false, syms: ['🐶', '🐱', '🐭', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐢', '🐙', '🦋', '🐝', '🍎', '🍌', '🍇', '🍉', '🍓', '🚗', '✈️', '🚀', '⚽', '🎈', '⭐', '🐴', '🐑', '🐘', '🦒', '🐍', '🐟', '🐬', '🐳', '🦀', '🐞', '🦉', '🦆', '🍑', '🍒', '🍍', '🥕', '🌽', '🚌', '🚲', '🚢', '🚁', '⚾', '🎁', '🔔', '🌙', '☀️', '🐺', '🐗', '🦄', '🦓', '🐪', '🦘', '🐿️', '🦔', '🦜', '🐤', '🥝', '🍋', '🍊', '🥑', '🍔', '🍕'] },
-    'spot-zhuyin': { name: '注音', text: true, apart: [0, 5, 10], fake: { 0: 'ㄝ', 5: 'ㄦ', 10: 'ㄨ' }, syms: 'ㄇㄅㄆㄉㄊㄈㄋㄌㄍㄎㄩㄏㄐㄑㄒㄓㄔㄕㄖㄗㄘㄙㄚㄛㄜㄞㄟㄠㄡㄢㄣ'.split('') }, // ㄇㄈㄩ（第 0、5、10 號）容易搞混，不放在同一張牌
-    'spot-hanzi': { name: '國字', text: true, syms: '人入大太天夫日目白自木本未末土士王玉主生牛午千干口田由甲申山出'.split('') }
+    'spot-zhuyin': { name: '注音', text: true, apart: [0, 5, 10], fake: { 0: 'ㄝ', 5: 'ㄦ', 10: 'ㄨ' }, syms: 'ㄇㄅㄆㄉㄊㄈㄋㄌㄍㄎㄩㄏㄐㄑㄒㄓㄔㄕㄖㄗㄘㄙㄚㄛㄜㄞㄟㄠㄡㄢㄣ'.split('').concat('ㄧㄤㄥˊˇˋ˙'.split(''), 'ㄅㄚ ㄆㄚ ㄉㄚ ㄊㄚ ㄋㄚ ㄌㄚ ㄍㄚ ㄎㄚ ㄏㄚ ㄅㄛ ㄆㄛ ㄌㄛ ㄅㄞ ㄆㄞ ㄉㄞ ㄊㄞ ㄋㄞ ㄌㄞ ㄍㄞ ㄎㄞ ㄏㄞ ㄅㄟ ㄆㄟ ㄉㄟ ㄋㄟ ㄌㄟ ㄍㄟ ㄏㄟ ㄅㄠ ㄆㄠ ㄉㄠ ㄊㄠ ㄋㄠ ㄌㄠ ㄍㄠ'.split(' ')) }, // ㄇㄈㄩ（第 0、5、10 號）容易搞混，不放在同一張牌
+    'spot-hanzi': { name: '國字', text: true, syms: '人入大太天夫日目白自木本未末土士王玉主生牛午千干口田由甲申山出八犬百禾己已巳刀刃力九丁于冬各免兔貝見月用矢失右石左比北今令句旬市布夕多手毛方放司同'.split('') }
   };
   var TCOL = ['#e63946', '#1d7dd8', '#2a9d5c', '#8e44ad', '#f08c00', '#d6336c', '#0b7285', '#5c3d2e'];
   /* 有限射影平面：每張牌 N+1 個符號，任兩張牌剛好共用一個。N 越大，每張牌上的符號越多、牌越難找。
@@ -51,7 +51,7 @@
       if (k > 0) { var a = (spin + (k - 1) * (360 / (per - 1))) * Math.PI / 180, rad = per > 8 ? 34 : per > 6 ? 33 : 31; cx = 50 + Math.cos(a) * rad; cy = 50 + Math.sin(a) * rad; }
       var size = (k === 0 ? 1.05 : 1) * (0.78 + r() * 0.42) * (per <= 4 ? 1.3 : per === 5 ? 1.15 : per >= 9 ? 0.72 : per >= 8 ? 0.8 : 1), rot = theme.text ? (r() * 40 - 20) : (r() * 90 - 45);
       var col = theme.text ? 'color:' + TCOL[(s + id) % TCOL.length] + ';' : '';
-      h += '<button type="button" class="sp-sym' + (o.hi === s ? ' hi' : '') + (theme.text ? ' txt' : '') + '" data-s="' + s + '" data-h="s' + s + '" style="left:' + cx + '%;top:' + cy + '%;' + col + '--z:' + size.toFixed(2) + ';--r:' + rot.toFixed(0) + 'deg">' + face(theme, s, o.hi === s ? id : o.vs, n) + '</button>';
+      h += '<button type="button" class="sp-sym' + (o.hi === s ? ' hi' : '') + (theme.text ? ' txt' : '') + (theme.syms[s].length > 1 ? ' two' : '') + (/^[ˊˇˋ˙]$/.test(theme.syms[s]) ? ' mark' : '') + '" data-s="' + s + '" data-h="s' + s + '" style="left:' + cx + '%;top:' + cy + '%;' + col + '--z:' + size.toFixed(2) + ';--r:' + rot.toFixed(0) + 'deg">' + face(theme, s, o.hi === s ? id : o.vs, n) + '</button>';
     });
     return h + '</div>';
   }
@@ -65,7 +65,7 @@
     }
     var IDS = idsFor(5);
     var LVS = [['6', '⭐⭐ 標準：每張牌 6 個' + (theme.text ? '字' : '圖案') + '（原本的難度）'], ['4', '⭐ 入門：每張牌 4 個（牌少、容易找）'], ['5', '⭐ 簡單：每張牌 5 個']];
-    var HAS8 = !theme.text && theme.syms.length >= 73;   // 圖案比較簡單，多兩級；符號（注音、國字）本來就比較難，只有三級
+    var HAS8 = theme.syms.length >= 73;
     if (HAS8) LVS.push(['8', '⭐⭐⭐ 挑戰：每張牌 8 個（找很久！）'], ['9', '⭐⭐⭐⭐ 高手：每張牌 9 個（眼力大考驗）']);
     var REASONS = { most: '拿到最多張牌', tie: '拿到的牌一樣多，平手', resign: '其他人都認輸了', left: '其他人都離開了', teacher: '老師判和' };
     function alive(g) { var a = []; for (var s = 0; s < g.np; s++) if (g.out.indexOf(s) < 0) a.push(s); return a; }
@@ -78,6 +78,9 @@
       seats: 4, seatOptions: [2, 3, 4, 5, 6], seatDefault: 4, botSeats: [1, 5], ver: 1, fitZoom: false,
       opts: [{ k: 'lv', label: '關卡難度（每張牌的' + (theme.text ? '字' : '圖案') + '數）：', list: LVS, note: '左右兩張牌的數量一定一樣多，任兩張牌仍然剛好只有一個一樣' }],
       reasons: REASONS,
+      /* 個人練習：過完一關後，問要不要挑戰更難的下一關 */
+      levelInfo: function (v) { var nm = { '4': '入門・4 個', '5': '簡單・5 個', '6': '標準・6 個', '8': '挑戰・8 個', '9': '高手・9 個' }, ord = ['4', '5', '6', '8', '9'], i = ord.indexOf(v.lv); return { cur: nm[v.lv] || '', next: i >= 0 && i < ord.length - 1 ? nm[ord[i + 1]] : null }; },
+      levelUp: function (o) { var ord = ['4', '5', '6', '8', '9'], i = ord.indexOf(String(o.lv || '6')); return { lv: ord[Math.min(ord.length - 1, i + 1)] }; },
       levelDesc: ['反應很慢，大約 10 秒才找到', '大約 7 秒找到', '大約 5 秒找到', '大約 3 秒就找到，眼睛很利'],
       seatName: function (i) { return '第 ' + (i + 1) + ' 位'; },
       seatColor: function (i) { return SEATC[i % SEATC.length]; },
@@ -85,7 +88,7 @@
         n = Math.max(2, Math.min(6, n || 4));
         var pn = LV2N[(o && o.lv) || '6'] || 5; if (DECKS[pn].length > theme.syms.length) pn = 5;
         var d = shuffle(idsFor(pn).slice());
-        var g = { pn: pn, np: n, top: [], won: [], frz: [], out: [], pile: d, center: null, last: null, lockAt: 0, cnt: 0, res: null };
+        var g = { lv: String(Object.keys(LV2N).filter(function (k) { return LV2N[k] === pn; })[0] || 6), pn: pn, np: n, top: [], won: [], frz: [], out: [], pile: d, center: null, last: null, lockAt: 0, cnt: 0, res: null };
         for (var s = 0; s < n; s++) { g.top.push(d.pop()); g.won.push(0); g.frz.push(0); }
         g.center = g.pile.pop();
         return g;
@@ -109,7 +112,7 @@
       teacherDraw: function (g) { g.res = { w: -1, why: 'teacher' }; },
       view: function (g, seat) {
         var now = Date.now();
-        return { pn: g.pn, np: g.np, top: g.top, center: g.center, left: g.pile.length, won: g.won, out: g.out, last: g.last, cnt: g.cnt, turn: -1,
+        return { lv: g.lv, pn: g.pn, np: g.np, top: g.top, center: g.center, left: g.pile.length, won: g.won, out: g.out, last: g.last, cnt: g.cnt, turn: -1,
           counts: g.won, frz: seat >= 0 ? Math.max(0, g.frz[seat] - now) : 0, lock: Math.max(0, g.lockAt - now) };
       },
       act: function (g, seat, d, notify) {
@@ -243,8 +246,8 @@
         { h: '計分方式', html: '<table class="g-tbl"><tr><th>結果</th><th>得分</th></tr><tr><td>🏆 拿最多張</td><td>3 分</td></tr><tr><td>🤝 平手</td><td>1 分</td></tr><tr><td>💪 其他</td><td>0 分</td></tr></table><p>分數會自動加進老師大螢幕上的積分榜（和電腦玩的不列入總分）。</p>' }
       ],
       teacher: [
-        { h: '主持流程', html: '<ol><li>在首頁點「眼明手快（' + theme.name + '）」開房間，投影 QR code。</li><li>選「每桌人數」（2～6 人），學生掃碼輸入學號，系統自動分桌。</li><li>在 QR code 上方可以選<b>關卡難度</b>：每張牌上有 4、5、6（標準）' + (HAS8 ? '、8 或 9' : '') + ' 個' + thing + '，數量越多越難找，牌的張數也不同（4 個：13 張、5 個：21 張、6 個：' + IDS.length + ' 張' + (HAS8 ? '、8 個：57 張、9 個：73 張' : '') + '）。左右兩張牌的數量一定一樣多，其他規則都不變。</li><li>一局大約 2～4 分鐘（標準難度）。</li><li>老師端每一桌會顯示中間的牌和每個人拿到幾張。</li></ol>' },
-        { h: '版本與教學重點', html: '<ul><li><b>圖案版</b>：動物、水果、交通工具，暖身用，人人都能玩。</li><li><b>注音版</b>：31 個注音符號，ㄅㄆ、ㄉㄊ、ㄋㄌ、ㄓㄗ、ㄢㄣ 等長得像的都在裡面，可以練習<b>字形辨識</b>。容易搞混的 <b>ㄇ、ㄈ、ㄩ</b>：畫面上只要出現，一定是兩張牌上同一個符號（就是答案），不會一邊 ㄇ 一邊 ㄈ。</li><li><b>國字版</b>：人入、大太天夫、日目白自、木本未末、土士王玉、千干、田由甲申 等形近字，練習<b>看清楚筆畫</b>。</li><li>點錯暫停 2 秒、不扣分：鼓勵學生「看清楚再點」，而不是亂猜。</li><li>可以在學生找到後，請他說出那個注音或國字的讀音，或用國字造詞。</li></ul>' },
+        { h: '主持流程', html: '<ol><li>在首頁點「眼明手快（' + theme.name + '）」開房間，投影 QR code。</li><li>選「每桌人數」（2～6 人），學生掃碼輸入學號，系統自動分桌。</li><li>在 QR code 上方可以選<b>關卡難度</b>：每張牌上有 4、5、6（標準）' + '、8 或 9' + ' 個' + thing + '，數量越多越難找，牌的張數也不同（4 個：13 張、5 個：21 張、6 個：' + IDS.length + ' 張' + '、8 個：57 張、9 個：73 張' + '）。左右兩張牌的數量一定一樣多，其他規則都不變。</li><li>一局大約 2～4 分鐘（標準難度）。</li><li>老師端每一桌會顯示中間的牌和每個人拿到幾張。</li></ol>' },
+        { h: '版本與教學重點', html: '<ul><li><b>圖案版</b>：動物、水果、交通工具，暖身用，人人都能玩。</li><li><b>注音版</b>：31 個注音符號，ㄅㄆ、ㄉㄊ、ㄋㄌ、ㄓㄗ、ㄢㄣ 等長得像的都在裡面，可以練習<b>字形辨識</b>。容易搞混的 <b>ㄇ、ㄈ、ㄩ</b>：畫面上只要出現，一定是兩張牌上同一個符號（就是答案），不會一邊 ㄇ 一邊 ㄈ。</li><li><b>注音版的高關卡</b>（每張牌 8、9 個）：符號不夠，會加入 ㄧ、ㄤ、ㄥ、聲調符號和 ㄅㄚ、ㄆㄞ 這類兩個符號的拼音，一起練習辨識。</li><li><b>國字版</b>：人入、大太天夫、日目白自、木本未末、土士王玉、千干、田由甲申 等形近字，練習<b>看清楚筆畫</b>。</li><li><b>個人練習</b>：每打完一關，會問要「挑戰更難的下一關」還是「繼續挑戰同一關」。</li><li>點錯暫停 2 秒、不扣分：鼓勵學生「看清楚再點」，而不是亂猜。</li><li>可以在學生找到後，請他說出那個注音或國字的讀音，或用國字造詞。</li></ul>' },
         { h: '電腦對手', html: '<table class="g-tbl"><tr><th>強度</th><th>電腦大約多久找到</th></tr><tr><td>🐣 入門</td><td>約 10 秒</td></tr><tr><td>🙂 簡單</td><td>約 7 秒</td></tr><tr><td>🤔 普通</td><td>約 5 秒</td></tr><tr><td>🔥 困難</td><td>約 3 秒</td></tr></table><p>左側「電腦出牌速度」也會影響電腦反應：選「🐌 最慢」電腦會再慢 3 倍多，適合剛開始練習的學生。</p>' }
       ]
     };

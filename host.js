@@ -149,6 +149,7 @@
     }
     if (d.t === 'again') {
       if (!T.g.res || T.seats.some(function (id) { return !BG.isBot(id) && !S.players[id]; })) return;
+      if (SOLO && d.up && GAME.levelUp) T.opts = Object.assign({}, T.opts || {}, GAME.levelUp(gopts(T)) || {});   // 個人練習：挑戰更難的下一關
       T.again[seat] = true;
       T.seats.forEach(function (id, i) { if (BG.isBot(id)) T.again[i] = true; });
       if (T.seats.every(function (id, i) { return T.again[i]; })) newRound(T, true); else touch(T);

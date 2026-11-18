@@ -329,7 +329,15 @@
     if (S.stat) c.appendChild(el('p', '', '我的積分：' + S.pts + ' 分（' + S.stat.w + ' 勝 ' + S.stat.d + ' 和 ' + S.stat.l + ' 負）'));
     var row = el('div', 'row c'), anyGone = tb.seats.some(function (s) { return s.gone; });
     var others = tb.seats.filter(function (s, i) { return i !== tb.seat && tb.again[i]; }).length;
-    if (!anyGone) {
+    var LI = SOLO && GAME.levelInfo ? GAME.levelInfo(tb.view) : null;
+    if (LI && !anyGone) {   // 個人練習有關卡的遊戲：問要挑戰更難的下一關，還是繼續同一關
+      c.appendChild(el('p', 'res-note', '這一關（' + LI.cur + '）結束了！要怎麼繼續？'));
+      if (tb.again[tb.seat]) row.appendChild(el('span', 'pill light', '準備下一局…'));
+      else {
+        if (LI.next) row.appendChild(btn('btn-coral', '⬆️ 挑戰更難的下一關（' + LI.next + '）', function () { send('again', { up: 1 }); }));
+        row.appendChild(btn('btn-sun', '🔁 繼續挑戰同一關', function () { send('again'); }));
+      }
+    } else if (!anyGone) {
       if (tb.again[tb.seat]) row.appendChild(el('span', 'pill light', '已邀請再玩一局，等待對方…'));
       else row.appendChild(btn('btn-sun', (others ? '對方想再玩！' : '') + '再玩一局', function () { send('again'); }));
     }

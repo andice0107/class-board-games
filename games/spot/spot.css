@@ -60,3 +60,5 @@
 @media (max-width: 500px) {
   .sp-chip { font-size: 13px; } .sp-status { font-size: 15px; } .sp-lbl { font-size: 13px; } .sp-btn { font-size: 14px; }
 }
+.sp-sym.two, .sp-sym.txt.two { font-size: calc(var(--sp) * .125); letter-spacing: -.05em; white-space: nowrap; }
+.sp-sym.mark, .sp-sym.txt.mark { font-size: calc(var(--sp) * .27); }
