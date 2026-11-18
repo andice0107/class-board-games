@@ -55,3 +55,5 @@
 .zc-host-seats { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; font-size: 13px; }
 .zc-hs { display: inline-flex; align-items: center; gap: 3px; } .zc-hs i { width: 9px; height: 9px; border-radius: 50%; } .zc-hs.out { opacity: .5; } .zc-hs.on { font-weight: 900; text-decoration: underline; }
 @media (min-width: 700px) { .zc-slot { --w: min(calc(var(--vh, 1vh) * 8), 100px); } }
+.zc-peek { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; justify-content: center; color: #fff4e0; font-size: 13px; font-weight: 800; }
+.zc-peek .zc-card { --cw: 40px; }
