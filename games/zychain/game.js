@@ -414,8 +414,11 @@
     var me = el('div', 'pk-me zc-me' + (myTurn ? ' turn' : ''));
     var top = el('div', 'pk-me-top'), dot = el('i'); dot.style.background = SEATC[seat]; top.appendChild(dot);
     top.appendChild(el('span', 'n', '我的手牌')); top.appendChild(el('span', 'pk-cnt', hand.length + ' 張')); me.appendChild(top);
-    var hd = el('div', 'zc-hand'), n = hand.length, rows = n <= 4 ? 1 : n <= 10 ? 2 : n <= 18 ? 3 : 4, cols = Math.ceil(n / rows) || 1;
-    hd.style.setProperty('--hw', Math.max(38, Math.min(88, Math.floor((Math.min(window.innerWidth || 390, 700) - 64) / cols) - 8)) + 'px');
+    var hd = el('div', 'zc-hand'), n = hand.length;
+    // 手牌區的大小固定（不會因為牌變多而變大，以免擠壓底版）；牌多的時候，牌自動縮小排進去
+    var wide = window.innerWidth > window.innerHeight, areaW = Math.min(window.innerWidth || 390, 760) - 56, areaH = Math.round((window.innerHeight || 800) * (wide ? .235 : .225)), gap = 6, cw = wide ? 100 : 88;
+    for (; cw > 26; cw -= 2) { var cols0 = Math.max(1, Math.floor((areaW + gap) / (cw + gap))), rows0 = Math.ceil(n / cols0); if (rows0 * (cw * 1.35 + gap) <= areaH) break; }
+    hd.style.setProperty('--hw', cw + 'px'); hd.style.height = areaH + 'px';
     var sorted = hand.slice().sort(function (a, b) { var ka = 'cmvtf'.indexOf(a.k), kb = 'cmvtf'.indexOf(b.k); return ka - kb || ORDER.indexOf(a.p) - ORDER.indexOf(b.p) || a.i - b.i; });
     sorted.forEach(function (c) {
       var fresh = !L.seen[c.i] && Object.keys(L.seen).length > 0;
@@ -456,7 +459,7 @@
     if (!tb.res && !out) {
       var tools = el('div', 'pk-tools');
       if (myTurn && !v.pend && stuck) tools.appendChild(ctx.button('pk-btn go', v.drawMode === 'one' ? '🃏 抽一張牌' : '🃏 抽牌（抽到能出為止）', function () { send({ t: 'draw' }); }));
-      else if (myTurn && !v.pend) tools.appendChild(ctx.button('pk-btn', '🃏 不出，抽一張', function () { if (confirm('不出牌，抽一張牌，這回合就結束喔？')) send({ t: 'draw' }); }));
+      else if (myTurn && !v.pend) tools.appendChild(ctx.button('pk-btn', '🃏 不出抽牌', function () { if (confirm('不出牌，抽一張牌，這回合就結束喔？')) send({ t: 'draw' }); }));
       if (myTurn && !v.pend && sel && (sel.k !== 'f' || sel.f === 'rev' || sel.f === 'er' || sel.f === 'chance')) tools.appendChild(ctx.button('pk-btn go', '出牌', playSel));
       if (myTurn && v.pend && v.pend.fx === 'cut') { var okb = ctx.button('pk-btn go', '確定丟這兩張', function () { if (L.two.length !== 2) { ctx.toast('要選兩張牌'); return; } send({ t: 'chfx', two: L.two.slice() }); }); if (L.two.length !== 2) okb.classList.add('dim'); tools.appendChild(okb); }
       if (v.idx) tools.appendChild(ctx.button('pk-btn', '📖 拼音表', function () { L.idx = true; ctx.rerender(); }));

@@ -32,7 +32,7 @@
 .zc-syl.frag { color: #ffd27a; opacity: .8; } .zc-syl i { font-style: normal; background: #2aa66a; color: #fff; border-radius: 50%; width: 26px; height: 26px; font-size: 16px; display: inline-flex; align-items: center; justify-content: center; letter-spacing: 0; }
 .zc-log { font-size: 13px; color: #fff4e0; text-align: center; min-height: 18px; }
 .zc-me { margin-top: 2px; } .zc-table { min-height: 100%; }
-.zc-hand { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; padding: 8px 2px 4px; }
+.zc-hand { display: flex; flex-wrap: wrap; justify-content: center; align-content: center; align-items: center; gap: 6px; padding: 0 2px; box-sizing: border-box; }
 .zc-hand .zc-card { --cw: var(--hw, 60px); }
 .zc-pick { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; background: #fff8e1; color: #3b2a00; border-radius: 12px; padding: 6px; font-weight: 800; width: 100%; box-sizing: border-box; }
 .pk-btn.dim { opacity: .5; }
@@ -67,3 +67,4 @@
 }
 .zc-peek { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; justify-content: center; color: #fff4e0; font-size: 13px; font-weight: 800; }
 .zc-peek .zc-card { --cw: 40px; }
+.zc-table .pk-tools { gap: 6px; flex-wrap: nowrap; } .zc-table .pk-tools .pk-btn { padding: 8px 10px; font-size: 14px; white-space: nowrap; }
