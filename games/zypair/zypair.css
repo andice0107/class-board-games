@@ -37,3 +37,4 @@
 .zp-tgt { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; background: #fff8e1; color: #3b2a00; border-radius: 12px; padding: 6px 8px; font-weight: 800; font-size: 14px; }
 .zp-peek { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; justify-content: center; background: rgba(0,0,0,.35); color: #fff; border-radius: 12px; padding: 6px; font-weight: 800; font-size: 13px; }
 .zp-card.two { transform: translateY(-6px); box-shadow: 0 0 0 3px #ff8a3d; }
+.zp-cd { font-weight: 900; color: #ffd24d; }

@@ -248,8 +248,8 @@
     if (prev && key !== L.key && v.last && v.last.fx && v.last.fx !== 'void') {
       var ov = document.createElement('div'); ov.className = 'zp-fxov'; var fi = FN[v.last.fx];
       var tg = TARGET[v.last.fx] || (v.last.fx === 'skip' && v.last.to != null) ? '（對象：' + who(tb, v.last.to) + (v.last.blocked ? '，被護盾擋下！' : '') + '）' : '';
-      ov.innerHTML = '<div class="zp-fxbox"><div class="ic">' + fi[0] + '</div><b>' + esc(who(tb, v.last.s)) + ' 使用「' + fi[1] + '」</b><p>' + esc(fi[2]) + tg + '</p></div>';
-      var dur = Math.max(1500, v.hold || 5000); ov.style.animationDuration = dur + 'ms'; document.body.appendChild(ov); setTimeout(function () { ov.remove(); }, dur);
+      ov.innerHTML = '<div class="zp-fxbox"><div class="ic">' + fi[0] + '</div><b>' + esc(who(tb, v.last.s)) + ' 使用「' + fi[1] + '」</b><p>' + esc(fi[2]) + tg + '</p><p class="zp-cd">⏳ 全員暫停，<span>5</span> 秒後繼續</p></div>';
+      var dur = Math.max(1500, v.hold || 5000); ov.style.animationDuration = dur + 'ms'; document.body.appendChild(ov); var t0 = Date.now(), iv = setInterval(function () { var sp = ov.querySelector('.zp-cd span'); if (sp) sp.textContent = Math.max(0, Math.ceil((dur - (Date.now() - t0)) / 1000)); }, 200); setTimeout(function () { clearInterval(iv); ov.remove(); }, dur);
     }
     L.key = key;
     if (prev === null || (prev && prev.round !== tb.round)) fx.toast((tb.round > 1 ? '第 ' + tb.round + ' 局開始！' : '開始囉！') + '手牌和桌上同一個符號，就能配對撿走');
