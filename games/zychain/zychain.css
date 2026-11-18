@@ -1,4 +1,4 @@
-/* 注音拼接 */
+/* 拼音大挑戰 */
 .zc-table { background: radial-gradient(ellipse at 50% 30%, #1f6f86, #134e63 70%, #0e3a4b); }
 .zc-felt { position: relative; width: 100%; box-sizing: border-box; flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: space-around; gap: 4px; padding: 4px 6px; border-radius: 22px; border: 2px dashed rgba(255,255,255,.3); }
 .zc-info { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
