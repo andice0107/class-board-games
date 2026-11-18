@@ -211,7 +211,8 @@
     },
     hostView: function (g) {
       var sy = sylOf(g.board), h = '<div class="zc-host"><div class="zc-host-b">';
-      SLOTS.forEach(function (s) { var c = g.board[s]; h += '<span class="zc-m k-' + s + '">' + (c ? (realCard(c) ? esc(c.p) : '⬜') : '') + '</span>'; });
+      var cell = function (s) { var c = g.board[s]; return '<span class="zc-m k-' + s + '">' + (c ? (realCard(c) ? esc(c.p) : '⬜') : '') + '</span>'; };
+      h += '<div class="zc-hcol">' + cell('c') + cell('m') + cell('v') + '</div>' + cell('t');
       h += '</div><div class="zc-host-s">' + (sy.ok ? esc(sy.text) : esc(sy.text || '…')) + '</div><div class="zc-host-seats">';
       for (var s = 0; s < g.np; s++) h += '<span class="zc-hs' + (g.out.indexOf(s) >= 0 ? ' out' : '') + (s === g.turn && !g.res ? ' on' : '') + '"><i style="background:' + SEATC[s] + '"></i>' + (g.out.indexOf(s) >= 0 ? '認輸' : g.hands[s].length + ' 張') + '</span>';
       return h + '</div></div>';
@@ -291,13 +292,13 @@
     if (!tb.res) info.appendChild(el('span', 'zc-chip', '下一位：' + who(tb, nx)));
     if (v.limit) { var tm = el('span', 'zc-chip zc-timer', v.ending ? '⏱️ 最後一輪' : v.tl == null ? '⏱️ 開始後計時' : '⏱️ ' + fmtT(v.tl)); info.appendChild(tm); }
     felt.appendChild(info);
-    var bd = el('div', 'zc-board');
+    var bd = el('div', 'zc-board'), bcol = el('div', 'zc-bcol');
     SLOTS.forEach(function (s) {
       var c = v.board[s], slot = el('div', 'zc-slot k-' + s + (sel && sel.k === s ? ' target' : '') + (sel && sel.f === 'blank' && c && realCard(c) ? ' cover' : ''));
       slot.setAttribute('data-slot', s);
       if (c) { var ce = realCard(c) ? cardEl(c) : (function () { var b = el('div', 'zc-card k-f f-blank'); b.appendChild(el('b', 'zc-ico', '⬜')); b.appendChild(el('small', '', '空白')); return b; })(); ce.classList.add('onboard'); ce.removeAttribute('data-c'); slot.appendChild(ce); }
       else slot.appendChild(el('span', 'zc-empty', SNAME[s]));
-      slot.appendChild(el('i', 'zc-tag', SNAME[s]));
+      if (!c) slot.appendChild(el('i', 'zc-tag', SNAME[s]));
       slot.addEventListener('click', function () {
         if (!myTurn || !sel || sel.f !== 'blank') return;
         if (!c || !realCard(c)) { ctx.toast('這一格本來就是空的'); return; }
@@ -305,8 +306,9 @@
         if (!tp.ok) { ctx.toast('蓋住之後是「' + (tp.syl ? tp.syl.text || '（空）' : '') + '」，不是真的拼音'); ctx.snd('error'); return; }
         send({ t: 'play', c: sel.i, slot: s });
       });
-      bd.appendChild(slot);
+      (s === 't' ? bd : bcol).appendChild(slot);
     });
+    bd.insertBefore(bcol, bd.firstChild);
     felt.appendChild(bd);
     var sy = sylOf(v.board), rd = el('div', 'zc-syl' + (sy.ok ? ' ok' : ' frag')); rd.innerHTML = sylHTML(sy) + (sy.ok ? ' <i>✓</i>' : ''); felt.appendChild(rd);
     var lg = el('div', 'zc-log'), l = v.last;
