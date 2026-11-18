@@ -382,7 +382,7 @@
       slot.setAttribute('data-slot', s);
       if (c) { var ce = realCard(c) ? cardEl(c) : (function () { var b = el('div', 'zc-card k-f f-blank'); b.appendChild(el('b', 'zc-ico', '⬜')); b.appendChild(el('small', '', '空白')); return b; })(); ce.classList.add('onboard'); ce.removeAttribute('data-c'); slot.appendChild(ce); }
       else slot.appendChild(el('span', 'zc-empty', SNAME[s]));
-      if (!c) slot.appendChild(el('i', 'zc-tag', SNAME[s]));
+      slot.appendChild(el('i', 'zc-tag', SNAME[s])); if (c) slot.classList.add('full');
       slot.addEventListener('click', function () {
         if (!myTurn || !sel || sel.f !== 'blank') return;
         if (!c || !realCard(c)) { ctx.toast('這一格本來就是空的'); return; }
