@@ -137,6 +137,8 @@
     if (d.t === 'scr') { wFrame(p, d); return; }
     if (d.t === 'bot') { if (!T && (SOLO || S.allowBot === true)) { botTable(p, d.level, d.n, SOLO ? d.opts : null); var NT = tblOf(p); if (NT && SOLO && SPEEDS[d.speed]) NT.speed = d.speed; } return; }
     if (!T) return;
+    // 個人練習：玩家自己按「暫停／繼續」
+    if (SOLO && d.t === 'solopause') { if (T.g.res) return; if (d.on) pause(T); else if (T.pz) { resume(T); touch(T); } return; }
     // 有新同學加入、老師還在決定時，整桌暫停：除了表情，其他動作都先不算
     if (T.pz && d.t !== 'emo') { say(p, '⏸️ 遊戲暫停中，請等老師決定。'); send(p); return; }
     if (d.t === 'hint') { doHint(T, p, seat); return; }

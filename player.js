@@ -90,6 +90,7 @@
   }
 
   /* ---------- 畫面 ---------- */
+  function backToSetup() { if (confirm('要回到設定畫面嗎？\n這一局會結束，可以重新選電腦強度和玩法。')) location.href = location.pathname + location.search; }
   function topBar() {
     var t = el('div', 'p-top');
     t.innerHTML = '<div class="brand"><div class="logo"><i></i><i></i><i></i><i></i></div><h1>桌遊對戰教室</h1></div><span class="sp"></span>';
@@ -98,6 +99,11 @@
     if (A && A.tl != null) t.appendChild(el('span', 'pill aid-tl', '⏱ ' + secsLeft()));
     if (A && A.h != null && GAME && GAME.hint) t.appendChild(btn('btn small aid-btn' + (A.hint ? ' on' : '') + (A.h === 0 ? ' dis' : ''), '💡 提示' + (A.h < 0 ? '' : '（' + A.h + '）'), askHint));
     if (SOLO) t.appendChild(BGSfx.button('btn small ghost'));   // 多人時音效由老師端統一開關
+    if (SOLO && joined && S && S.tb) {   // 個人練習：暫停、回到設定
+      t.classList.add('solo');
+      if (!S.tb.res) t.appendChild(btn('btn small ghost', '⏸ 暫停', function () { send('solopause', { on: true }); snd.play('tap'); }));
+      t.appendChild(btn('btn small ghost', '⚙ 設定', backToSetup));
+    }
     if (joined && S && GAME && GAME.guide) t.appendChild(btn('btn small ghost', '📖 規則', function () { BG.showGuide((BG.meta(S.gid) || {}).title + '・玩法說明', GAME.guide.student); }));
     if (code && !SOLO) { var cp = el('span', 'pill code-pill', '🔑 ' + code); t.appendChild(cp); }
     return t;
@@ -129,6 +135,10 @@
   function pauseVeil() {
     var v = document.querySelector('.p-pause'), on = joined && S && S.tb && S.tb.paused && !S.tb.res;
     if (!on) { if (v) v.remove(); return; }
+    if (!v && SOLO) {
+      v = el('div', 'p-pause'); var bx = el('div', 'pp-box'); bx.innerHTML = '<div class="pp-ic">⏸️</div><b>遊戲暫停中</b><p>休息一下，準備好再繼續。<br>電腦和計時都停住了。</p>';
+      var rw = el('div', 'pp-row'); rw.appendChild(btn('btn btn-teal', '▶ 繼續玩', function () { send('solopause', { on: false }); snd.play('tap'); })); rw.appendChild(btn('btn btn-coral', '⚙ 回到設定', backToSetup)); bx.appendChild(rw); v.appendChild(bx); document.body.appendChild(v); return;
+    }
     if (!v) { v = el('div', 'p-pause'); v.innerHTML = '<div class="pp-box"><div class="pp-ic">⏸️</div><b>遊戲暫停中</b><p>有新同學加入，老師正在決定要讓他接著玩，還是重開新局。<br>請稍等一下，倒數計時也暫停了。</p></div>'; document.body.appendChild(v); snd.play('turn'); }
   }
   /* 遊戲桌自動放大到填滿畫面：找出「整張桌子剛好放得下」的最大倍率。

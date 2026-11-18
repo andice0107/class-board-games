@@ -366,3 +366,6 @@ input:focus { border-color: var(--sky); background: #fff; }
 .res-who { font-weight: 900; font-size: 1.15rem; margin: 4px 0; }
 .res-info { background: #f4f7ff; border-radius: 14px; padding: 8px 14px; margin: 6px 0; text-align: left; }
 .res-info .res-note { margin: 4px 0; font-weight: 700; }
+.p-pause .pp-row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 14px; }
+@media (max-width: 560px) { .p-top.solo h1 { display: none; } }
+@media (max-width: 560px) { .p-top.solo { gap: 4px; } .p-top.solo .btn.small { padding: 6px 8px; font-size: 13px; white-space: nowrap; } .p-top.solo .logo { display: none; } }

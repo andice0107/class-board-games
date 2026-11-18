@@ -100,7 +100,7 @@
 
   var mod = {
     seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 1300,
-    reasons: REASONS, holdLeft: holdLeft,
+    reasons: REASONS, holdLeft: holdLeft, onResume: function (g, d) { if (g.dl) g.dl += d; if (g.hold) g.hold += d; },
     levelDesc: ['常常亂出，有牌就出', '有牌就出，會留著功能牌', '會挑讓下一位比較難接的拼音', '會算下一位難不難接，也會用功能牌擋人'],
     opts: [
       { k: 'repeat', label: '場上已經有的符號：', list: [['no', '❌ 不能再出一樣的符號（原版）'], ['yes', '⭕ 可以再出（簡單版）']], note: '例如場上已經有「ㄅ」，不能再出另一張「ㄅ」' },
