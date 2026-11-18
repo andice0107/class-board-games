@@ -137,9 +137,13 @@
       if (d.t === 'chfx') return chfx(g, seat, d);
       if (g.peek && g.peek.s === seat) g.peek = null;
       if (d.t === 'draw') {
-        if (movesOf(g, seat).length) return false;   // 有牌能出就不能抽
         startClock(g);
         var got = 0, c;
+        if (movesOf(g, seat).length) {   // 有牌能出卻選擇不出：抽一張，這個回合就結束（想把好牌留著）
+          c = draw1(g); if (c) { g.hands[seat].push(c); got++; }
+          g.last = { s: seat, k: 'draw', n: got, vol: true }; g.stall++; if (g.stall >= alive(g).length * 3) { g.cnt++; finishBy(g, 'stall'); return true; }
+          advance(g, seat); return true;
+        }
         if (g.drawMode === 'one') { c = draw1(g); if (c) { g.hands[seat].push(c); got++; } g.last = { s: seat, k: 'draw', n: got }; g.stall++; if (g.stall >= alive(g).length * 3) { g.cnt++; finishBy(g, 'stall'); return true; } advance(g, seat); return true; }
         while ((c = draw1(g))) { g.hands[seat].push(c); got++; if (movesOf(g, seat).length) break; }
         g.last = { s: seat, k: 'draw', n: got };
@@ -392,7 +396,7 @@
     felt.appendChild(bd);
     var sy = sylOf(v.board), rd = el('div', 'zc-syl' + (sy.ok ? ' ok' : ' frag')); rd.innerHTML = sylHTML(sy) + (sy.ok ? ' <i>✓</i>' : ''); felt.appendChild(rd);
     var lg = el('div', 'zc-log'), l = v.last;
-    if (l) lg.textContent = l.k === 'draw' ? who(tb, l.s) + ' 沒牌可出，抽了 ' + l.n + ' 張' : l.k === 'rev' ? who(tb, l.s) + ' 出了迴轉：順序反過來' : l.k === 'pick' ? who(tb, l.s) + ' 指定 ' + who(tb, l.to) + ' 出牌' : l.k === 'blank' ? who(tb, l.s) + ' 用空白蓋住「' + SNAME[l.slot] + '」' : l.k === 'chance' ? chanceLog(tb, l) : l.k === 'skipped' ? who(tb, l.s) + ' 被跳過了一次' : l.k === 'er' ? who(tb, l.s) + ' 出了ㄦ，底版清空' : who(tb, l.s) + ' 出了「' + (l.c.p) + '」';
+    if (l) lg.textContent = l.k === 'draw' ? who(tb, l.s) + (l.vol ? ' 選擇不出牌，抽了 ' + l.n + ' 張' : ' 沒牌可出，抽了 ' + l.n + ' 張') : l.k === 'rev' ? who(tb, l.s) + ' 出了迴轉：順序反過來' : l.k === 'pick' ? who(tb, l.s) + ' 指定 ' + who(tb, l.to) + ' 出牌' : l.k === 'blank' ? who(tb, l.s) + ' 用空白蓋住「' + SNAME[l.slot] + '」' : l.k === 'chance' ? chanceLog(tb, l) : l.k === 'skipped' ? who(tb, l.s) + ' 被跳過了一次' : l.k === 'er' ? who(tb, l.s) + ' 出了ㄦ，底版清空' : who(tb, l.s) + ' 出了「' + (l.c.p) + '」';
     else lg.textContent = '底版上先翻開一張牌，輪流放進對應顏色的格子，拼出真的拼音';
     felt.appendChild(lg);
     if (v.peek) { var pk = el('div', 'zc-peek'); pk.appendChild(el('span', '', '👀 你偷看了 ' + who(tb, v.peek.to) + ' 的牌：')); v.peek.cards.forEach(function (c) { pk.appendChild(cardEl(c)); }); felt.appendChild(pk); }
@@ -452,6 +456,7 @@
     if (!tb.res && !out) {
       var tools = el('div', 'pk-tools');
       if (myTurn && !v.pend && stuck) tools.appendChild(ctx.button('pk-btn go', v.drawMode === 'one' ? '🃏 抽一張牌' : '🃏 抽牌（抽到能出為止）', function () { send({ t: 'draw' }); }));
+      else if (myTurn && !v.pend) tools.appendChild(ctx.button('pk-btn', '🃏 不出，抽一張', function () { if (confirm('不出牌，抽一張牌，這回合就結束喔？')) send({ t: 'draw' }); }));
       if (myTurn && !v.pend && sel && (sel.k !== 'f' || sel.f === 'rev' || sel.f === 'er' || sel.f === 'chance')) tools.appendChild(ctx.button('pk-btn go', '出牌', playSel));
       if (myTurn && v.pend && v.pend.fx === 'cut') { var okb = ctx.button('pk-btn go', '確定丟這兩張', function () { if (L.two.length !== 2) { ctx.toast('要選兩張牌'); return; } send({ t: 'chfx', two: L.two.slice() }); }); if (L.two.length !== 2) okb.classList.add('dim'); tools.appendChild(okb); }
       if (v.idx) tools.appendChild(ctx.button('pk-btn', '📖 拼音表', function () { L.idx = true; ctx.rerender(); }));
@@ -495,7 +500,7 @@
   BG.register('zhuyin-chain', mod);
   mod.guide = {
     student: [
-      { h: '怎麼玩', html: '<ol><li>每人先拿 7 張手牌，底版上翻開一張牌。</li><li>底版有四格：<b style="color:#e5484d">聲母（紅）</b>、<b style="color:#c98a00">介音（黃）</b>、<b style="color:#2f6fe4">韻母（藍）</b>、<b style="color:#2aa66a">聲調（綠）</b>。</li><li>輪到你時，<b>一次出一張牌</b>：點一張手牌（亮出它要放的格子），再按「出牌」（或再點一次那張牌）。</li><li>放進去以後，底版上拼出來的要是<b>真的存在的拼音</b>，不是的話不能出。</li><li>聲調格空著就是<b>一聲</b>。</li><li>沒有牌可以出，就按「抽牌」。</li><li><b>先把手牌出完的人獲勝！</b></li></ol>' },
+      { h: '怎麼玩', html: '<ol><li>每人先拿 7 張手牌，底版上翻開一張牌。</li><li>底版有四格：<b style="color:#e5484d">聲母（紅）</b>、<b style="color:#c98a00">介音（黃）</b>、<b style="color:#2f6fe4">韻母（藍）</b>、<b style="color:#2aa66a">聲調（綠）</b>。</li><li>輪到你時，<b>一次出一張牌</b>：點一張手牌（亮出它要放的格子），再按「出牌」（或再點一次那張牌）。</li><li>放進去以後，底版上拼出來的要是<b>真的存在的拼音</b>，不是的話不能出。</li><li>聲調格空著就是<b>一聲</b>。</li><li>沒有牌可以出，就按「抽牌」。有牌可以出，也可以按「不出，抽一張」：抽一張牌，這回合就結束（想把好牌留著時用）。</li><li><b>先把手牌出完的人獲勝！</b></li></ol>' },
       { h: '注意', html: '<ul><li>放進格子會<b>換掉</b>那一格原本的牌。</li><li>如果老師選「不能出一樣的符號」，場上已經有的符號（例如「ㄅ」）就不能再出另一張一樣的。</li><li>不確定有沒有這個音？可以按「📖 拼音表」查（老師有開放才有）。</li><li>有限時的話，時間到後<b>這一輪打完就結束</b>，手牌最少的人贏。</li></ul>' },
       { h: '功能牌', html: '<table class="g-tbl"><tr><th>牌</th><th>效果</th></tr><tr><td>🔄 迴轉</td><td>出牌的順序反過來</td></tr><tr><td>👉 指定</td><td>你決定讓哪一位玩家（不能是自己）出牌</td></tr><tr><td>⬜ 空白</td><td>蓋住底版上的一格，蓋住後底版仍要是真的拼音。蓋住聲調格＝一聲</td></tr><tr><td>🎲 機會</td><td>出牌後<b>隨機抽出一個效果</b>（見下表）。只剩這一張牌時直接出完獲勝。</td></tr><tr><td>✨ ㄦ</td><td>清空整個底版，把ㄦ放在韻母格</td></tr></table><p>功能牌隨時都可以出（空白要蓋完還是真的拼音）。</p><p><b>機會牌的 11 種效果：</b></p><table class="g-tbl">' + Object.keys(CFX).map(function (k) { return '<tr><td>' + CFX[k][0] + '</td><td>' + CFX[k][1] + '</td></tr>'; }).join('') + '</table><p>牌堆抽完時，會把出過的牌洗一洗放回牌堆繼續抽。</p>' },
       { h: '計分方式', html: '<p>先把手牌出完的人獲勝（積分榜 +3 分）。限時結束時，手牌最少的人獲勝，並列的人都算贏。和電腦玩的不列入總分。</p>' }
