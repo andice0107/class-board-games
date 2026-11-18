@@ -7,7 +7,7 @@
   var N = 5, PER = N + 1, LOCK = 1500, FREEZE = 2000;
   var SEATC = ['#e63946', '#1d7dd8', '#f4a300', '#2a9d5c', '#8e44ad', '#e76f51'];
   var THEMES = {
-    'spot-match': { name: '圖案', text: false, syms: ['🐶', '🐱', '🐭', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐢', '🐙', '🦋', '🐝', '🍎', '🍌', '🍇', '🍉', '🍓', '🚗', '✈️', '🚀', '⚽', '🎈', '⭐', '🐴', '🐑', '🐘', '🦒', '🐍', '🐟', '🐬', '🐳', '🦀', '🐞', '🦉', '🦆', '🍑', '🍒', '🍍', '🥕', '🌽', '🚌', '🚲', '🚢', '🚁', '⚾', '🎁', '🔔', '🌙', '☀️'] },
+    'spot-match': { name: '圖案', text: false, syms: ['🐶', '🐱', '🐭', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐢', '🐙', '🦋', '🐝', '🍎', '🍌', '🍇', '🍉', '🍓', '🚗', '✈️', '🚀', '⚽', '🎈', '⭐', '🐴', '🐑', '🐘', '🦒', '🐍', '🐟', '🐬', '🐳', '🦀', '🐞', '🦉', '🦆', '🍑', '🍒', '🍍', '🥕', '🌽', '🚌', '🚲', '🚢', '🚁', '⚾', '🎁', '🔔', '🌙', '☀️', '🐺', '🐗', '🦄', '🦓', '🐪', '🦘', '🐿️', '🦔', '🦜', '🐤', '🥝', '🍋', '🍊', '🥑', '🍔', '🍕'] },
     'spot-zhuyin': { name: '注音', text: true, apart: [0, 5, 10], fake: { 0: 'ㄝ', 5: 'ㄦ', 10: 'ㄨ' }, syms: 'ㄇㄅㄆㄉㄊㄈㄋㄌㄍㄎㄩㄏㄐㄑㄒㄓㄔㄕㄖㄗㄘㄙㄚㄛㄜㄞㄟㄠㄡㄢㄣ'.split('') }, // ㄇㄈㄩ（第 0、5、10 號）容易搞混，不放在同一張牌
     'spot-hanzi': { name: '國字', text: true, syms: '人入大太天夫日目白自木本未末土士王玉主生牛午千干口田由甲申山出'.split('') }
   };
@@ -25,9 +25,9 @@
     return cards;
   }
   function cyc(P, set) { var cards = []; for (var i = 0; i < P; i++) cards.push(set.map(function (d) { return (d + i) % P; })); return cards; }
-  var DECKS = { 3: cyc(13, [0, 1, 3, 9]), 4: cyc(21, [0, 1, 4, 14, 16]), 5: plane5(), 7: cyc(57, [0, 1, 3, 13, 32, 36, 43, 52]) };
+  var DECKS = { 3: cyc(13, [0, 1, 3, 9]), 4: cyc(21, [0, 1, 4, 14, 16]), 5: plane5(), 7: cyc(57, [0, 1, 3, 13, 32, 36, 43, 52]), 8: cyc(73, [0, 1, 3, 7, 15, 31, 36, 54, 63]) };
   var DECK = DECKS[5];
-  var LV2N = { '4': 3, '5': 4, '6': 5, '8': 7 };   // 每張牌的符號數 → 平面的階數
+  var LV2N = { '4': 3, '5': 4, '6': 5, '8': 7, '9': 8 };   // 每張牌的符號數 → 平面的階數
   function common(a, b, n) { var D = DECKS[n || 5], A = D[a], B = D[b]; for (var i = 0; i < A.length; i++) if (B.indexOf(A[i]) >= 0) return A[i]; return -1; }
   function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
   function rnd(seed) { var s = seed * 9301 + 49297; return function () { s = (s * 9301 + 49297) % 233280; return s / 233280; }; }
@@ -48,8 +48,8 @@
     var spin = r() * 72, h = '<div class="sp-card' + (o.cls ? ' ' + o.cls : '') + '">';
     order.forEach(function (s, k) {
       var cx = 50, cy = 50;
-      if (k > 0) { var a = (spin + (k - 1) * (360 / (per - 1))) * Math.PI / 180, rad = per > 6 ? 33 : 31; cx = 50 + Math.cos(a) * rad; cy = 50 + Math.sin(a) * rad; }
-      var size = (k === 0 ? 1.05 : 1) * (0.78 + r() * 0.42) * (per <= 4 ? 1.3 : per === 5 ? 1.15 : per >= 8 ? 0.8 : 1), rot = theme.text ? (r() * 40 - 20) : (r() * 90 - 45);
+      if (k > 0) { var a = (spin + (k - 1) * (360 / (per - 1))) * Math.PI / 180, rad = per > 8 ? 34 : per > 6 ? 33 : 31; cx = 50 + Math.cos(a) * rad; cy = 50 + Math.sin(a) * rad; }
+      var size = (k === 0 ? 1.05 : 1) * (0.78 + r() * 0.42) * (per <= 4 ? 1.3 : per === 5 ? 1.15 : per >= 9 ? 0.72 : per >= 8 ? 0.8 : 1), rot = theme.text ? (r() * 40 - 20) : (r() * 90 - 45);
       var col = theme.text ? 'color:' + TCOL[(s + id) % TCOL.length] + ';' : '';
       h += '<button type="button" class="sp-sym' + (o.hi === s ? ' hi' : '') + (theme.text ? ' txt' : '') + '" data-s="' + s + '" data-h="s' + s + '" style="left:' + cx + '%;top:' + cy + '%;' + col + '--z:' + size.toFixed(2) + ';--r:' + rot.toFixed(0) + 'deg">' + face(theme, s, o.hi === s ? id : o.vs, n) + '</button>';
     });
@@ -65,8 +65,8 @@
     }
     var IDS = idsFor(5);
     var LVS = [['6', '⭐⭐ 標準：每張牌 6 個' + (theme.text ? '字' : '圖案') + '（原本的難度）'], ['4', '⭐ 入門：每張牌 4 個（牌少、容易找）'], ['5', '⭐ 簡單：每張牌 5 個']];
-    var HAS8 = !theme.text && theme.syms.length >= 57;   // 符號（注音、國字）本來就比較難，不再加到 8 個
-    if (HAS8) LVS.push(['8', '⭐⭐⭐ 挑戰：每張牌 8 個（找很久！）']);
+    var HAS8 = !theme.text && theme.syms.length >= 73;   // 圖案比較簡單，多兩級；符號（注音、國字）本來就比較難，只有三級
+    if (HAS8) LVS.push(['8', '⭐⭐⭐ 挑戰：每張牌 8 個（找很久！）'], ['9', '⭐⭐⭐⭐ 高手：每張牌 9 個（眼力大考驗）']);
     var REASONS = { most: '拿到最多張牌', tie: '拿到的牌一樣多，平手', resign: '其他人都認輸了', left: '其他人都離開了', teacher: '老師判和' };
     function alive(g) { var a = []; for (var s = 0; s < g.np; s++) if (g.out.indexOf(s) < 0) a.push(s); return a; }
     function finish(g) {
@@ -243,7 +243,7 @@
         { h: '計分方式', html: '<table class="g-tbl"><tr><th>結果</th><th>得分</th></tr><tr><td>🏆 拿最多張</td><td>3 分</td></tr><tr><td>🤝 平手</td><td>1 分</td></tr><tr><td>💪 其他</td><td>0 分</td></tr></table><p>分數會自動加進老師大螢幕上的積分榜（和電腦玩的不列入總分）。</p>' }
       ],
       teacher: [
-        { h: '主持流程', html: '<ol><li>在首頁點「眼明手快（' + theme.name + '）」開房間，投影 QR code。</li><li>選「每桌人數」（2～6 人），學生掃碼輸入學號，系統自動分桌。</li><li>在 QR code 上方可以選<b>關卡難度</b>：每張牌上有 4、5、6（標準）' + (HAS8 ? '或 8' : '') + ' 個' + thing + '，數量越多越難找，牌的張數也不同（4 個：13 張、5 個：21 張、6 個：' + IDS.length + ' 張' + (HAS8 ? '、8 個：57 張' : '') + '）。左右兩張牌的數量一定一樣多，其他規則都不變。</li><li>一局大約 2～4 分鐘（標準難度）。</li><li>老師端每一桌會顯示中間的牌和每個人拿到幾張。</li></ol>' },
+        { h: '主持流程', html: '<ol><li>在首頁點「眼明手快（' + theme.name + '）」開房間，投影 QR code。</li><li>選「每桌人數」（2～6 人），學生掃碼輸入學號，系統自動分桌。</li><li>在 QR code 上方可以選<b>關卡難度</b>：每張牌上有 4、5、6（標準）' + (HAS8 ? '、8 或 9' : '') + ' 個' + thing + '，數量越多越難找，牌的張數也不同（4 個：13 張、5 個：21 張、6 個：' + IDS.length + ' 張' + (HAS8 ? '、8 個：57 張、9 個：73 張' : '') + '）。左右兩張牌的數量一定一樣多，其他規則都不變。</li><li>一局大約 2～4 分鐘（標準難度）。</li><li>老師端每一桌會顯示中間的牌和每個人拿到幾張。</li></ol>' },
         { h: '版本與教學重點', html: '<ul><li><b>圖案版</b>：動物、水果、交通工具，暖身用，人人都能玩。</li><li><b>注音版</b>：31 個注音符號，ㄅㄆ、ㄉㄊ、ㄋㄌ、ㄓㄗ、ㄢㄣ 等長得像的都在裡面，可以練習<b>字形辨識</b>。容易搞混的 <b>ㄇ、ㄈ、ㄩ</b>：畫面上只要出現，一定是兩張牌上同一個符號（就是答案），不會一邊 ㄇ 一邊 ㄈ。</li><li><b>國字版</b>：人入、大太天夫、日目白自、木本未末、土士王玉、千干、田由甲申 等形近字，練習<b>看清楚筆畫</b>。</li><li>點錯暫停 2 秒、不扣分：鼓勵學生「看清楚再點」，而不是亂猜。</li><li>可以在學生找到後，請他說出那個注音或國字的讀音，或用國字造詞。</li></ul>' },
         { h: '電腦對手', html: '<table class="g-tbl"><tr><th>強度</th><th>電腦大約多久找到</th></tr><tr><td>🐣 入門</td><td>約 10 秒</td></tr><tr><td>🙂 簡單</td><td>約 7 秒</td></tr><tr><td>🤔 普通</td><td>約 5 秒</td></tr><tr><td>🔥 困難</td><td>約 3 秒</td></tr></table><p>左側「電腦出牌速度」也會影響電腦反應：選「🐌 最慢」電腦會再慢 3 倍多，適合剛開始練習的學生。</p>' }
       ]
