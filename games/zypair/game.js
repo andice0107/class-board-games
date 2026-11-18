@@ -217,7 +217,7 @@
   function fmtT(ms) { var s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
 
   /* ---------- 學生端 ---------- */
-  var L = { two: [], order: null, newIds: {}, sel: null, round: -1, sent: -1, key: '', tl: null, tlT: 0 };
+  var L = { holdUntil: 0, two: [], order: null, newIds: {}, sel: null, round: -1, sent: -1, key: '', tl: null, tlT: 0 };
   function short(tb, i) { var s = tb.seats[i]; return s.bot ? '電腦 ' + (i + 1) : s.name.replace(/（.*）/, ''); }
   function who(tb, i) { return i === tb.seat ? '你' : short(tb, i); }
   function card(c, cls, w) {
@@ -238,7 +238,7 @@
   mod.onUpdate = function (prev, tb, fx) {
     var v = tb.view;
     if (L.round !== tb.round) { L.round = tb.round; L.sel = null; L.two = []; L.sent = -1; L.key = ''; L.order = null; L.newIds = {}; }
-    L.tl = v.tl; L.tlT = Date.now();
+    L.tl = v.tl; L.tlT = Date.now(); L.holdUntil = v.hold > 0 ? Date.now() + v.hold : 0;
     var key = v.cnt + ':' + (v.last ? v.last.c.i : '');
     if (prev && key !== L.key && v.last) {
       fx.snd(v.last.t ? 'cap' : 'move');
@@ -255,7 +255,8 @@
     if (prev === null || (prev && prev.round !== tb.round)) fx.toast((tb.round > 1 ? '第 ' + tb.round + ' 局開始！' : '開始囉！') + '手牌和桌上同一個符號，就能配對撿走');
   };
   mod.render = function (box, ctx) {
-    var tb = ctx.tb, v = tb.view, seat = tb.seat, out = v.out.indexOf(seat) >= 0, myTurn = !tb.res && !out && v.turn === seat && L.sent !== v.cnt;
+    var tb = ctx.tb, v = tb.view, seat = tb.seat, out = v.out.indexOf(seat) >= 0, held = Date.now() < L.holdUntil, myTurn = !tb.res && !out && !held && v.turn === seat && L.sent !== v.cnt;
+    if (held && !tb.res) { clearTimeout(L.ht); L.ht = setTimeout(function () { ctx.rerender(); }, L.holdUntil - Date.now() + 80); }
     var hand = v.hand || [], sel = L.sel != null ? cardOf(hand, L.sel) : null; if (!sel) L.sel = null;
     var wide = window.innerWidth > window.innerHeight, W = Math.min(window.innerWidth || 390, 760) - 40, H = window.innerHeight || 800;
     var wrap = el('div', 'pk-table zp-table');
