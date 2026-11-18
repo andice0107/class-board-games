@@ -1,0 +1,8 @@
+/* 注音彩色接龍 */
+.zu-timer { text-align: center; font-weight: 800; font-size: 14px; color: #fff; background: rgba(0,0,0,.3); border-radius: 99px; padding: 2px 12px; align-self: center; }
+.zu-fxov { position: fixed; inset: 0; z-index: 400; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.3); animation: zuFx 5s both; }
+.zu-fxbox { background: rgba(40,20,90,.95); color: #fff; border: 4px solid #ffd24d; border-radius: 22px; padding: 18px 22px; text-align: center; max-width: 82vw; box-shadow: 0 8px 40px #000a; animation: zuPop .5s cubic-bezier(.2,1.3,.4,1); }
+.zu-fxbox .ic { font-size: 64px; line-height: 1.1; } .zu-fxbox b { font-size: 22px; } .zu-fxbox p { margin: 6px 0 0; font-size: 16px; }
+.zu-cd { font-weight: 900; color: #ffd24d; } .zu-cc { display: inline-block; padding: 1px 12px; border-radius: 99px; font-weight: 900; }
+@keyframes zuFx { 0% { opacity: 0; } 4% { opacity: 1; } 92% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes zuPop { from { transform: scale(.4); } to { transform: scale(1); } }
