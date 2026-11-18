@@ -13,7 +13,7 @@
   var TONEMARK = { '2': 'ˊ', '3': 'ˇ', '4': 'ˋ', '5': '˙' }, TONEOF = { 'ˊ': '2', 'ˇ': '3', 'ˋ': '4', '˙': '5' };
   var FN = { rev: ['迴轉', '🔄', '順序反過來'], pick: ['指定', '👉', '指定任何一位玩家出牌'], blank: ['空白', '⬜', '蓋住底版一格'], chance: ['機會', '🎲', '抽一個隨機效果'], er: ['ㄦ', '✨', '清空底版'] };
   var FNCOUNT = { rev: 3, pick: 3, blank: 5, chance: 3, er: 2 };
-  var CFX = { cut: ['丟牌', '把自己的兩張手牌丟到牌堆底'], spin: ['轉運', '手牌全放到牌堆底，重抽同樣張數'], fine: ['罰抽', '指定一位玩家抽 2 張牌'], gift: ['送牌', '送一張手牌給指定玩家'], swap: ['換牌', '和指定玩家各從對方手上隨機抽一張來互換'], drop: ['大放送', '每位至少有 2 張手牌的玩家，各丟一張牌到牌堆底'], again: ['再一次', '自己再出一張牌'], skip: ['跳過', '指定一位玩家，下次輪到他時跳過'], peek: ['偷看', '偷看指定玩家最多 3 張手牌（只有你看得到）'], rich: ['均富', '手牌比最多的人少的玩家，都抽到和他一樣多'], redeal: ['重發', '所有手牌收回洗牌，由你指定誰拿第一張，並決定順時鐘或逆時鐘發牌'] };
+  var CFX = { cut: ['丟牌', '把自己的兩張手牌丟到牌堆底'], spin: ['轉運', '手牌全放到牌堆底，重抽同樣張數'], fine: ['罰抽', '指定一位玩家抽 2 張牌'], gift: ['送牌', '送一張手牌給指定玩家'], swap: ['換牌', '和指定玩家各從對方手上隨機抽一張來互換'], drop: ['大放送', '每位至少有 2 張手牌的玩家，各丟一張牌到牌堆底'], again: ['再一次', '自己再出一張牌。⚠️ 如果沒有牌可出，就必須一直抽牌，抽到能出為止'], skip: ['跳過', '指定一位玩家，下次輪到他時跳過'], peek: ['偷看', '偷看指定玩家最多 3 張手牌（只有你看得到）'], rich: ['均富', '手牌比最多的人少的玩家，都抽到和他一樣多'], redeal: ['重發', '所有手牌收回洗牌，由你指定誰拿第一張，並決定順時鐘或逆時鐘發牌'] };
   var HOLD = 5000, FNK = { rev: 1, pick: 1, blank: 1, er: 1, chance: 1 };   // 功能牌打出後，停 5 秒讓大家看特效
   function holdLeft(g) { return g.hold ? Math.max(0, g.hold - Date.now()) : 0; }
   var ORDER = 'ㄅㄆㄇㄈㄉㄊㄋㄌㄍㄎㄏㄐㄑㄒㄓㄔㄕㄖㄗㄘㄙㄧㄨㄩㄚㄛㄜㄝㄞㄟㄠㄡㄢㄣㄤㄥㄦˊˇˋ˙';
@@ -129,7 +129,7 @@
     view: function (g, seat) {
       var left = g.dl ? Math.max(0, g.dl - Date.now()) : null;
       return { np: g.np, repeat: g.repeat, drawMode: g.drawMode, idx: g.idx, board: g.board, turn: g.turn, dir: g.dir, hand: seat >= 0 ? g.hands[seat] : null,
-        counts: g.hands.map(function (h) { return h.length; }), left: g.deck.length + g.disc.length, last: g.last, out: g.out, cnt: g.cnt, tl: left, limit: g.limit, ending: g.lastTurns != null, res: !!g.res, hold: holdLeft(g), pend: g.pend ? { s: g.pend.s, fx: g.pend.fx } : null, peek: g.peek && g.peek.s === seat ? { to: g.peek.to, cards: g.peek.cards } : null };
+        counts: g.hands.map(function (h) { return h.length; }), left: g.deck.length + g.disc.length, last: g.last, out: g.out, cnt: g.cnt, tl: left, limit: g.limit, ending: g.lastTurns != null, res: !!g.res, hold: holdLeft(g), again: g.again === seat, pend: g.pend ? { s: g.pend.s, fx: g.pend.fx } : null, peek: g.peek && g.peek.s === seat ? { to: g.peek.to, cards: g.peek.cards } : null };
     },
     act: function (g, seat, d, notify) {
       if (g.res || g.out.indexOf(seat) >= 0) return false;
@@ -139,15 +139,17 @@
       if (g.pend && d.t !== 'chfx') return false;
       if (d.t === 'chfx') return chfx(g, seat, d);
       if (g.peek && g.peek.s === seat) g.peek = null;
+      var againNow = g.again === seat; g.again = null;   // 「再一次」的警示：這回合沒牌可出就一定要抽到能出為止
       if (d.t === 'draw') {
         startClock(g);
         var got = 0, c;
+        if (againNow && movesOf(g, seat).length) { g.again = seat; return false; }   // 再一次：有牌可出就不能選擇抽牌
         if (movesOf(g, seat).length) {   // 有牌能出卻選擇不出：抽一張，這個回合就結束（想把好牌留著）
           c = draw1(g); if (c) { g.hands[seat].push(c); got++; }
           g.last = { s: seat, k: 'draw', n: got, vol: true }; g.stall++; if (g.stall >= alive(g).length * 3) { g.cnt++; finishBy(g, 'stall'); return true; }
           advance(g, seat); return true;
         }
-        if (g.drawMode === 'one') { c = draw1(g); if (c) { g.hands[seat].push(c); got++; } g.last = { s: seat, k: 'draw', n: got }; g.stall++; if (g.stall >= alive(g).length * 3) { g.cnt++; finishBy(g, 'stall'); return true; } advance(g, seat); return true; }
+        if (g.drawMode === 'one' && !againNow) { c = draw1(g); if (c) { g.hands[seat].push(c); got++; } g.last = { s: seat, k: 'draw', n: got }; g.stall++; if (g.stall >= alive(g).length * 3) { g.cnt++; finishBy(g, 'stall'); return true; } advance(g, seat); return true; }
         while ((c = draw1(g))) { g.hands[seat].push(c); got++; if (movesOf(g, seat).length) break; }
         g.last = { s: seat, k: 'draw', n: got };
         if (movesOf(g, seat).length) { g.cnt++; return true; }   // 抽到能出的牌了：還是這個人的回合，接著出牌
@@ -246,7 +248,7 @@
       toBottom(g, old); info.n = n; info.aff = [seat];
     } else if (fx === 'drop') {
       var cn = 0; info.aff = []; alive(g).forEach(function (s) { var hh = g.hands[s]; if (hh.length >= 2) { toBottom(g, hh.splice(Math.floor(Math.random() * hh.length), 1)); cn++; info.aff.push(s); } }); info.n = cn;
-    } else if (fx === 'again') { next = seat; info.aff = [seat]; }
+    } else if (fx === 'again') { next = seat; info.aff = [seat]; g.again = seat; }
     else if (fx === 'rich') {
       var mx = 0; alive(g).forEach(function (s) { mx = Math.max(mx, g.hands[s].length); });
       info.aff = []; alive(g).forEach(function (s) { var had = g.hands[s].length; while (g.hands[s].length < mx) { var c2 = draw1(g); if (!c2) break; g.hands[s].push(c2); } if (g.hands[s].length > had) info.aff.push(s); }); info.mx = mx;
@@ -326,7 +328,7 @@
   function chanceLog(tb, l) {
     var n = who(tb, l.s), f = CFX[l.fx], t = l.to != null ? who(tb, l.to) : '';
     if (l.pend) return n + ' 出了機會牌，抽到「' + f[0] + '」：' + f[1];
-    var m = { cut: '丟了兩張牌到牌堆底', spin: '手牌放到牌堆底，重抽了 ' + l.n + ' 張', fine: t + ' 被罰抽 2 張', gift: '送了一張牌給 ' + t, swap: '和 ' + t + ' 互換了一張牌', drop: l.n + ' 位玩家各丟了一張牌到牌堆底', again: '要再出一張牌', skip: t + ' 下次輪到時會被跳過', peek: '偷看了 ' + t + ' 的牌', rich: '手牌少的人都抽到 ' + l.mx + ' 張', redeal: '手牌全部洗在一起，從 ' + (l.first != null ? who(tb, l.first) : '') + ' 開始' + (l.dir > 0 ? '順時鐘' : '逆時鐘') + '重發' }[l.fx];
+    var m = { cut: '丟了兩張牌到牌堆底', spin: '手牌放到牌堆底，重抽了 ' + l.n + ' 張', fine: t + ' 被罰抽 2 張', gift: '送了一張牌給 ' + t, swap: '和 ' + t + ' 互換了一張牌', drop: l.n + ' 位玩家各丟了一張牌到牌堆底', again: '要再出一張牌（⚠️ 沒有牌可出的話，必須抽到有牌可出為止）', skip: t + ' 下次輪到時會被跳過', peek: '偷看了 ' + t + ' 的牌', rich: '手牌少的人都抽到 ' + l.mx + ' 張', redeal: '手牌全部洗在一起，從 ' + (l.first != null ? who(tb, l.first) : '') + ' 開始' + (l.dir > 0 ? '順時鐘' : '逆時鐘') + '重發' }[l.fx];
     return n + ' 的機會「' + f[0] + '」：' + m;
   }
   /* 功能牌特效：打出功能牌時，畫面中央放大顯示是什麼牌、效果是什麼、誰受影響，停 5 秒（機會牌選對象前先停 3 秒，不擋住操作） */
@@ -394,7 +396,7 @@
       st.textContent = '機會「' + pn + '」：' + (pf === 'cut' ? '點兩張牌丟掉（' + L.two.length + '/2）' : pf === 'gift' ? '點一張牌，再選玩家' : pf === 'redeal' ? (L.rd == null ? '選誰拿第一張牌' : '選發牌方向') : '選一位玩家');
     } else if (myTurn) {
       st.className = 'pk-status me';
-      st.textContent = stuck ? '沒有牌可以出，按「抽牌」' : !sel ? '輪到你：選一張手牌' : sel.f === 'blank' ? '點底版上要蓋住的格子' : sel.f === 'pick' ? '選一位玩家，讓他出牌' : '再按一次牌，或按「出牌」';
+      st.textContent = stuck && v.again ? '「再一次」沒牌可出：按「抽牌」，抽到能出為止' : stuck ? '沒有牌可以出，按「抽牌」' : !sel ? '輪到你：選一張手牌' : sel.f === 'blank' ? '點底版上要蓋住的格子' : sel.f === 'pick' ? '選一位玩家，讓他出牌' : '再按一次牌，或按「出牌」';
     } else st.textContent = '輪到 ' + who(tb, v.turn);
     wrap.appendChild(st);
     wrap.appendChild(PKUI.opps(tb, { np: v.np, counts: v.counts, out: v.out, turn: v.turn }, seat, function () { return ''; }, short));
@@ -499,7 +501,7 @@
     if (!tb.res && !out) {
       var tools = el('div', 'pk-tools');
       if (myTurn && !v.pend && stuck) tools.appendChild(ctx.button('pk-btn go', v.drawMode === 'one' ? '🃏 抽一張牌' : '🃏 抽牌（抽到能出為止）', function () { send({ t: 'draw' }); }));
-      else if (myTurn && !v.pend) tools.appendChild(ctx.button('pk-btn', '🃏 不出抽牌', function () { if (confirm('不出牌，抽一張牌，這回合就結束喔？')) send({ t: 'draw' }); }));
+      else if (myTurn && !v.pend && !v.again) tools.appendChild(ctx.button('pk-btn', '🃏 不出抽牌', function () { if (confirm('不出牌，抽一張牌，這回合就結束喔？')) send({ t: 'draw' }); }));
       if (myTurn && !v.pend && sel && (sel.k !== 'f' || sel.f === 'rev' || sel.f === 'er' || sel.f === 'chance')) tools.appendChild(ctx.button('pk-btn go', '出牌', playSel));
       if (myTurn && v.pend && v.pend.fx === 'cut') { var okb = ctx.button('pk-btn go', '確定丟這兩張', function () { if (L.two.length !== 2) { ctx.toast('要選兩張牌'); return; } send({ t: 'chfx', two: L.two.slice() }); }); if (L.two.length !== 2) okb.classList.add('dim'); tools.appendChild(okb); }
       if (v.idx) tools.appendChild(ctx.button('pk-btn', '📖 拼音表', function () { L.idx = true; ctx.rerender(); }));
