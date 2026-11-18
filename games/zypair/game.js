@@ -34,6 +34,8 @@
     else if (top.length > 1) g.res = { ws: top, why: why, note: bv + ' 分' };
     else g.res = { w: top[0], why: why, note: bv + ' 分' };
   }
+  var HOLD = 5000;   // 功能牌打出後，停 5 秒讓大家看清楚，這段時間誰都不能動
+  function holdLeft(g) { return g.hold ? Math.max(0, g.hold - Date.now()) : 0; }
   function startClock(g) { if (!g.dl && g.limit) g.dl = Date.now() + g.limit; }
   function advance(g, s) {
     g.lastS = s; g.cnt++; g.turns = (g.turns || 0) + 1;
@@ -111,7 +113,7 @@
   var mod = {
     seats: 4, seatOptions: [2, 3, 4, 5, 6], seatDefault: 4, botSeats: [1, 5], botDelay: 1100,
     reasons: REASONS,
-    onResume: function (g, d) { if (g.dl) g.dl += d; },
+    holdLeft: holdLeft, onResume: function (g, d) { if (g.dl) g.dl += d; if (g.hold) g.hold += d; },
     levelDesc: ['常常亂出牌', '看到能配的就配', '會先配高分的牌、丟低分牌', '會看別人手牌，丟出別人撿不到的牌'],
     opts: [
       { k: 'fn', label: '功能牌：', list: [['no', '❌ 不用（原版）'], ['yes', '✨ 要用（全員重洗、清桌、雙倍、跳過、交換、迴轉、指定、偷看、搶分、重抽、轉運、護盾）']], note: '共 12 種，2 色每種 1 張、4 色每種 2 張' },
@@ -143,7 +145,7 @@
     view: function (g, seat) {
       var pk = g.peek && g.peek.s === seat ? { to: g.peek.to, cards: g.peek.cards } : null;
       var tl = g.dl ? Math.max(0, g.dl - Date.now()) : null;
-      return { sh: !!g.shield[seat], dir: g.dir || 1, peek: pk, np: g.np, four: g.four, hn: g.hn, turn: g.turn, table: g.table, hand: seat >= 0 ? g.hands[seat] : null,
+      return { hold: holdLeft(g), sh: !!g.shield[seat], dir: g.dir || 1, peek: pk, np: g.np, four: g.four, hn: g.hn, turn: g.turn, table: g.table, hand: seat >= 0 ? g.hands[seat] : null,
         counts: g.hands.map(function (h) { return h.length; }), won: g.won, scores: g.won.map(function (x, s) { return score(g, s); }),
         left: g.deck.length, last: g.last, out: g.out, cnt: g.cnt, tl: tl, limit: g.limit, ending: g.lastTurns != null, rest: g.left, res: !!g.res };
     },
@@ -151,9 +153,10 @@
       if (g.res || g.out.indexOf(seat) >= 0) return false;
       if (d.t === 'resign') { notify(seat, '你已經認輸，可以繼續觀看'); knock(g, seat, 'resign'); g.cnt++; return true; }
       if (d.t !== 'play' || g.turn !== seat || d.n !== g.cnt) return false;
+      if (holdLeft(g) > 150) return false;   // 功能牌特效還在播
       var h = g.hands[seat], c = cardOf(h, d.c); if (!c) return false;
       if (g.peek && g.peek.s === seat) g.peek = null;
-      if (c.f) { if (!g.fn || !useFn(g, seat, c, d, h)) return false; startClock(g); if (g.deck.length) h.push(g.deck.pop()); advance(g, seat); return true; }
+      if (c.f) { if (!g.fn || !useFn(g, seat, c, d, h)) return false; startClock(g); if (g.deck.length) h.push(g.deck.pop()); advance(g, seat); if (!g.res && g.last && g.last.fx && g.last.fx !== 'void') g.hold = Date.now() + HOLD; return true; }
       startClock(g);
       if (d.take != null) {
         var t = cardOf(g.table, d.take); if (!t || t.s !== c.s) return false;
@@ -246,7 +249,7 @@
       var ov = document.createElement('div'); ov.className = 'zp-fxov'; var fi = FN[v.last.fx];
       var tg = TARGET[v.last.fx] || (v.last.fx === 'skip' && v.last.to != null) ? '（對象：' + who(tb, v.last.to) + (v.last.blocked ? '，被護盾擋下！' : '') + '）' : '';
       ov.innerHTML = '<div class="zp-fxbox"><div class="ic">' + fi[0] + '</div><b>' + esc(who(tb, v.last.s)) + ' 使用「' + fi[1] + '」</b><p>' + esc(fi[2]) + tg + '</p></div>';
-      document.body.appendChild(ov); setTimeout(function () { ov.remove(); }, 2600);
+      var dur = Math.max(1500, v.hold || 5000); ov.style.animationDuration = dur + 'ms'; document.body.appendChild(ov); setTimeout(function () { ov.remove(); }, dur);
     }
     L.key = key;
     if (prev === null || (prev && prev.round !== tb.round)) fx.toast((tb.round > 1 ? '第 ' + tb.round + ' 局開始！' : '開始囉！') + '手牌和桌上同一個符號，就能配對撿走');
