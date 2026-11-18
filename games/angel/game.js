@@ -142,6 +142,7 @@
   var STAR_R = ['語氣很溫暖', '有耐心等待', '主動道歉', '說出真正的意思', '好好回答問題', '遵守規則', '幫助同學'];
   var MOODS = [['😄', '很開心'], ['🙂', '還不錯'], ['😐', '普通'], ['🙁', '有點難過'], ['😢', '很不舒服']];
   var MOOD = function (m) { return m >= 10 ? '超級開心' : m >= 6 ? '開心' : m >= 1 ? '有點高興' : m === 0 ? '普通' : m >= -5 ? '有點難過' : m >= -9 ? '很難過' : '崩潰'; };
+  function holdLeft(g) { return g.hold ? Math.max(0, g.hold - Date.now()) : 0; }
   var REASONS = { joy: '有圖像的心情到了 +10！', crash: '有圖像的心情掉到 -10，崩潰了…', time: '大家都出完牌了', coop: '所有人的圖像心情都在 0 以上，全體過關！', coopfail: '還有圖像的心情低於 0，下次再一起努力', coopcrash: '有圖像崩潰了，合作失敗', tie: '大家的實際得分一樣高', resign: '其他人都認輸了', left: '其他人都離開了', teacher: '天神結束這局' };
   function el(t, c, x) { var e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; }
   function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
@@ -351,7 +352,7 @@
   }
   var mod = {
     seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 2200, ver: 31, oneTable: true,
-    reasons: REASONS,
+    reasons: REASONS, holdLeft: holdLeft, onResume: function (g, d) { if (g.hold) g.hold += d; },
     opts: [
       { k: 'mode', label: '玩法：', list: [['comp', '🏆 比賽（自己的實際得分最高的人贏）'], ['coop', '🤝 合作（大家都在 0 以上才過關）']] },
       { k: 'len', label: '每人出牌幾次：', list: [['8', '8 次（約 15 分鐘）'], ['5', '5 次（約 10 分鐘）'], ['12', '12 次（約 20 分鐘）'], ['15', '15 次（約 25 分鐘）']] }
@@ -384,7 +385,7 @@
         mine: seat >= 0 ? g.own[seat] : -1, owners: g.res ? owners(g) : null, hand: seat >= 0 ? g.hands[seat] : null, swapped: seat >= 0 ? g.swap[seat] : true,
         stars: g.res ? g.stars : null, sc: g.res ? g.sc : null, myScore: seat >= 0 && (g.res || g.cfg.show !== 'end') ? g.stars[seat] || 0 : null, wait: !!g.wait, solo: !!g.solo, pend: g.pend ? { id: g.pend.id, s: g.pend.s, c: g.pend.c, p: g.pend.p, redo: !!g.pend.redo } : null, rev: g.cfg.rev !== 'off' && !g.solo,
         order: g.order, pos: g.pos, dir: g.dir, turn: turnSeat(g), plays: g.plays, limit: g.len * alive(g).length, len: g.len, myPlays: seat >= 0 ? (g.pc || [])[seat] || 0 : 0, deck: g.deck.length, lastDevil: g.lastDevil, log: g.log, logs: g.logs, out: g.out, cnt: g.cnt,
-        ev: g.ev, judge: g.cfg.judge, paused: g.paused, help: g.help != null, moodQ: g.moodQ, moodMine: seat >= 0 ? g.moodA[seat] : null,
+        hold: holdLeft(g), ev: g.ev, judge: g.cfg.judge, paused: g.paused, help: g.help != null, moodQ: g.moodQ, moodMine: seat >= 0 ? g.moodA[seat] : null,
         chal: g.chal && g.plays < g.chal.until ? g.chal.k : null, timer: g.cfg.timer, left: g.cfg.timer && !blocked(g) ? Math.max(0, g.cfg.timer - (Date.now() - g.turnAt) / 1000) : null };
     },
     act: function (g, seat, d, notify) {
@@ -398,6 +399,7 @@
       if (d.t === 'evdone') { if (!g.ev || g.ev.seat !== seat || g.ev.redo) return false; if (g.cfg.judge === 'auto') return scoreEv(g, 2, notify); if (g.ev.done) return false; g.ev.done = true; g.cnt++; return true; }
       if (d.t === 'reread') { var q = g.pend; if (!q || !q.redo || q.s !== seat || d.rid !== q.id) return false; q.redo = false; q.at = Date.now(); rec(g, { seat: seat, k: 'reread' }); g.cnt++; return true; }
       if (blocked(g) || turnSeat(g) !== seat || d.n !== g.cnt) return false;
+      if (holdLeft(g) > 150) return false;   // 天神牌特效還在播，全員暫停
       var h = g.hands[seat], i = d.i | 0, cid = h[i]; if (!cid) return false;
       if (d.t === 'dump') {   // 手上的牌都不能用：換一張新的（不算出牌、不限次數）
         if (h.some(function (x) { return !!targets(g, seat, x); })) return false;
@@ -440,6 +442,7 @@
       rec(g, { seat: seat, k: 'play', ck: c.k === 'g' ? 'g' : c.s ? 's' : c.k });
       g.plays++; g.cnt++; g.pc = g.pc || []; g.pc[seat] = (g.pc[seat] || 0) + 1;
       pushLog(g, lg);
+      if (c.k === 'g') g.hold = Date.now() + BG.holdMs();
       if (checkEnd(g)) return true;
       if (!jump) advance(g);
       var al = alive(g).length;
@@ -499,7 +502,7 @@
         godFx(g, -1, gc, gp, gs, glg, null, -1);
         if (g.pend && g.hands[g.pend.s].join() !== ph) cancelPend(g, notify, '天神換了你的手牌，請重新選一張牌來出');
         hg.push(k); if (hg.length > 6) hg.shift();
-        g.cnt++; pushLog(g, glg); return true;
+        g.cnt++; pushLog(g, glg); g.hold = Date.now() + BG.holdMs(); return true;
       }
       return false;
     },
@@ -604,7 +607,7 @@
   }
 
   /* ---------- 學生端 ---------- */
-  var L = { sel: -1, pick: null, sent: -1, round: -1, key: -1, peek: false, spin: {}, dec: {}, tick: null };
+  var L = { holdUntil: 0, sel: -1, pick: null, sent: -1, round: -1, key: -1, peek: false, spin: {}, dec: {}, tick: null };
   function short(tb, i) { var s = tb.seats[i]; return s.bot ? '電腦 ' + (i + 1) : s.name.replace(/（.*）/, ''); }
   function who(tb, i) { return i < 0 ? '天神' : i === tb.seat ? '你' : short(tb, i); }
   function fname(v, i) { var f = FACES[v.P[i].f]; return f.i + f.n; }
@@ -672,6 +675,11 @@
   mod.onUpdate = function (prev, tb, fx) {
     var v = tb.view; addCustom(v.cx);
     if (L.round !== tb.round) { L.round = tb.round; L.sel = -1; L.pick = null; L.sent = -1; L.key = -1; L.peek = false; }
+    L.holdUntil = v.hold > 0 ? Date.now() + v.hold : 0;
+    if (prev && v.cnt !== L.key && v.log && v.log.c && C(v.log.c) && C(v.log.c).k === 'g' && v.hold > 0 && !tb.res) {
+      var lg0 = v.log, c0 = C(lg0.c);
+      BG.fxOverlay({ icon: c0.e || '⚡', title: (lg0.T ? '天神' : who(tb, lg0.s)) + ' 使用天神牌「' + c0.n + '」', html: (c0.d || '') + '<br>' + (logText(tb, v, lg0).replace(/^⚡ .*?」/, '').replace(/^[：，]/, '')), ms: v.hold });
+    }
     if (prev && v.cnt !== L.key && v.log) {
       var lg = v.log, c = lg.c && C(lg.c);
       fx.snd(!c ? 'move' : c.k === 'a' ? 'pop' : c.k === 'd' ? 'cap' : 'check');
@@ -692,7 +700,9 @@
   mod.render = function (box, ctx) {
     var tb = ctx.tb, v = tb.view, seat = tb.seat, out = v.out.indexOf(seat) >= 0;
     var redoMe = !!(v.pend && v.pend.redo && v.pend.s === seat && !tb.res);
-    var hold = v.pend || v.paused || v.help || v.ev || (v.moodQ && v.moodMine == null);
+    var held = Date.now() < L.holdUntil;
+    if (held && !tb.res) { clearTimeout(L.ht); L.ht = setTimeout(function () { ctx.rerender(); }, L.holdUntil - Date.now() + 80); }
+    var hold = held || v.pend || v.paused || v.help || v.ev || (v.moodQ && v.moodMine == null);
     var myTurn = !tb.res && !out && !hold && v.turn === seat && L.sent !== v.cnt;
     var g = { P: v.P, own: [], np: v.np, plays: v.plays, lastDevil: v.lastDevil, out: v.out, hands: [], chal: v.chal ? { k: v.chal, until: 1e9 } : null };
     g.own[seat] = v.mine; g.hands[seat] = v.hand || [];

@@ -369,3 +369,11 @@ input:focus { border-color: var(--sky); background: #fff; }
 .p-pause .pp-row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 14px; }
 @media (max-width: 560px) { .p-top.solo h1 { display: none; } }
 @media (max-width: 560px) { .p-top.solo { gap: 4px; } .p-top.solo .btn.small { padding: 6px 8px; font-size: 13px; white-space: nowrap; } .p-top.solo .logo { display: none; } }
+
+/* 訊息停頓畫面（功能牌／特殊狀況）：蓋住畫面，期間不能操作 */
+.bg-fxov { position: fixed; inset: 0; z-index: 400; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.3); animation: bgFx 5s both; }
+.bg-fxbox { background: rgba(40,20,90,.95); color: #fff; border: 4px solid #ffd24d; border-radius: 22px; padding: 18px 22px; text-align: center; max-width: 82vw; box-shadow: 0 8px 40px #000a; animation: bgPop .5s cubic-bezier(.2,1.3,.4,1); }
+.bg-fxbox .ic { font-size: 64px; line-height: 1.1; } .bg-fxbox b { font-size: 22px; } .bg-fxbox p { margin: 6px 0 0; font-size: 16px; } .bg-fxbox .cd { font-weight: 900; color: #ffd24d; }
+@keyframes bgFx { 0% { opacity: 0; } 4% { opacity: 1; } 92% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes bgPop { from { transform: scale(.4); } to { transform: scale(1); } }
+.holdsel .btn.on { background: #ff8a3d; color: #fff; }

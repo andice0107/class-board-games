@@ -403,6 +403,7 @@
     S.queue.forEach(function (id) { bump(S.players[id]); });
   }
   var SPEEDS = { vslow: 3.5, slow: 2, normal: 1, fast: .6, vfast: .35 };
+  BG.holdMs = function () { var h = S && +S.hold; return (h >= 2 && h <= 8 ? Math.round(h) : 5) * 1000; };   // 訊息停頓秒數（老師可調 2～8 秒）
   function speedOf(T) { return SPEEDS[T.speed || S.speed || 'normal'] || 1; }
   var botTimers = {}, botCnt = {};
   function runBots(T) {
@@ -770,6 +771,11 @@
     var sw = el('div', 'switch seatsel speedsel'); sw.appendChild(el('span', '', '電腦出牌速度：'));
     [['vslow', '🐌 最慢'], ['slow', '🐢 慢'], ['normal', '普通'], ['fast', '🐇 快'], ['vfast', '⚡ 最快']].forEach(function (o) { var b = btn('btn small' + ((S.speed || 'normal') === o[0] ? ' on' : ''), o[1], function () { S.speed = o[0]; save(); [].forEach.call(sw.querySelectorAll('button'), function (x) { x.classList.toggle('on', x === b); }); }); sw.appendChild(b); });
     $('h-lock').parentNode.parentNode.insertBefore(sw, $('h-lock').parentNode);
+    if (!SOLO) {
+      var hs = el('div', 'switch seatsel holdsel'); hs.appendChild(el('span', '', '⏸ 功能牌／特殊狀況訊息停頓：'));
+      [2, 3, 4, 5, 6, 7, 8].forEach(function (n) { var b = btn('btn small' + (BG.holdMs() === n * 1000 ? ' on' : ''), n + ' 秒', function () { S.hold = n; save(); [].forEach.call(hs.querySelectorAll('button'), function (x) { x.classList.toggle('on', x === b); }); }); hs.appendChild(b); });
+      sw.parentNode.insertBefore(hs, sw);
+    }
     // 學生端的「說話」和音效由老師統一控制（說話預設關、音效預設開）
     [['emo', '💬 讓學生使用「說話」功能'], ['snd', '🔊 學生端音效']].forEach(function (o) {
       var lb = el('label', 'switch'), cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = o[0] === 'emo' ? S.emo === true : S[o[0]] !== false;   // 說話預設關、音效預設開

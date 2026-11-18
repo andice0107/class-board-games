@@ -285,7 +285,7 @@
     g.stall = 0; startClock(g);
     if (!g.hands[seat].length) { g.cnt++; g.res = { w: seat, why: 'out' }; return true; }
     var lk = g.last; advance(g, seat, next);
-    if (!g.res && lk && lk.s === seat && FNK[lk.k] && !lk.pend) g.hold = Date.now() + HOLD;
+    if (!g.res && lk && lk.s === seat && FNK[lk.k] && !lk.pend) g.hold = Date.now() + BG.holdMs();
     return true;
   }
   /* 電腦判斷用：底版現在有多容易接（下一位能出的符號種類） */

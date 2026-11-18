@@ -21,6 +21,8 @@
     return o.filter(function (x) { return x.v <= 99; });
   }
   function desc(c) { var r = rk(c); return c === 'As' ? '歸零' : r === '4' ? '迴轉' : r === '5' ? '指定' : r === 'J' ? 'PASS' : r === 'K' ? '變 99' : r === 'T' ? '±10' : r === 'Q' ? '±20' : '+' + (r === 'A' ? 1 : r); }
+  function holdLeft(g) { return g.hold ? Math.max(0, g.hold - Date.now()) : 0; }
+  var FX99 = { A: ['0️⃣', '黑桃 A：歸零', '總數直接變成 0'], 4: ['↩️', '4：迴轉', '出牌順序反過來'], 5: ['👉', '5：指定', '指定下一位出牌的人'], T: ['±10', '10：加或減 10', '出牌的人選擇加 10 或減 10'], J: ['⏭️', 'J：PASS', '總數不變，換下一位'], Q: ['±20', 'Q：加或減 20', '出牌的人選擇加 20 或減 20'], K: ['9️⃣9️⃣', 'K：變 99', '總數直接變成 99'] };
   function alive(g) { var a = []; for (var s = 0; s < g.np; s++) if (g.out.indexOf(s) < 0) a.push(s); return a; }
   function step(g, s, k) { var n = s; for (var i = 0; i < g.np * 2; i++) { n = (n + g.dir * (k || 1) + g.np * 2) % g.np; if (g.out.indexOf(n) < 0) return n; } return s; }
   function draw(g) { return g.deck.length ? g.deck.pop() : null; } // 牌堆抽完就不再補牌，手牌會越來越少，遊戲一定會結束
@@ -36,7 +38,7 @@
   }
   var mod = {
     seats: 4, seatOptions: [2, 3, 4, 5, 6], seatDefault: 4, botSeats: [1, 5], botDelay: 900,
-    reasons: REASONS,
+    reasons: REASONS, holdLeft: holdLeft, onResume: function (g, d) { if (g.hold) g.hold += d; },
     levelDesc: ['隨便出牌', '會先出小牌', '會把功能牌留到危險時才用', '還會陷害下一家（把總數推到很高）'],
     seatName: function (i) { return '第 ' + (i + 1) + ' 位'; },
     seatColor: function (i) { return SEATC[i]; },
@@ -50,12 +52,13 @@
     forfeit: function (g, seat) { knock(g, seat, 'left'); },
     teacherDraw: function (g) { g.res = { w: -1, why: 'teacher' }; },
     view: function (g, seat) {
-      return { np: g.np, turn: g.turn, total: g.total, dir: g.dir, hand: seat >= 0 ? g.hands[seat] : null, counts: g.hands.map(function (h) { return h.length; }), last: g.last, log: g.log, out: g.out, cnt: g.cnt };
+      return { np: g.np, turn: g.turn, total: g.total, dir: g.dir, hand: seat >= 0 ? g.hands[seat] : null, counts: g.hands.map(function (h) { return h.length; }), last: g.last, log: g.log, out: g.out, cnt: g.cnt, hold: holdLeft(g) };
     },
     act: function (g, seat, d, notify) {
       if (g.res || g.out.indexOf(seat) >= 0) return false;
       if (d.t === 'resign') { notify(seat, '你已經認輸，可以繼續觀看'); knock(g, seat, 'resign'); g.cnt++; return true; }
       if (d.t !== 'play' || g.turn !== seat || d.n !== g.cnt) return false;
+      if (holdLeft(g) > 150) return false;   // 功能牌特效還在播，全員暫停
       var h = g.hands[seat], c = d.c; if (h.indexOf(c) < 0) return false;
       var opts = options(c, g.total); if (!opts.length) return false;
       var o = opts.length > 1 ? opts.filter(function (x) { return x.sign === (d.sign || 1); })[0] || opts[0] : opts[0];
@@ -68,6 +71,7 @@
       g.last = { s: seat, c: c, sign: o.sign, to: r === '5' ? next : null, total: g.total };
       g.log = { k: 'play', s: seat };
       g.turn = next; g.cnt++;
+      if (special(c)) g.hold = Date.now() + BG.holdMs();
       checkStuck(g);
       return true;
     },
@@ -123,12 +127,17 @@
   }
 
   /* ---------- 學生端 ---------- */
-  var L = { sel: null, round: -1, sent: -1, key: '' };
+  var L = { holdUntil: 0, sel: null, round: -1, sent: -1, key: '' };
   function short(tb, i) { var s = tb.seats[i]; return s.bot ? '電腦 ' + (i + 1) : s.name.replace(/（.*）/, ''); }
   function who(tb, i) { return i === tb.seat ? '你' : short(tb, i); }
   mod.onUpdate = function (prev, tb, fx) {
     var v = tb.view, key = v.cnt + ':' + v.out.length;
     if (L.round !== tb.round) { L.round = tb.round; L.sel = null; L.sent = -1; L.key = ''; }
+    L.holdUntil = v.hold > 0 ? Date.now() + v.hold : 0;
+    if (prev && key !== L.key && v.last && special(v.last.c) && v.hold > 0 && !tb.res) {
+      var kx = v.last.c === 'As' ? 'A' : v.last.c[0], fi = FX99[kx];
+      BG.fxOverlay({ icon: fi[0], title: who(tb, v.last.s) + ' 出了「' + fi[1] + '」', html: fi[2] + (v.last.to != null ? '：' + who(tb, v.last.to) + ' 下一個出牌' : '') + (v.last.sign ? '（這次選' + (v.last.sign > 0 ? '加' : '減') + '）' : '') + '<br>目前總數：<b>' + v.total + '</b>', ms: v.hold });
+    }
     if (prev && key !== L.key) {
       if (prev.view && v.out.length > prev.view.out.length) { var o = v.out[v.out.length - 1]; fx.toast(o === tb.seat ? '你沒有牌可以出，出局了…' : short(tb, o) + ' 沒牌可出，出局！'); fx.snd(o === tb.seat ? 'lose' : 'cap'); }
       else if (v.last) { fx.snd('move'); var r = v.last.c[0]; if (v.last.c === 'As') fx.toast(who(tb, v.last.s) + '：歸零！'); else if (r === 'K') fx.toast(who(tb, v.last.s) + '：99！'); else if (r === '4') fx.toast('迴轉！'); else if (r === '5') fx.toast(who(tb, v.last.s) + ' 指定 ' + who(tb, v.last.to)); else if (r === 'J') fx.toast('PASS！'); }
@@ -138,7 +147,8 @@
     if (prev === null || (prev && prev.round !== tb.round)) fx.toast((tb.round > 1 ? '第 ' + tb.round + ' 局開始！' : '開始囉！') + '總數不能超過 99');
   };
   mod.render = function (box, ctx) {
-    var tb = ctx.tb, v = tb.view, seat = tb.seat, out = v.out.indexOf(seat) >= 0, myTurn = !tb.res && !out && v.turn === seat && L.sent !== v.cnt;
+    var tb = ctx.tb, v = tb.view, seat = tb.seat, out = v.out.indexOf(seat) >= 0, held = Date.now() < L.holdUntil, myTurn = !tb.res && !out && !held && v.turn === seat && L.sent !== v.cnt;
+    if (held && !tb.res) { clearTimeout(L.ht); L.ht = setTimeout(function () { ctx.rerender(); }, L.holdUntil - Date.now() + 80); }
     if (L.sel && v.hand.indexOf(L.sel) < 0) L.sel = null;
     var wrap = el('div', 'pk-table nn-table');
     var st = el('div', 'pk-status');

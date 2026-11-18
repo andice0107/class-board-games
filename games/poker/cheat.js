@@ -18,7 +18,7 @@
   }
   var mod = {
     seats: 4, seatOptions: [2, 3, 4, 5, 6], seatDefault: 4, botSeats: [1, 5], botDelay: 1100,
-    reasons: REASONS,
+    reasons: REASONS, holdLeft: function (g) { return g.hold ? Math.max(0, g.hold - Date.now()) : 0; }, onResume: function (g, d) { if (g.hold) g.hold += d; },
     levelDesc: ['常常亂說謊、亂抓', '有時候說謊，很少抓', '會算牌：明顯是騙人的就抓', '會算牌，也很會騙人'],
     seatName: function (i) { return '第 ' + (i + 1) + ' 位'; },
     seatColor: function (i) { return SEATC[i]; },
@@ -35,12 +35,13 @@
     teacherDraw: function (g) { g.res = { w: -1, why: 'teacher' }; },
     view: function (g, seat) {
       return { np: g.np, turn: g.turn, rank: g.rank, hand: seat >= 0 ? g.hands[seat] : null, counts: g.hands.map(function (h) { return h.length; }), pile: g.pile.length,
-        lastPlay: g.lastPlay ? { s: g.lastPlay.s, n: g.lastPlay.cards.length } : null, reveal: g.reveal, log: g.log, rlog: g.rlog || [], out: g.out, cnt: g.cnt, pendingWin: g.pendingWin };
+        lastPlay: g.lastPlay ? { s: g.lastPlay.s, n: g.lastPlay.cards.length } : null, reveal: g.reveal, log: g.log, rlog: g.rlog || [], out: g.out, cnt: g.cnt, pendingWin: g.pendingWin, hold: g.hold ? Math.max(0, g.hold - Date.now()) : 0 };
     },
     act: function (g, seat, d, notify) {
       if (g.res || g.out.indexOf(seat) >= 0) return false;
       if (d.t === 'resign') { notify(seat, '你已經認輸，可以繼續觀看'); knock(g, seat, 'resign'); g.cnt++; return true; }
       if (g.turn !== seat || d.n !== g.cnt) return false;
+      if (g.hold && g.hold - Date.now() > 150) return false;   // 抓牌結果還在顯示，全員暫停
       var h = g.hands[seat];
       if (d.t === 'play') {
         var cs = d.cards || []; if (!cs.length || cs.length > 4 || cs.some(function (c) { return h.indexOf(c) < 0; })) return false;
@@ -69,7 +70,7 @@
         g.reveal = { by: seat, s: lp.s, cards: lp.cards, rank: g.rank, lied: lied, taker: taker, got: got };
         g.log = { k: 'call', s: seat };
         if (g.pendingWin != null) { if (lied) g.pendingWin = null; else { g.res = { w: g.pendingWin, why: 'empty' }; g.cnt++; return true; } }
-        newRound(g, nxt(g, taker));
+        newRound(g, nxt(g, taker)); g.hold = Date.now() + BG.holdMs();
         g.cnt++; return true;
       }
       return false;
@@ -138,7 +139,7 @@
   }
 
   /* ---------- 學生端 ---------- */
-  var L = { sel: [], rank: null, round: -1, sent: -1, key: '' };
+  var L = { holdUntil: 0, sel: [], rank: null, round: -1, sent: -1, key: '' };
   function short(tb, i) { var s = tb.seats[i]; return s.bot ? '電腦 ' + (i + 1) : s.name.replace(/（.*）/, ''); }
   function who(tb, i) { return i === tb.seat ? '你' : short(tb, i); }
   mod.onUpdate = function (prev, tb, fx) {
@@ -146,17 +147,20 @@
     if (L.round !== tb.round) { L.round = tb.round; L.sel = []; L.sent = -1; L.key = ''; L.rank = null; }
     if (prev && v.cnt !== L.key && v.log) {
       var lg = v.log;
-      if (lg.k === 'call' && v.reveal) { var r = v.reveal; fx.snd(r.lied ? 'pop' : 'cap'); fx.toast(who(tb, r.by) + ' 抓 ' + who(tb, r.s) + '：' + (r.lied ? '真的在吹牛！' : '沒有說謊！') + who(tb, r.taker) + ' 收 ' + r.got + ' 張'); }
+      if (lg.k === 'call' && v.reveal) { var r = v.reveal; fx.snd(r.lied ? 'pop' : 'cap');
+        if (v.hold > 0 && !tb.res) BG.fxOverlay({ icon: r.lied ? '🤥' : '😇', title: who(tb, r.by) + ' 抓 ' + who(tb, r.s) + '！', html: '喊的是「' + PK.label(r.rank) + '」，翻開的牌：<div style="display:flex;gap:4px;justify-content:center;margin:6px 0">' + r.cards.map(function (c) { return '<span style="width:46px;display:inline-block">' + PK.svg(c) + '</span>'; }).join('') + '</div>' + (r.lied ? '真的在吹牛！' : '沒有說謊！') + who(tb, r.taker) + ' 收回 ' + r.got + ' 張牌', ms: v.hold }); fx.toast(who(tb, r.by) + ' 抓 ' + who(tb, r.s) + '：' + (r.lied ? '真的在吹牛！' : '沒有說謊！') + who(tb, r.taker) + ' 收 ' + r.got + ' 張'); }
       else if (lg.k === 'play') fx.snd('move');
       else if (lg.k === 'clear') fx.toast('大家都不出，桌上的牌清掉，' + who(tb, lg.s) + ' 重新開始');
       if (v.turn === tb.seat && !tb.res) setTimeout(function () { fx.snd('turn'); }, 400);
     }
+    L.holdUntil = v.hold > 0 ? Date.now() + v.hold : 0;
     L.key = v.cnt;
     L.sel = L.sel.filter(function (c) { return v.hand.indexOf(c) >= 0; });
     if (prev === null || (prev && prev.round !== tb.round)) fx.toast((tb.round > 1 ? '第 ' + tb.round + ' 局開始！' : '開始囉！') + '可以說謊，但小心被抓！');
   };
   mod.render = function (box, ctx) {
-    var tb = ctx.tb, v = tb.view, seat = tb.seat, out = v.out.indexOf(seat) >= 0, myTurn = !tb.res && !out && v.turn === seat && L.sent !== v.cnt;
+    var tb = ctx.tb, v = tb.view, seat = tb.seat, out = v.out.indexOf(seat) >= 0, held = Date.now() < L.holdUntil, myTurn = !tb.res && !out && !held && v.turn === seat && L.sent !== v.cnt;
+    if (held && !tb.res) { clearTimeout(L.ht); L.ht = setTimeout(function () { ctx.rerender(); }, L.holdUntil - Date.now() + 80); }
     var wrap = el('div', 'pk-table ch2-table');
     var st = el('div', 'pk-status');
     if (tb.res) st.textContent = '這局結束了';

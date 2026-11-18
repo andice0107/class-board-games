@@ -156,7 +156,7 @@
       if (holdLeft(g) > 150) return false;   // 功能牌特效還在播
       var h = g.hands[seat], c = cardOf(h, d.c); if (!c) return false;
       if (g.peek && g.peek.s === seat) g.peek = null;
-      if (c.f) { if (!g.fn || !useFn(g, seat, c, d, h)) return false; startClock(g); if (g.deck.length) h.push(g.deck.pop()); advance(g, seat); if (!g.res && g.last && g.last.fx && g.last.fx !== 'void') g.hold = Date.now() + HOLD; return true; }
+      if (c.f) { if (!g.fn || !useFn(g, seat, c, d, h)) return false; startClock(g); if (g.deck.length) h.push(g.deck.pop()); advance(g, seat); if (!g.res && g.last && g.last.fx && g.last.fx !== 'void') g.hold = Date.now() + BG.holdMs(); return true; }
       startClock(g);
       if (d.take != null) {
         var t = cardOf(g.table, d.take); if (!t || t.s !== c.s) return false;
@@ -248,7 +248,7 @@
     if (prev && key !== L.key && v.last && v.last.fx && v.last.fx !== 'void') {
       var ov = document.createElement('div'); ov.className = 'zp-fxov'; var fi = FN[v.last.fx];
       var tg = TARGET[v.last.fx] || (v.last.fx === 'skip' && v.last.to != null) ? '（對象：' + who(tb, v.last.to) + (v.last.blocked ? '，被護盾擋下！' : '') + '）' : '';
-      ov.innerHTML = '<div class="zp-fxbox"><div class="ic">' + fi[0] + '</div><b>' + esc(who(tb, v.last.s)) + ' 使用「' + fi[1] + '」</b><p>' + esc(fi[2]) + tg + '</p><p class="zp-cd">⏳ 全員暫停，<span>5</span> 秒後繼續</p></div>';
+      ov.innerHTML = '<div class="zp-fxbox"><div class="ic">' + fi[0] + '</div><b>' + esc(who(tb, v.last.s)) + ' 使用「' + fi[1] + '」</b><p>' + esc(fi[2]) + tg + '</p><p class="zp-cd">⏳ 全員暫停，<span>' + Math.ceil(Math.max(1500, v.hold || 5000) / 1000) + '</span> 秒後繼續</p></div>';
       var dur = Math.max(1500, v.hold || 5000); ov.style.animationDuration = dur + 'ms'; document.body.appendChild(ov); var t0 = Date.now(), iv = setInterval(function () { var sp = ov.querySelector('.zp-cd span'); if (sp) sp.textContent = Math.max(0, Math.ceil((dur - (Date.now() - t0)) / 1000)); }, 200); setTimeout(function () { clearInterval(iv); ov.remove(); }, dur);
     }
     L.key = key;

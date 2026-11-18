@@ -175,7 +175,7 @@
         }
         if (g.hands[seat].length === 0) { g.res = { w: seat, why: 'empty' }; g.last = info; return true; }   // 換到空手牌：算贏
         g.turn = nx; g.last = info;
-        if (isAct(d.c)) g.hold = Date.now() + HOLD;
+        if (isAct(d.c)) g.hold = Date.now() + BG.holdMs();
         afterTurn(g);
         return true;
       }
@@ -281,7 +281,7 @@
         var ov = document.createElement('div'), fi = FN[la.c[1]]; ov.className = 'zu-fxov';
         var tg = la.hit != null && la.c[1] !== 'F' && la.c[1] !== 'D' && la.c[1] !== 'S' ? '（對象：' + who(tb, la.hit) + '）' : la.hit != null ? '（' + who(tb, la.hit) + (la.k2 ? ' 抽 ' + la.k2 + ' 張並被跳過' : ' 被跳過') + '）' : '';
         if (la.c[1] === 'R') tg = '（現在是' + (v.dir > 0 ? '順時鐘' : '逆時鐘') + '）';
-        ov.innerHTML = '<div class="zu-fxbox"><div class="ic">' + fi[0] + '</div><b>' + esc(who(tb, la.seat)) + ' 使用「' + fi[1] + '」</b><p>' + esc(fi[2]) + esc(tg) + (isWild(la.c) ? '<br>指定顏色：<span class="zu-cc" style="background:' + HEX[la.color] + '">' + CNAME[la.color] + '</span>' : '') + '</p><p class="zu-cd">⏳ 全員暫停，<span>5</span> 秒後繼續</p></div>';
+        ov.innerHTML = '<div class="zu-fxbox"><div class="ic">' + fi[0] + '</div><b>' + esc(who(tb, la.seat)) + ' 使用「' + fi[1] + '」</b><p>' + esc(fi[2]) + esc(tg) + (isWild(la.c) ? '<br>指定顏色：<span class="zu-cc" style="background:' + HEX[la.color] + '">' + CNAME[la.color] + '</span>' : '') + '</p><p class="zu-cd">⏳ 全員暫停，<span>' + Math.ceil(Math.max(1500, v.hold) / 1000) + '</span> 秒後繼續</p></div>';
         var dur = Math.max(1500, v.hold); ov.style.animationDuration = dur + 'ms'; document.body.appendChild(ov);
         var t0 = Date.now(), iv = setInterval(function () { var sp = ov.querySelector('.zu-cd span'); if (sp) sp.textContent = Math.max(0, Math.ceil((dur - (Date.now() - t0)) / 1000)); }, 200);
         setTimeout(function () { clearInterval(iv); ov.remove(); }, dur);

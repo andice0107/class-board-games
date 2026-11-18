@@ -21,6 +21,8 @@
     alive(g).forEach(function (s) { var l = g.hands[s].length; if (l < bl) { bl = l; best = s; tie = false; } else if (l === bl) tie = true; });
     g.res = { w: tie ? -1 : best, why: 'limit' };
   }
+  function holdLeft(g) { return g.hold ? Math.max(0, g.hold - Date.now()) : 0; }
+  var FNX = { S: ['⛔', '跳過', '下一位這輪不能出牌'], R: ['↩️', '迴轉', '出牌順序反過來（兩個人玩時等於跳過）'], D: ['➕2', '加二', '下一位抽 2 張，而且這輪不能出牌'], W: ['🎨', '變色', '指定接下來要出的顏色'], F: ['➕4', '變色加四', '指定顏色，下一位抽 4 張，而且這輪不能出牌'] };
   function knockOut(g, seat, why) {
     if (g.out.indexOf(seat) >= 0) return;
     var wasTurn = g.turn === seat;
@@ -32,7 +34,7 @@
   }
   var mod = {
     seats: 4, seatOptions: [2, 3, 4, 5, 6], seatDefault: 4, botSeats: [1, 5],
-    reasons: REASONS,
+    reasons: REASONS, holdLeft: holdLeft, onResume: function (g, d) { if (g.hold) g.hold += d; },
     levelDesc: ['能出就亂出，常忘記喊', '隨意出牌，偶爾忘記喊', '會留萬用牌，有點挑戰', '會用功能牌攻擊，很難贏'],
     seatName: function (i) { return '第 ' + (i + 1) + ' 位'; },
     seatColor: function (i) { return SEATC[i]; },
@@ -51,7 +53,7 @@
     teacherDraw: function (g) { g.res = { w: -1, why: 'teacher' }; },
     view: function (g, seat) {
       return { np: g.np, hand: seat >= 0 ? g.hands[seat] : [], counts: g.hands.map(function (h) { return h.length; }), top: g.disc[g.disc.length - 1], color: g.color, dir: g.dir,
-        turn: g.turn, cnt: g.cnt, pend: g.pend && g.pend.seat === seat ? g.pend.card : null, said: g.said, out: g.out, deckN: g.deck.length, last: g.last, shout: g.shout || null };
+        turn: g.turn, cnt: g.cnt, pend: g.pend && g.pend.seat === seat ? g.pend.card : null, said: g.said, out: g.out, deckN: g.deck.length, last: g.last, shout: g.shout || null, hold: holdLeft(g) };
     },
     act: function (g, seat, d, notify) {
       if (g.res || g.out.indexOf(seat) >= 0) return false;
@@ -62,6 +64,7 @@
       }
       if (d.t === 'resign') { notify(seat, '你已經認輸，可以繼續觀看'); knockOut(g, seat, 'resign'); g.cnt++; return true; }
       if (g.turn !== seat || d.n !== g.cnt) return false;
+      if (holdLeft(g) > 150) return false;   // 功能牌特效還在播，全員暫停
       var top = g.disc[g.disc.length - 1];
       if (d.t === 'draw') {
         if (g.pend) return false;
@@ -90,6 +93,7 @@
         else if (v === 'S') { info.hit = nx; nx = step(g, nx); }
         else if (v === 'D' || v === 'F') { info.hit = nx; info.k2 = v === 'D' ? 2 : 4; draw(g, nx, info.k2); g.said[nx] = false; nx = step(g, nx); }
         g.turn = nx; g.last = info;
+        if (FNX[v]) g.hold = Date.now() + BG.holdMs();
         if (g.cnt >= LIMIT) finishLimit(g);
         return true;
       }
@@ -140,16 +144,20 @@
   };
 
   /* ---------- 學生端 ---------- */
-  var L = { sel: null, pending: null, round: -1, cnt: -1, wild: null, anim: false };
+  var L = { holdUntil: 0, sel: null, pending: null, round: -1, cnt: -1, wild: null, anim: false };
   mod.onUpdate = function (prev, tb, fx) {
     var v = tb.view;
     if (L.round !== tb.round) { L.round = tb.round; L.cnt = -1; L.pending = null; L.sel = null; L.wild = null; }
+    L.holdUntil = v.hold > 0 ? Date.now() + v.hold : 0;
     if (L.pending && v.cnt !== L.pending.n) L.pending = null;
     var la = v.last;
     if (L.cnt >= 0 && la && la.n > L.cnt) {
       if (la.k === 'play' && la.seat !== tb.seat) { fx.snd(la.c[1] > '9' ? 'cap' : 'move'); L.anim = true; }
       if (la.k === 'play' && la.hit === tb.seat) { if (la.k2) fx.toast('被罰抽 ' + la.k2 + ' 張！'); else fx.toast('被跳過了！'); fx.snd('error'); }
-      if (la.k === 'play' && la.c[1] === 'R' && la.seat !== tb.seat) fx.toast('方向改變！');
+      if (la.k === 'play' && FNX[la.c[1]] && v.hold > 0 && !tb.res) {
+        var fi = FNX[la.c[1]], nm0 = la.seat === tb.seat ? '你' : short(tb, la.seat), tg = la.c[1] === 'R' ? '（現在是' + (v.dir > 0 ? '順時鐘' : '逆時鐘') + '）' : la.hit != null ? '（' + (la.hit === tb.seat ? '你' : short(tb, la.hit)) + (la.k2 ? ' 抽 ' + la.k2 + ' 張並' : '') + '被跳過）' : '';
+        BG.fxOverlay({ icon: fi[0], title: nm0 + ' 使用「' + fi[1] + '」', html: fi[2] + tg + (UNO.isWild(la.c) ? '<br>指定顏色：<span style="background:' + UNO.HEX[la.color] + ';padding:1px 12px;border-radius:99px;font-weight:900">' + UNO.CNAME[la.color] + '</span>' : ''), ms: v.hold });
+      }
       if (!tb.res && v.turn === tb.seat && la.seat !== tb.seat) setTimeout(function () { fx.snd('turn'); }, 350);
     }
     var sh = v.shout, ps = prev && prev.view && prev.view.shout;
@@ -185,11 +193,13 @@
   mod.render = function (box, ctx) {
     mod._ctx = ctx;
     var tb = ctx.tb, v = tb.view, seat = tb.seat, P = L.pending, out = v.out.indexOf(seat) >= 0;
-    var myTurn = !tb.res && v.turn === seat && !P && !out;
+    var held = Date.now() < L.holdUntil, myTurn = !tb.res && v.turn === seat && !P && !out && !held;
+    if (held && !tb.res) { clearTimeout(L.ht); L.ht = setTimeout(function () { ctx.rerender(); }, L.holdUntil - Date.now() + 80); }
     var wrap = el('div', 'un-table');
     var st = el('div', 'un-status');
     if (tb.res) st.textContent = '這局結束了';
     else if (out) st.textContent = '你已經認輸，正在觀看';
+    else if (held) st.textContent = '功能牌效果中，大家先看清楚…';
     else if (P) st.textContent = '出牌中…';
     else if (myTurn && v.pend) { st.textContent = '抽到能出的牌！要出嗎？'; st.className = 'un-status me'; }
     else if (myTurn) { st.textContent = L.sel ? '再點一次這張牌就出牌' : '輪到你了！出一張牌或抽牌'; st.className = 'un-status me'; }

@@ -1,6 +1,6 @@
 /* 遊戲清單：每個遊戲是 games/<id>/ 裡獨立的模組，用 BG.register 加進來 */
 window.BG = window.BG || {};
-BG.VER = '202611181814';
+BG.VER = '202611181848';
 BG.games = BG.games || {};
 BG.register = function (id, mod) { mod.id = id; BG.games[id] = mod; };
 BG.catalog = [
@@ -124,6 +124,16 @@ BG.handOrder = function (key, cards, sortFn) {
 BG.handSort = function (key, sortFn) {
   var st = BG.HO[key]; if (!st) return;
   st.o = sortFn(st.o.map(function (x) { return x.c; })).map(function (c) { return { c: c, f: false }; });
+};
+/* 訊息停頓（功能牌／特殊狀況）：老師可在主持人端調 2～8 秒（預設 5 秒）；這段時間內全員不能動作 */
+BG.holdMs = BG.holdMs || function () { return 5000; };
+BG.fxOverlay = function (o) {
+  var ms = Math.max(1500, o.ms || 5000), ov = document.createElement('div'); ov.className = 'bg-fxov';
+  ov.innerHTML = '<div class="bg-fxbox"><div class="ic">' + (o.icon || '✨') + '</div><b>' + (o.title || '') + '</b><p>' + (o.html || '') + '</p><p class="cd">⏳ 全員暫停，<span>' + Math.ceil(ms / 1000) + '</span> 秒後繼續</p></div>';
+  ov.style.animationDuration = ms + 'ms'; document.body.appendChild(ov);
+  var t0 = Date.now(), iv = setInterval(function () { var sp = ov.querySelector('.cd span'); if (sp) sp.textContent = Math.max(0, Math.ceil((ms - (Date.now() - t0)) / 1000)); }, 200);
+  setTimeout(function () { clearInterval(iv); ov.remove(); }, ms);
+  return ov;
 };
 BG.handKey = function (tb, gid) { return (gid || '') + ':' + tb.seat + '|' + tb.round; };
 

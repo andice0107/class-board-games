@@ -43,11 +43,12 @@
     }
     return r;
   }
+  function holdLeft(g) { return g.hold ? Math.max(0, g.hold - Date.now()) : 0; }
   function pushLog(g) { if (!g.logs) g.logs = []; g.logs.push(g.log); if (g.logs.length > 6) g.logs.shift(); }
   function dirtyCount(g, s) { return g.pigs[s].filter(function (p) { return p.d; }).length; }
   var mod = {
     seats: 4, seatOptions: [2, 3, 4, 5, 6], seatDefault: 4, botSeats: [1, 5], botDelay: 1300, ver: 1,
-    reasons: REASONS,
+    reasons: REASONS, holdLeft: holdLeft, onResume: function (g, d) { if (g.hold) g.hold += d; },
     levelDesc: ['隨便出牌', '會先讓自己的豬變髒', '會阻止快贏的人', '很會保護豬，也很會搗蛋'],
     seatName: function (i) { return '第 ' + (i + 1) + ' 位'; },
     seatColor: function (i) { return SEATC[i]; },
@@ -66,12 +67,13 @@
     forfeit: function (g, seat) { knock(g, seat, 'left'); },
     teacherDraw: function (g) { g.res = { w: -1, why: 'teacher' }; },
     view: function (g, seat) {
-      return { np: g.np, turn: g.turn, pigs: g.pigs, hand: seat >= 0 ? g.hands[seat] : null, deck: g.deck.length, top: g.disc[g.disc.length - 1] || null, log: g.log, logs: g.logs, out: g.out, cnt: g.cnt };
+      return { np: g.np, turn: g.turn, pigs: g.pigs, hand: seat >= 0 ? g.hands[seat] : null, deck: g.deck.length, top: g.disc[g.disc.length - 1] || null, log: g.log, logs: g.logs, out: g.out, cnt: g.cnt, hold: holdLeft(g) };
     },
     act: function (g, seat, d, notify) {
       if (g.res || g.out.indexOf(seat) >= 0) return false;
       if (d.t === 'resign') { notify(seat, '你已經認輸，可以繼續觀看'); knock(g, seat, 'resign'); g.cnt++; return true; }
       if (g.turn !== seat || d.n !== g.cnt) return false;
+      if (holdLeft(g) > 150) return false;   // 功能牌特效還在播，全員暫停
       var h = g.hands[seat];
       if (d.t === 'swap') {
         g.disc = g.disc.concat(h); g.hands[seat] = []; for (var k = 0; k < 3; k++) g.hands[seat].push(draw(g));
@@ -93,6 +95,7 @@
       g.log = { k: c, s: seat, t: t, washed: washed }; pushLog(g);
       if (dirtyCount(g, seat) === g.pigs[seat].length) { g.res = { w: seat, why: 'dirty' }; g.cnt++; return true; }
       g.turn = nxt(g, seat); g.cnt++;
+      if (c !== 'mud') g.hold = Date.now() + BG.holdMs();
       return true;
     },
     hintDesc: '會亮出你手上「現在用得出去」的牌（有可以打的小豬或豬舍）；如果你的牌都沒辦法用，會亮出「換手牌」按鈕。也會順便提醒你的髒小豬有沒有被保護、有沒有人快贏了。',
@@ -159,7 +162,7 @@
   }
 
   /* ---------- 學生端 ---------- */
-  var L = { sel: -1, sent: -1, round: -1, key: -1 };
+  var L = { holdUntil: 0, sel: -1, sent: -1, round: -1, key: -1 };
   function short(tb, i) { var s = tb.seats[i]; return s.bot ? '電腦 ' + (i + 1) : s.name.replace(/（.*）/, ''); }
   function who(tb, i) { return i === tb.seat ? '你' : short(tb, i); }
   function logText(tb, lg) {
@@ -192,12 +195,18 @@
       if (lg.s !== tb.seat) fx.toast(logText(tb, lg));
       if (v.turn === tb.seat && !tb.res) setTimeout(function () { fx.snd('turn'); }, 450);
     }
+    L.holdUntil = v.hold > 0 ? Date.now() + v.hold : 0;
+    if (prev && v.cnt !== L.key && v.log && CARDS[v.log.k] && v.log.k !== 'mud' && v.hold > 0 && !tb.res) {
+      var lg2 = v.log, cd = CARDS[lg2.k], tg2 = lg2.t ? '（對象：' + (lg2.t.s === tb.seat ? '你' : short(tb, lg2.t.s)) + ' 的第 ' + (lg2.t.p + 1) + ' 隻小豬）' : lg2.k === 'rain' ? '（' + (lg2.washed ? lg2.washed + ' 隻髒小豬被洗乾淨' : '沒有小豬被洗乾淨') + '）' : '';
+      BG.fxOverlay({ icon: { rain: '🌧️', barn: '🏠', bolt: '⚡', rod: '🛡️', farmer: '🧑‍🌾', lock: '🔒' }[lg2.k] || '🐷', title: (lg2.s === tb.seat ? '你' : short(tb, lg2.s)) + ' 打出「' + cd.n + '」', html: cd.d + tg2, ms: v.hold });
+    }
     L.key = v.cnt;
     if (L.sel >= (v.hand ? v.hand.length : 0)) L.sel = -1;
     if (prev === null || (prev && prev.round !== tb.round)) fx.toast((tb.round > 1 ? '第 ' + tb.round + ' 局開始！' : '開始囉！') + '讓你的小豬全部變髒就贏了 🐷');
   };
   mod.render = function (box, ctx) {
-    var tb = ctx.tb, v = tb.view, seat = tb.seat, out = v.out.indexOf(seat) >= 0, myTurn = !tb.res && !out && v.turn === seat && L.sent !== v.cnt;
+    var tb = ctx.tb, v = tb.view, seat = tb.seat, out = v.out.indexOf(seat) >= 0, held = Date.now() < L.holdUntil, myTurn = !tb.res && !out && !held && v.turn === seat && L.sent !== v.cnt;
+    if (held && !tb.res) { clearTimeout(L.ht); L.ht = setTimeout(function () { ctx.rerender(); }, L.holdUntil - Date.now() + 80); }
     var g = { np: v.np, pigs: v.pigs, out: v.out };
     var selCard = myTurn && L.sel >= 0 ? v.hand[L.sel] : null, tg = selCard ? targets(g, seat, selCard) : [];
     function isT(s, p) { return tg.some(function (x) { return x.s === s && x.p === p; }); }
