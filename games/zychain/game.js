@@ -14,6 +14,8 @@
   var FN = { rev: ['迴轉', '🔄', '順序反過來'], pick: ['指定', '👉', '指定任何一位玩家出牌'], blank: ['空白', '⬜', '蓋住底版一格'], chance: ['機會', '🎲', '抽一個隨機效果'], er: ['ㄦ', '✨', '清空底版'] };
   var FNCOUNT = { rev: 3, pick: 3, blank: 5, chance: 3, er: 2 };
   var CFX = { cut: ['丟牌', '把自己的兩張手牌丟到牌堆底'], spin: ['轉運', '手牌全放到牌堆底，重抽同樣張數'], fine: ['罰抽', '指定一位玩家抽 2 張牌'], gift: ['送牌', '送一張手牌給指定玩家'], swap: ['換牌', '和指定玩家各從對方手上隨機抽一張來互換'], drop: ['大放送', '每位至少有 2 張手牌的玩家，各丟一張牌到牌堆底'], again: ['再一次', '自己再出一張牌'], skip: ['跳過', '指定一位玩家，下次輪到他時跳過'], peek: ['偷看', '偷看指定玩家最多 3 張手牌（只有你看得到）'], rich: ['均富', '手牌比最多的人少的玩家，都抽到和他一樣多'], redeal: ['重發', '所有手牌收回洗牌，由你指定誰拿第一張，並決定順時鐘或逆時鐘發牌'] };
+  var HOLD = 5000, FNK = { rev: 1, pick: 1, blank: 1, er: 1, chance: 1 };   // 功能牌打出後，停 5 秒讓大家看特效
+  function holdLeft(g) { return g.hold ? Math.max(0, g.hold - Date.now()) : 0; }
   var ORDER = 'ㄅㄆㄇㄈㄉㄊㄋㄌㄍㄎㄏㄐㄑㄒㄓㄔㄕㄖㄗㄘㄙㄧㄨㄩㄚㄛㄜㄝㄞㄟㄠㄡㄢㄣㄤㄥㄦˊˇˋ˙';
   function el(t, c, x) { var e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -85,7 +87,7 @@
     if (g.lastTurns != null) { g.lastTurns--; if (g.lastTurns <= 0) { finishBy(g, 'time'); return; } }
     else if (g.dl && Date.now() > g.dl) { g.lastTurns = alive(g).length - 1; if (g.lastTurns <= 0) { finishBy(g, 'time'); return; } }
     g.turn = to != null && g.out.indexOf(to) < 0 ? to : nextSeat(g, from);
-    var gu = 0; while (g.skips && g.skips[g.turn] && gu++ < g.np) { var sk = g.turn; delete g.skips[sk]; g.last = { s: sk, k: 'skipped' }; g.turn = nextSeat(g, sk); }
+    var gu = 0; while (g.skips && g.skips[g.turn] && gu++ < g.np) { var sk = g.turn; delete g.skips[sk]; g.last = Object.assign({}, g.last || {}, { sk: sk }); g.turn = nextSeat(g, sk); }
   }
   function startClock(g) { if (!g.dl && g.limit) g.dl = Date.now() + g.limit; }
   function knock(g, seat, why) {
@@ -98,7 +100,7 @@
 
   var mod = {
     seats: 4, seatOptions: [3, 4, 5, 6], seatDefault: 4, botSeats: [2, 5], botDelay: 1300,
-    reasons: REASONS,
+    reasons: REASONS, holdLeft: holdLeft,
     levelDesc: ['常常亂出，有牌就出', '有牌就出，會留著功能牌', '會挑讓下一位比較難接的拼音', '會算下一位難不難接，也會用功能牌擋人'],
     opts: [
       { k: 'repeat', label: '場上已經有的符號：', list: [['no', '❌ 不能再出一樣的符號（原版）'], ['yes', '⭕ 可以再出（簡單版）']], note: '例如場上已經有「ㄅ」，不能再出另一張「ㄅ」' },
@@ -127,12 +129,13 @@
     view: function (g, seat) {
       var left = g.dl ? Math.max(0, g.dl - Date.now()) : null;
       return { np: g.np, repeat: g.repeat, drawMode: g.drawMode, idx: g.idx, board: g.board, turn: g.turn, dir: g.dir, hand: seat >= 0 ? g.hands[seat] : null,
-        counts: g.hands.map(function (h) { return h.length; }), left: g.deck.length + g.disc.length, last: g.last, out: g.out, cnt: g.cnt, tl: left, limit: g.limit, ending: g.lastTurns != null, res: !!g.res, pend: g.pend ? { s: g.pend.s, fx: g.pend.fx } : null, peek: g.peek && g.peek.s === seat ? { to: g.peek.to, cards: g.peek.cards } : null };
+        counts: g.hands.map(function (h) { return h.length; }), left: g.deck.length + g.disc.length, last: g.last, out: g.out, cnt: g.cnt, tl: left, limit: g.limit, ending: g.lastTurns != null, res: !!g.res, hold: holdLeft(g), pend: g.pend ? { s: g.pend.s, fx: g.pend.fx } : null, peek: g.peek && g.peek.s === seat ? { to: g.peek.to, cards: g.peek.cards } : null };
     },
     act: function (g, seat, d, notify) {
       if (g.res || g.out.indexOf(seat) >= 0) return false;
       if (d.t === 'resign') { notify(seat, '你已經認輸，可以繼續觀看'); knock(g, seat, 'resign'); g.cnt++; return true; }
       if (g.turn !== seat || d.n !== g.cnt) return false;
+      if (holdLeft(g) > 150) return false;   // 功能牌特效還在播
       if (g.pend && d.t !== 'chfx') return false;
       if (d.t === 'chfx') return chfx(g, seat, d);
       if (g.peek && g.peek.s === seat) g.peek = null;
@@ -155,9 +158,9 @@
       var h = g.hands[seat], c0 = cardById(h, d.c); if (!c0) return false;
       var next = null, info = { s: seat, k: 'play', c: c0 };
       if (c0.k === 'f') {
-        if (c0.f === 'rev') { g.dir = -g.dir; info.k = 'rev'; }
-        else if (c0.f === 'pick') { if (d.to == null || d.to === seat || g.out.indexOf(d.to) >= 0 || d.to < 0 || d.to >= g.np) return false; next = d.to; info.k = 'pick'; info.to = d.to; }
-        else if (c0.f === 'blank') { var tp = tryPlace(g.board, g.repeat, c0, d.slot); if (!tp.ok) return false; c0.under = g.board[d.slot]; g.board[d.slot] = c0; info.k = 'blank'; info.slot = d.slot; h.splice(h.indexOf(c0), 1); g.last = info; return finishPlay(g, seat, next); }
+        if (c0.f === 'rev') { g.dir = -g.dir; info.k = 'rev'; info.aff = alive(g); }
+        else if (c0.f === 'pick') { if (d.to == null || d.to === seat || g.out.indexOf(d.to) >= 0 || d.to < 0 || d.to >= g.np) return false; next = d.to; info.k = 'pick'; info.to = d.to; info.aff = [d.to]; }
+        else if (c0.f === 'blank') { var tp = tryPlace(g.board, g.repeat, c0, d.slot); if (!tp.ok) return false; c0.under = g.board[d.slot]; g.board[d.slot] = c0; info.k = 'blank'; info.slot = d.slot; info.aff = []; h.splice(h.indexOf(c0), 1); g.last = info; return finishPlay(g, seat, next); }
         else if (c0.f === 'chance') {
           h.splice(h.indexOf(c0), 1); g.disc.push(c0);
           if (!h.length) { g.last = info; return finishPlay(g, seat, null); }
@@ -165,7 +168,7 @@
         }
         else if (c0.f === 'er') {
           SLOTS.forEach(function (s) { var x = g.board[s]; if (x) { if (x.under) { g.disc.push(x.under); x.under = null; } g.disc.push(x); } g.board[s] = null; });
-          h.splice(h.indexOf(c0), 1); g.board.v = c0; info.k = 'er'; g.last = info; return finishPlay(g, seat, next);
+          h.splice(h.indexOf(c0), 1); g.board.v = c0; info.k = 'er'; info.aff = []; g.last = info; return finishPlay(g, seat, next);
         }
         h.splice(h.indexOf(c0), 1); g.disc.push(c0);
       } else {
@@ -240,13 +243,13 @@
     if (fx === 'spin') {
       var n = h.length, old = h.splice(0), c;
       for (var i = 0; i < n; i++) { c = draw1(g) || old.pop(); h.push(c); }
-      toBottom(g, old); info.n = n;
+      toBottom(g, old); info.n = n; info.aff = [seat];
     } else if (fx === 'drop') {
-      var cn = 0; alive(g).forEach(function (s) { var hh = g.hands[s]; if (hh.length >= 2) { toBottom(g, hh.splice(Math.floor(Math.random() * hh.length), 1)); cn++; } }); info.n = cn;
-    } else if (fx === 'again') { next = seat; }
+      var cn = 0; info.aff = []; alive(g).forEach(function (s) { var hh = g.hands[s]; if (hh.length >= 2) { toBottom(g, hh.splice(Math.floor(Math.random() * hh.length), 1)); cn++; info.aff.push(s); } }); info.n = cn;
+    } else if (fx === 'again') { next = seat; info.aff = [seat]; }
     else if (fx === 'rich') {
       var mx = 0; alive(g).forEach(function (s) { mx = Math.max(mx, g.hands[s].length); });
-      alive(g).forEach(function (s) { while (g.hands[s].length < mx) { var c2 = draw1(g); if (!c2) break; g.hands[s].push(c2); } }); info.mx = mx;
+      info.aff = []; alive(g).forEach(function (s) { var had = g.hands[s].length; while (g.hands[s].length < mx) { var c2 = draw1(g); if (!c2) break; g.hands[s].push(c2); } if (g.hands[s].length > had) info.aff.push(s); }); info.mx = mx;
     } else { g.pend = { s: seat, fx: fx }; info.pend = true; g.last = info; g.stall = 0; startClock(g); g.cnt++; return true; }
     g.last = info; return finishPlay(g, seat, next);
   }
@@ -257,29 +260,31 @@
     if (p.fx === 'cut') {
       if (!Array.isArray(d.two) || d.two.length !== 2 || d.two[0] === d.two[1]) return false;
       var a = cardById(h, d.two[0]), b = cardById(h, d.two[1]); if (!a || !b) return false;
-      h.splice(h.indexOf(a), 1); h.splice(h.indexOf(b), 1); toBottom(g, [a, b]);
+      h.splice(h.indexOf(a), 1); h.splice(h.indexOf(b), 1); toBottom(g, [a, b]); info.aff = [seat];
     } else if (p.fx === 'fine') {
-      if (!okT) return false; for (var i = 0; i < 2; i++) { var c = draw1(g); if (c) g.hands[to].push(c); } info.to = to;
+      if (!okT) return false; for (var i = 0; i < 2; i++) { var c = draw1(g); if (c) g.hands[to].push(c); } info.to = to; info.aff = [to];
     } else if (p.fx === 'gift') {
-      var gc = cardById(h, d.card); if (!okT || !gc || h.length < 2) return false; h.splice(h.indexOf(gc), 1); g.hands[to].push(gc); info.to = to;
+      var gc = cardById(h, d.card); if (!okT || !gc || h.length < 2) return false; h.splice(h.indexOf(gc), 1); g.hands[to].push(gc); info.to = to; info.aff = [seat, to];
     } else if (p.fx === 'swap') {
       if (!okT || !g.hands[to].length || !h.length) return false;
-      var ia = Math.floor(Math.random() * h.length), ib = Math.floor(Math.random() * g.hands[to].length), t = h[ia]; h[ia] = g.hands[to][ib]; g.hands[to][ib] = t; info.to = to;
+      var ia = Math.floor(Math.random() * h.length), ib = Math.floor(Math.random() * g.hands[to].length), t = h[ia]; h[ia] = g.hands[to][ib]; g.hands[to][ib] = t; info.to = to; info.aff = [seat, to];
     } else if (p.fx === 'skip') {
-      if (!okT) return false; g.skips[to] = 1; info.to = to;
+      if (!okT) return false; g.skips[to] = 1; info.to = to; info.aff = [to];
     } else if (p.fx === 'peek') {
-      if (!okT || !g.hands[to].length) return false; g.peek = { s: seat, to: to, cards: shuffle(g.hands[to].slice()).slice(0, 3) }; info.to = to;
+      if (!okT || !g.hands[to].length) return false; g.peek = { s: seat, to: to, cards: shuffle(g.hands[to].slice()).slice(0, 3) }; info.to = to; info.aff = [seat, to];
     } else if (p.fx === 'redeal') {
       var dir = d.dir === -1 ? -1 : 1, first = d.first, pool = []; if (first == null || first < 0 || first >= g.np || g.out.indexOf(first) >= 0) return false; alive(g).forEach(function (s) { pool = pool.concat(g.hands[s]); g.hands[s] = []; }); shuffle(pool);
       var cur = first; pool.forEach(function (cd) { g.hands[cur].push(cd); for (var k = 1; k <= g.np; k++) { var n2 = ((cur + dir * k) % g.np + g.np) % g.np; if (g.out.indexOf(n2) < 0) { cur = n2; break; } } });
-      info.dir = dir; info.first = first;
+      info.dir = dir; info.first = first; info.aff = alive(g);
     } else return false;
     g.pend = null; g.last = info; return finishPlay(g, seat, null);
   }
   function finishPlay(g, seat, next) {
     g.stall = 0; startClock(g);
     if (!g.hands[seat].length) { g.cnt++; g.res = { w: seat, why: 'out' }; return true; }
-    advance(g, seat, next); return true;
+    var lk = g.last; advance(g, seat, next);
+    if (!g.res && lk && lk.s === seat && FNK[lk.k] && !lk.pend) g.hold = Date.now() + HOLD;
+    return true;
   }
   /* 電腦判斷用：底版現在有多容易接（下一位能出的符號種類） */
   function ease(board, repeat) {
@@ -324,6 +329,30 @@
     var m = { cut: '丟了兩張牌到牌堆底', spin: '手牌放到牌堆底，重抽了 ' + l.n + ' 張', fine: t + ' 被罰抽 2 張', gift: '送了一張牌給 ' + t, swap: '和 ' + t + ' 互換了一張牌', drop: l.n + ' 位玩家各丟了一張牌到牌堆底', again: '要再出一張牌', skip: t + ' 下次輪到時會被跳過', peek: '偷看了 ' + t + ' 的牌', rich: '手牌少的人都抽到 ' + l.mx + ' 張', redeal: '手牌全部洗在一起，從 ' + (l.first != null ? who(tb, l.first) : '') + ' 開始' + (l.dir > 0 ? '順時鐘' : '逆時鐘') + '重發' }[l.fx];
     return n + ' 的機會「' + f[0] + '」：' + m;
   }
+  /* 功能牌特效：打出功能牌時，畫面中央放大顯示是什麼牌、效果是什麼、誰受影響，停 5 秒（機會牌選對象前先停 3 秒，不擋住操作） */
+  var fxTimer = null;
+  function showFx(tb, v, l, dur) {
+    var old = document.querySelector('.zc-fx'); if (old) old.remove(); clearTimeout(fxTimer);
+    var icon, name, desc, who0 = who(tb, l.s), cls = l.k;
+    if (l.k === 'rev') { icon = '🔄'; name = '迴轉'; desc = '出牌順序反過來了，現在是' + (v.dir > 0 ? '順時鐘' : '逆時鐘'); }
+    else if (l.k === 'pick') { icon = '👉'; name = '指定'; desc = who0 + ' 指定 ' + who(tb, l.to) + ' 下一個出牌'; }
+    else if (l.k === 'blank') { icon = '⬜'; name = '空白'; desc = '蓋住底版上的「' + SNAME[l.slot] + '」格'; }
+    else if (l.k === 'er') { icon = '✨'; name = 'ㄦ・清場'; desc = '底版全部清空，ㄦ 放在韻母格'; }
+    else { icon = '🎲'; name = '機會：' + CFX[l.fx][0]; desc = l.pend ? CFX[l.fx][1] : chanceLog(tb, l); cls = 'chance'; }
+    var o = el('div', 'zc-fx k-' + cls), card = el('div', 'zc-fxcard'); card.appendChild(el('div', 'zc-fxico', icon)); card.appendChild(el('div', 'zc-fxname', name)); o.appendChild(card);
+    o.appendChild(el('div', 'zc-fxwho', who0 + (l.pend ? ' 抽到機會牌' : ' 出了功能牌')));
+    o.appendChild(el('div', 'zc-fxdesc', desc));
+    var af = el('div', 'zc-fxaff'), list = l.aff || [], np = v.np - v.out.length;
+    if (l.pend) af.appendChild(el('span', 'zc-fxnote', who0 + ' 正在選擇…'));
+    else if (!list.length) af.appendChild(el('span', 'zc-fxnote', l.k === 'blank' || l.k === 'er' ? '影響：底版' : '沒有人受影響'));
+    else if (list.length >= np && np > 2 && (l.k === 'rev' || l.fx === 'redeal')) af.appendChild(el('span', 'zc-fxchip' + (list.indexOf(tb.seat) >= 0 ? ' me' : ''), '👥 所有玩家'));
+    else { af.appendChild(el('span', 'zc-fxnote', '受影響：')); list.forEach(function (i) { var c = el('span', 'zc-fxchip' + (i === tb.seat ? ' me' : ''), who(tb, i)); c.style.borderColor = SEATC[i]; af.appendChild(c); }); }
+    o.appendChild(af);
+    if (l.sk != null) o.appendChild(el('div', 'zc-fxnote', who(tb, l.sk) + ' 這次輪到時被跳過'));
+    var bar = el('div', 'zc-fxbar'), fill = el('i'); fill.style.animationDuration = dur + 'ms'; bar.appendChild(fill); o.appendChild(bar);
+    document.body.appendChild(o);
+    fxTimer = setTimeout(function () { o.classList.add('out'); setTimeout(function () { o.remove(); }, 250); }, dur);
+  }
   function sylHTML(sy) { return esc(sy.text || '…'); }
   var ticking = false;
   function tick() { if (ticking) return; ticking = true; setInterval(function () { var t = document.querySelector('.zc-timer'); if (t && L.tl != null) t.textContent = '⏱️ ' + fmtT(L.tl - (Date.now() - L.tlT)); }, 1000); }
@@ -341,6 +370,7 @@
       else if (v.last.k === 'chance' && v.last.pend && s !== tb.seat) fx.toast(nm + ' 抽到機會「' + CFX[v.last.fx][0] + '」');
       else if (v.last.k === 'rev' && s !== tb.seat) fx.toast(nm + ' 出了迴轉，順序反過來了');
       else if (v.last.k === 'er' && s !== tb.seat) fx.toast(nm + ' 出了ㄦ，底版清空！');
+      if (FNK[v.last.k] && (v.hold > 0 || v.last.pend) && !tb.res) { showFx(tb, v, v.last, v.last.pend ? 3200 : v.hold); fx.snd('cap'); }
       if (v.turn === tb.seat && !tb.res) setTimeout(function () { fx.snd('turn'); }, 400);
     }
     L.key = key;
@@ -397,7 +427,8 @@
     var sy = sylOf(v.board), rd = el('div', 'zc-syl' + (sy.ok ? ' ok' : ' frag')); rd.innerHTML = sylHTML(sy) + (sy.ok ? ' <i>✓</i>' : ''); felt.appendChild(rd);
     var lg = el('div', 'zc-log'), l = v.last;
     if (l) lg.textContent = l.k === 'draw' ? who(tb, l.s) + (l.vol ? ' 選擇不出牌，抽了 ' + l.n + ' 張' : ' 沒牌可出，抽了 ' + l.n + ' 張') : l.k === 'rev' ? who(tb, l.s) + ' 出了迴轉：順序反過來' : l.k === 'pick' ? who(tb, l.s) + ' 指定 ' + who(tb, l.to) + ' 出牌' : l.k === 'blank' ? who(tb, l.s) + ' 用空白蓋住「' + SNAME[l.slot] + '」' : l.k === 'chance' ? chanceLog(tb, l) : l.k === 'skipped' ? who(tb, l.s) + ' 被跳過了一次' : l.k === 'er' ? who(tb, l.s) + ' 出了ㄦ，底版清空' : who(tb, l.s) + ' 出了「' + (l.c.p) + '」';
-    else lg.textContent = '底版上先翻開一張牌，輪流放進對應顏色的格子，拼出真的拼音';
+    if (l && l.sk != null) lg.textContent += '（' + who(tb, l.sk) + ' 被跳過一次）';
+    else if (!l) lg.textContent = '底版上先翻開一張牌，輪流放進對應顏色的格子，拼出真的拼音';
     felt.appendChild(lg);
     if (v.peek) { var pk = el('div', 'zc-peek'); pk.appendChild(el('span', '', '👀 你偷看了 ' + who(tb, v.peek.to) + ' 的牌：')); v.peek.cards.forEach(function (c) { pk.appendChild(cardEl(c)); }); felt.appendChild(pk); }
     wrap.appendChild(felt);
@@ -514,7 +545,7 @@
     student: [
       { h: '怎麼玩', html: '<ol><li>每人先拿 7 張手牌，底版上翻開一張牌。</li><li>底版有四格：<b style="color:#e5484d">聲母（紅）</b>、<b style="color:#c98a00">介音（黃）</b>、<b style="color:#2f6fe4">韻母（藍）</b>、<b style="color:#2aa66a">聲調（綠）</b>。</li><li>輪到你時，<b>一次出一張牌</b>：點一張手牌（亮出它要放的格子），再按「出牌」（或再點一次那張牌）。</li><li>放進去以後，底版上拼出來的要是<b>真的存在的拼音</b>，不是的話不能出。</li><li>聲調格空著就是<b>一聲</b>。</li><li>沒有牌可以出，就按「抽牌」。有牌可以出，也可以按「不出，抽一張」：抽一張牌，這回合就結束（想把好牌留著時用）。</li><li><b>先把手牌出完的人獲勝！</b></li></ol>' },
       { h: '注意', html: '<ul><li>放進格子會<b>換掉</b>那一格原本的牌。</li><li>如果老師選「不能出一樣的符號」，場上已經有的符號（例如「ㄅ」）就不能再出另一張一樣的。</li><li>不確定有沒有這個音？可以按「📖 拼音表」查（老師有開放才有）。</li><li>有限時的話，時間到後<b>這一輪打完就結束</b>，手牌最少的人贏。</li></ul>' },
-      { h: '功能牌', html: '<table class="g-tbl"><tr><th>牌</th><th>效果</th></tr><tr><td>🔄 迴轉</td><td>出牌的順序反過來</td></tr><tr><td>👉 指定</td><td>你決定讓哪一位玩家（不能是自己）出牌</td></tr><tr><td>⬜ 空白</td><td>蓋住底版上的一格，蓋住後底版仍要是真的拼音。蓋住聲調格＝一聲</td></tr><tr><td>🎲 機會</td><td>出牌後<b>隨機抽出一個效果</b>（見下表）。只剩這一張牌時直接出完獲勝。</td></tr><tr><td>✨ ㄦ</td><td>清空整個底版，把ㄦ放在韻母格</td></tr></table><p>功能牌隨時都可以出（空白要蓋完還是真的拼音）。</p><p><b>機會牌的 11 種效果：</b></p><table class="g-tbl">' + Object.keys(CFX).map(function (k) { return '<tr><td>' + CFX[k][0] + '</td><td>' + CFX[k][1] + '</td></tr>'; }).join('') + '</table><p>牌堆抽完時，會把出過的牌洗一洗放回牌堆繼續抽。</p>' },
+      { h: '功能牌', html: '<table class="g-tbl"><tr><th>牌</th><th>效果</th></tr><tr><td>🔄 迴轉</td><td>出牌的順序反過來</td></tr><tr><td>👉 指定</td><td>你決定讓哪一位玩家（不能是自己）出牌</td></tr><tr><td>⬜ 空白</td><td>蓋住底版上的一格，蓋住後底版仍要是真的拼音。蓋住聲調格＝一聲</td></tr><tr><td>🎲 機會</td><td>出牌後<b>隨機抽出一個效果</b>（見下表）。只剩這一張牌時直接出完獲勝。</td></tr><tr><td>✨ ㄦ</td><td>清空整個底版，把ㄦ放在韻母格</td></tr></table><p>功能牌隨時都可以出（空白要蓋完還是真的拼音）。</p><p><b>機會牌的 11 種效果：</b></p><table class="g-tbl">' + Object.keys(CFX).map(function (k) { return '<tr><td>' + CFX[k][0] + '</td><td>' + CFX[k][1] + '</td></tr>'; }).join('') + '</table><p>牌堆抽完時，會把出過的牌洗一洗放回牌堆繼續抽。</p><p>打出任何功能牌時，畫面中央會放大播放特效，<b>停 5 秒</b>，讓大家看清楚是什麼牌、有什麼效果、哪些人受影響。</p>' },
       { h: '計分方式', html: '<p>先把手牌出完的人獲勝（積分榜 +3 分）。限時結束時，手牌最少的人獲勝，並列的人都算贏。和電腦玩的不列入總分。</p>' }
     ],
     teacher: [
