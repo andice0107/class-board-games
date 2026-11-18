@@ -308,7 +308,7 @@
   function worth(c) { return c.k === 'f' ? 0 : 1; }   // 機會牌丟掉的優先順序：注音牌先丟，功能牌留著
 
   /* ---------- 學生端 ---------- */
-  var L = { rd: null, sel: null, two: [], round: -1, sent: -1, key: '', seen: {}, tl: null, tlT: 0, idx: false, tab: 'ㄅ', pickTo: false };
+  var L = { order: null, newIds: {}, rd: null, sel: null, two: [], round: -1, sent: -1, key: '', seen: {}, tl: null, tlT: 0, idx: false, tab: 'ㄅ', pickTo: false };
   function short(tb, i) { var s = tb.seats[i]; return s.bot ? '電腦 ' + (i + 1) : s.name.replace(/（.*）/, ''); }
   function who(tb, i) { return i === tb.seat ? '你' : short(tb, i); }
   function fmtT(ms) { var s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
@@ -329,7 +329,7 @@
   function tick() { if (ticking) return; ticking = true; setInterval(function () { var t = document.querySelector('.zc-timer'); if (t && L.tl != null) t.textContent = '⏱️ ' + fmtT(L.tl - (Date.now() - L.tlT)); }, 1000); }
   mod.onUpdate = function (prev, tb, fx) {
     var v = tb.view;
-    if (L.round !== tb.round) { L.round = tb.round; L.sel = null; L.two = []; L.sent = -1; L.key = ''; L.seen = {}; L.pickTo = false; }
+    if (L.round !== tb.round) { L.round = tb.round; L.sel = null; L.two = []; L.sent = -1; L.key = ''; L.seen = {}; L.order = null; L.newIds = {}; L.pickTo = false; }
     L.tl = v.tl; L.tlT = Date.now();
     var key = v.cnt + ':' + (v.last ? v.last.k : '');
     if (prev && key !== L.key && v.last) {
@@ -401,7 +401,7 @@
     felt.appendChild(lg);
     if (v.peek) { var pk = el('div', 'zc-peek'); pk.appendChild(el('span', '', '👀 你偷看了 ' + who(tb, v.peek.to) + ' 的牌：')); v.peek.cards.forEach(function (c) { pk.appendChild(cardEl(c)); }); felt.appendChild(pk); }
     wrap.appendChild(felt);
-    function send(d) { d.n = v.cnt; L.sent = v.cnt; L.sel = null; L.two = []; L.pickTo = false; ctx.snd('move'); ctx.send(d.t === 'draw' ? 'draw' : 'play', d); ctx.rerender(); }
+    function send(d) { d.n = v.cnt; L.newIds = {}; L.sent = v.cnt; L.sel = null; L.two = []; L.pickTo = false; ctx.snd('move'); ctx.send(d.t === 'draw' ? 'draw' : 'play', d); ctx.rerender(); }
     function playSel() {
       if (!sel) return;
       if (sel.k !== 'f') {
@@ -413,16 +413,25 @@
     // 手牌
     var me = el('div', 'pk-me zc-me' + (myTurn ? ' turn' : ''));
     var top = el('div', 'pk-me-top'), dot = el('i'); dot.style.background = SEATC[seat]; top.appendChild(dot);
-    top.appendChild(el('span', 'n', '我的手牌')); top.appendChild(el('span', 'pk-cnt', hand.length + ' 張')); me.appendChild(top);
+    top.appendChild(el('span', 'n', '我的手牌')); top.appendChild(el('span', 'pk-cnt', hand.length + ' 張'));
+    var sortBtn = ctx.button('pk-btn small', '🗂 整理手牌', function () { L.order = null; L.newIds = {}; ctx.snd('tap'); ctx.rerender(); }); sortBtn.classList.add('zc-sort'); top.appendChild(sortBtn); me.appendChild(top);
     var hd = el('div', 'zc-hand'), n = hand.length;
     // 手牌區的大小固定（不會因為牌變多而變大，以免擠壓底版）；牌多的時候，牌自動縮小排進去
-    var wide = window.innerWidth > window.innerHeight, areaW = Math.min(window.innerWidth || 390, 760) - 56, areaH = Math.round((window.innerHeight || 800) * (wide ? .235 : .225)), gap = 6, cw = wide ? 100 : 88;
+    var wide = window.innerWidth > window.innerHeight, areaW = Math.min(window.innerWidth || 390, 760) - 80, areaH = Math.round((window.innerHeight || 800) * (wide ? .215 : .225)), gap = 6, cw = wide ? 100 : 88;
     for (; cw > 26; cw -= 2) { var cols0 = Math.max(1, Math.floor((areaW + gap) / (cw + gap))), rows0 = Math.ceil(n / cols0); if (rows0 * (cw * 1.35 + gap) <= areaH) break; }
     hd.style.setProperty('--hw', cw + 'px'); hd.style.height = areaH + 'px';
-    var sorted = hand.slice().sort(function (a, b) { var ka = 'cmvtf'.indexOf(a.k), kb = 'cmvtf'.indexOf(b.k); return ka - kb || ORDER.indexOf(a.p) - ORDER.indexOf(b.p) || a.i - b.i; });
+    var byKind = function (x, y) { var kx = 'cmvtf'.indexOf(x.k), ky = 'cmvtf'.indexOf(y.k); return kx - ky || ORDER.indexOf(x.p) - ORDER.indexOf(y.p) || x.i - y.i; };
+    // 手牌順序：開局時照聲母、介音、韻母、聲調排好；之後新拿到的牌放最右邊並標「新」，按「整理手牌」才重新排好
+    if (!L.order) L.order = hand.slice().sort(byKind).map(function (c) { return c.i; });
+    else {
+      L.order = L.order.filter(function (id) { return cardById(hand, id); });
+      hand.forEach(function (c) { if (L.order.indexOf(c.i) < 0) { L.order.push(c.i); L.newIds[c.i] = 1; } });
+    }
+    Object.keys(L.newIds).forEach(function (k) { if (!cardById(hand, +k)) delete L.newIds[k]; });
+    var sorted = L.order.map(function (id) { return cardById(hand, id); });
     sorted.forEach(function (c) {
-      var fresh = !L.seen[c.i] && Object.keys(L.seen).length > 0;
-      var b = cardEl(c, (sel && sel.i === c.i ? 'sel' : '') + (L.two.indexOf(c.i) >= 0 ? ' two' : '') + (fresh ? ' fresh' : ''));
+      var fresh = !!L.newIds[c.i];
+      var b = cardEl(c, (sel && sel.i === c.i ? 'sel' : '') + (L.two.indexOf(c.i) >= 0 ? ' two' : '') + (fresh ? ' fresh newc' : ''));
       b.addEventListener('click', function () {
         if (!myTurn) return;
         if (v.pend) { var pf2 = v.pend.fx; if (pf2 === 'cut') { var ix = L.two.indexOf(c.i); if (ix >= 0) L.two.splice(ix, 1); else if (L.two.length < 2) L.two.push(c.i); ctx.snd('tap'); ctx.rerender(); } else if (pf2 === 'gift') { L.two = L.two[0] === c.i ? [] : [c.i]; ctx.snd('tap'); ctx.rerender(); } return; }

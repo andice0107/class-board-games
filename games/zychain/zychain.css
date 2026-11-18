@@ -68,3 +68,5 @@
 .zc-peek { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; justify-content: center; color: #fff4e0; font-size: 13px; font-weight: 800; }
 .zc-peek .zc-card { --cw: 40px; }
 .zc-table .pk-tools { gap: 6px; flex-wrap: nowrap; } .zc-table .pk-tools .pk-btn { padding: 8px 10px; font-size: 14px; white-space: nowrap; }
+.zc-card.newc::after { content: '新'; position: absolute; top: -7px; right: -5px; background: #ff7a1a; color: #fff; font-size: 11px; font-weight: 900; line-height: 1; padding: 2px 4px; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,.4); }
+.zc-sort { margin-left: auto; }
