@@ -84,7 +84,7 @@
       var r = [], s;
       if (g.phase === 'fill') { for (s = 0; s < g.np; s++) if (!g.ready[s] && !g.gone[s]) r.push(s); return r; }
       if (g.cur == null) return [g.caller];
-      for (s = 0; s < g.np; s++) if (!g.circ[s][g.cur] && !g.gone[s]) r.push(s);
+      for (s = 0; s < g.np; s++) if (!g.circ[s][g.cur] && !g.gone[s] && g.boards[s].indexOf(g.cur) >= 0) r.push(s);
       return r;
     },
     turnKey: function (g) { return g.phase + ':' + g.hist.length + ':' + (g.cur == null ? 'c' : 'r'); },
@@ -109,7 +109,7 @@
       var me = seat >= 0 && seat < g.np ? seat : 0, lines = [];
       for (var s = 0; s < g.np; s++) lines.push(g.phase === 'play' || g.res ? lineCount(g, s) : 0);
       return { np: g.np, n: g.n, tot: g.tot, need: g.need, fill: g.fill, hintsec: g.hintsec, phase: g.phase, board: g.boards[me], ready: g.ready, circ: Object.keys(g.circ[me]).map(Number),
-        cur: g.cur, caller: g.caller, hist: g.hist.slice(-10), called: g.called.slice(), nCalled: g.called.length, lines: lines, cnt: g.cnt, circled: g.circ.map(function (c) { return g.cur != null && !!c[g.cur]; }) };
+        cur: g.cur, caller: g.caller, hist: g.hist.slice(-10), called: g.called.slice(), nCalled: g.called.length, lines: lines, cnt: g.cnt, miss: g.sym && g.cur != null && g.boards[me].indexOf(g.cur) < 0 && !g.circ[me][g.cur], circled: g.circ.map(function (c) { return g.cur != null && !!c[g.cur]; }) };
     },
     act: function (g, seat, d, notify) {
       if (g.res || seat < 0 || seat >= g.np) return false;
@@ -129,11 +129,18 @@
         if (!(v >= 1 && v <= g.tot) || v !== Math.floor(v)) { notify(seat, SYM ? '請選一個注音符號' : '要喊 1 到 ' + g.tot + ' 的數字喔'); return false; }
         if (g.called.indexOf(v) >= 0) { notify(seat, lab(v) + ' 已經被圈起來了，請換一個' + (SYM ? '符號' : '數字')); return false; }
         g.called.push(v); g.hist.push({ s: seat, x: v }); g.cur = v; g.cnt++;
-        autoGone(g); autoAck(g);
+        autoGone(g);
         return true;
       }
       if (d.t === 'circle') {
-        if (g.cur == null || g.circ[seat][g.cur]) return false;
+        if (g.cur == null) return false;
+        if (d.auto) {   // 注音賓果：盤子上沒有這個符號的人，停 2 秒讓他們看到訊息後，一起自動跳過
+          if (!g.sym) return false;
+          for (var q = 0; q < g.np; q++) if (g.boards[q].indexOf(g.cur) < 0) g.circ[q][g.cur] = 1;
+          g.cnt++; if (g.circ.every(function (c) { return c[g.cur]; })) finishRound(g);
+          return true;
+        }
+        if (g.circ[seat][g.cur] || g.boards[seat].indexOf(g.cur) < 0) return false;
         if (+d.x !== g.cur) { notify(seat, '現在要圈的是 ' + lab(g.cur) + ' 喔'); return false; }
         g.circ[seat][g.cur] = 1; g.cnt++;
         if (g.circ.every(function (c) { return c[g.cur]; })) finishRound(g);
@@ -150,7 +157,7 @@
       if (d.t === 'draw' && g.phase === 'play' && g.cur == null) {
         var u = uncalled(g); if (!u.length) return false;
         var x = u[Math.floor(Math.random() * u.length)];
-        g.called.push(x); g.hist.push({ s: g.caller, x: x, d: 1 }); g.cur = x; g.cnt++; autoGone(g); autoAck(g); return true;
+        g.called.push(x); g.hist.push({ s: g.caller, x: x, d: 1 }); g.cur = x; g.cnt++; autoGone(g); return true;
       }
       if (d.t === 'circleAll' && g.cur != null) {
         for (var q = 0; q < g.np; q++) g.circ[q][g.cur] = 1;
@@ -160,12 +167,16 @@
     },
     botTurn: function (g, seat, lv) {
       if (g.res || g.phase !== 'play') return null;
-      if (g.cur != null) return g.circ[seat][g.cur] ? null : { t: 'circle', x: g.cur };
+      if (g.cur != null) return g.circ[seat][g.cur] || g.boards[seat].indexOf(g.cur) < 0 ? null : { t: 'circle', x: g.cur };
       if (g.caller !== seat) return null;
       var u = uncalled(g); if (!u.length) return null;
       var x = lv <= 1 || (lv === 2 && Math.random() < .5) ? null : greedyPick(g, seat, lv === 4 ? .5 : 3);
       if (x == null || g.called.indexOf(x) >= 0) x = u[Math.floor(Math.random() * u.length)];
       return { t: 'call', x: x, n: g.cnt };
+    },
+    autoAct: function (g, seat) {
+      if (g.res || !g.sym || g.phase !== 'play' || g.cur == null || g.circ[seat][g.cur] || g.boards[seat].indexOf(g.cur) >= 0) return null;
+      return { a: { t: 'circle', x: g.cur, auto: 1 }, wait: 2000 };
     },
     hintDesc: '喊出數字後，亮出那個數字在你賓果盤上的位置。',
     tipDesc: '發呆太久時，提醒你現在該做什麼（填數字、喊數字，或找數字圈起來）。',
@@ -261,7 +272,7 @@
 
     /* ----- 遊戲中 ----- */
     var myCall = !tb.res && v.cur == null && v.caller === seat, mine = v.cur != null && v.circ.indexOf(v.cur) >= 0;
-    var live = !tb.res && v.cur != null && !mine; if (myCall) wrap.classList.add('call'); if (myCall && SYM) wrap.classList.add('symc');
+    var live = !tb.res && v.cur != null && !mine && !v.miss; if (myCall) wrap.classList.add('call'); if (myCall && SYM) wrap.classList.add('symc');
     var ck = tb.round + ':' + v.nCalled; if (v.cur != null && L.curKey !== ck) { L.curKey = ck; L.curAt = now; }
     var waited = v.cur != null ? now - L.curAt : 0, hs = v.hintsec * 1000, clue = {};
     if (live && hs > 0) {
@@ -273,6 +284,7 @@
     }
     var call = el('div', 'bg-call' + (live ? ' live' : ''));
     if (tb.res) call.innerHTML = '<small>對局結束</small>';
+    else if (v.cur != null && v.miss) call.innerHTML = '<small>' + who(tb, v.caller) + ' 喊：</small><b style="color:' + ZCOL[zcat(v.cur)] + '">' + lab(v.cur) + '</b><small class="bg-miss">你的盤子上沒有「' + lab(v.cur) + '」，會幫你自動跳過…</small>';
     else if (v.cur != null) call.innerHTML = '<small>' + who(tb, v.caller) + ' 喊：' + (SYM ? '（' + ZNAME[zcat(v.cur)] + '）' : '') + '</small><b' + (SYM ? ' style="color:' + ZCOL[zcat(v.cur)] + '"' : '') + '>' + lab(v.cur) + '</b><small>' + (mine ? (v.board.indexOf(v.cur) < 0 ? '你的盤子上沒有這個符號，自動跳過，等其他人…' : '你已經圈起來了，等其他人…') : '找到後，點一下圈起來') + '</small>';
     else call.innerHTML = '<small>' + (myCall ? '輪到你喊' + (SYM ? '符號' : '數字') + '！' : '等 ' + who(tb, v.caller) + ' 喊數字…') + '</small>';
     wrap.appendChild(call);
