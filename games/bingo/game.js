@@ -281,54 +281,34 @@
 
   function renderFill(box, wrap, ctx) {
     var tb = ctx.tb, v = tb.view, seat = tb.seat, n = v.n, tot = v.tot;
-    if (!L.draft || L.draft.length !== tot) { L.draft = v.ready[seat] ? v.board.slice() : new Array(tot).fill(0); L.sel = v.ready[seat] ? -1 : 0; }
+    if (!L.draft || L.draft.length !== tot) { L.draft = v.ready[seat] ? v.board.slice() : new Array(tot).fill(0); }
     var d = L.draft, done = v.ready[seat];
-    var placed = {}; d.forEach(function (x) { if (x) placed[x] = 1; });
-    var left = tot - Object.keys(placed).length;
+    var cnt = 0, mx = 0; d.forEach(function (x) { if (x) { cnt++; if (x > mx) mx = x; } });
     var call = el('div', 'bg-call');
-    call.innerHTML = done ? '<small>你填好了，等其他同學…</small>' : '<small>把 1～' + tot + ' 填進格子（每個數字一次）</small>';
+    call.innerHTML = done ? '<small>你填好了，等其他同學…</small>' : cnt < tot ? '<small>依序點格子：下一個數字是</small><b>' + (mx + 1) + '</b>' : '<small>全部填好了！確認沒問題就按「我填好了」</small>';
     wrap.appendChild(call);
-    var mkView = { n: n, board: d, circ: [] };
-    var res = drawBoard(tb, mkView, ctx, { fill: !done });
+    L.sel = -1;
+    var res = drawBoard(tb, { n: n, board: d, circ: [] }, ctx, { fill: false });
     var bx = el('div', 'bn-board'); bx.appendChild(BG.zoom('bingo', res.bd)); wrap.appendChild(bx);
-    function nextEmpty(from) { for (var k = 1; k <= tot; k++) { var j = (from + k) % tot; if (!d[j]) return j; } return -1; }
-    function put(x) {
-      if (done) return;
-      if (!(x >= 1 && x <= tot) || x !== Math.floor(x)) { ctx.toast('請打 1 到 ' + tot + ' 的數字'); return; }
-      if (L.sel < 0) { ctx.toast('先點一個格子'); return; }
-      var old = d.indexOf(x); if (old >= 0) d[old] = 0;
-      d[L.sel] = x; ctx.snd('tap');
-      var nx = nextEmpty(L.sel); L.sel = nx >= 0 ? nx : L.sel; L.typed = ''; ctx.rerender();
-    }
     bx.addEventListener('click', function (e) {
       var c = e.target.closest && e.target.closest('[data-i]'); if (!c || done) return;
-      L.sel = +c.getAttribute('data-i'); ctx.snd('tap'); ctx.rerender();
+      var i = +c.getAttribute('data-i');
+      if (d[i]) { if (d[i] === mx) { d[i] = 0; ctx.snd('tap'); ctx.rerender(); } else ctx.toast('要照順序，只能取消最後填的那一格（或按「↩ 上一步」）'); return; }
+      if (cnt >= tot) return;
+      d[i] = mx + 1; ctx.snd('tap'); ctx.rerender();
     });
     if (!done) {
-      var row = el('div', 'bg-in'), inp = document.createElement('input');
-      inp.type = 'number'; inp.inputMode = 'numeric'; inp.min = 1; inp.max = tot; inp.placeholder = '打數字'; inp.value = L.typed;
-      inp.addEventListener('input', function () { L.typed = inp.value; });
-      var ok = ctx.button('bg-btn go', '填入', function () { if (inp.value) put(+inp.value); });
-      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') ok.click(); });
-      row.appendChild(inp); row.appendChild(ok);
-      row.appendChild(ctx.button('bg-btn', '清除這格', function () { if (L.sel >= 0 && d[L.sel]) { d[L.sel] = 0; ctx.rerender(); } }));
-      wrap.appendChild(row);
-      var pool = el('div', 'bg-pool');
-      for (var x = 1; x <= tot; x++) {
-        if (placed[x]) continue;
-        var b = el('button', 'bg-chipn', String(x)); b.type = 'button'; b.setAttribute('data-x', x); pool.appendChild(b);
-      }
-      pool.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('[data-x]'); if (b) put(+b.getAttribute('data-x')); });
-      wrap.appendChild(el('div', 'bg-note', left ? '還沒填：' + left + ' 個（點下面的數字，會填進亮起來的格子）' : '全部填好了！確認沒問題就按「我填好了」'));
-      wrap.appendChild(pool);
+      wrap.appendChild(el('div', 'bg-note', '點的順序就是數字的順序：第 1 個點的格子是 1，第 2 個點的是 2……'));
       var tools = el('div', 'bg-tools');
+      var un = ctx.button('bg-btn', '↩ 上一步', function () { for (var i = 0; i < tot; i++) if (d[i] === mx) { d[i] = 0; break; } ctx.rerender(); }); un.disabled = !cnt; tools.appendChild(un);
       tools.appendChild(ctx.button('bg-btn', '🎲 隨機填滿剩下的', function () {
-        var rest = shuffle(seq(tot).filter(function (x) { return !placed[x]; }));
+        var used = {}; d.forEach(function (x) { if (x) used[x] = 1; });
+        var rest = shuffle(seq(tot).filter(function (x) { return !used[x]; }));
         for (var i = 0; i < tot; i++) if (!d[i]) d[i] = rest.pop();
-        L.sel = -1; ctx.snd('pop'); ctx.rerender();
+        ctx.snd('pop'); ctx.rerender();
       }));
-      tools.appendChild(ctx.button('bg-btn', '🔀 全部重新亂排', function () { L.draft = shuffle(seq(tot)); L.sel = -1; ctx.snd('pop'); ctx.rerender(); }));
-      var rd = ctx.button('bg-btn go', '✔ 我填好了', function () { ctx.send('ready', { b: d.slice() }); }); rd.disabled = left > 0; tools.appendChild(rd);
+      tools.appendChild(ctx.button('bg-btn', '🗑 全部重填', function () { L.draft = new Array(tot).fill(0); ctx.rerender(); }));
+      var rd = ctx.button('bg-btn go', '✔ 我填好了', function () { ctx.send('ready', { b: d.slice() }); }); rd.disabled = cnt < tot; tools.appendChild(rd);
       wrap.appendChild(tools);
     } else {
       var tl = el('div', 'bg-tools'); tl.appendChild(ctx.button('bg-btn', '↩️ 我還想改', function () { ctx.send('unready'); L.draft = null; })); tl.appendChild(ctx.emoteButton('bg-btn')); wrap.appendChild(tl);

@@ -42,5 +42,5 @@
 .bg-hcur { margin-top: 4px; font-size: 18px; } .bg-hcur b { color: #e03131; font-size: 26px; }
 .fit-land .bg-call b { font-size: 72px; } .fit-land .bg-chip { font-size: 17px; }
 
-.bg-table.fill .bn-board { width: min(100%, calc(var(--vh, 1dvh) * 100 - 640px)); }
+.bg-table.fill .bn-board { width: min(100%, calc(var(--vh, 1dvh) * 100 - 400px)); }
 .bg-table.call .bn-board { width: min(100%, calc(var(--vh, 1dvh) * 100 - 470px)); }
