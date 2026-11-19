@@ -465,8 +465,14 @@
       var cur = parseFloat(wrap.style.getPropertyValue('--b')) || 300, avail = vh2 - (wrap.getBoundingClientRect().top + window.scrollY);
       var other = top.offsetHeight + side.offsetHeight + 24, want = Math.max(240, Math.floor(Math.min(vw2 - 28, avail - other - 4)));
       if (Math.abs(want - cur) > 2) wrap.style.setProperty('--b', want + 'px');
-      var slack = avail - other - want - 4;
-      if (slack > 8) { var ch = side.querySelector('.fe-chips'); if (ch) ch.style.minHeight = (ch.offsetHeight + slack) + 'px'; }
+      var sc = 1;
+      for (var pass = 0; pass < 4; pass++) {
+        wrap.style.setProperty('--sc', sc);
+        var slack = avail - (top.offsetHeight + side.offsetHeight + main.offsetHeight + 24) - 4;
+        if (Math.abs(slack) < 6) break;
+        var ns = Math.max(1, Math.min(2.4, sc * (1 + slack / Math.max(120, side.offsetHeight) * 0.85)));
+        if (Math.abs(ns - sc) < .01) break; sc = ns;
+      }
     }, 80);
   };
 
