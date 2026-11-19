@@ -78,7 +78,7 @@
     g.turn = nxt(g, g.turn);
     if (g.turn === g.first) {
       g.rd++;
-      if (g.rs === 2) { var nest = shuffle([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]); g.nest = nest; g.flips = []; g.last = null; g.rs = 0; addEv(g, { k: 'rs2' }); }
+      if (g.rs === 2) { var nest = shuffle([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]); g.nest = nest; g.flips = []; g.last = null; g.logs = []; g.rs = 0; addEv(g, { k: 'rs2' }); }
       else if (g.rs === 1) { g.rs = 2; addEv(g, { k: 'rs1' }); }
     }
     startTurn(g);
@@ -107,7 +107,7 @@
   function freeCells(g) { var r = []; for (var c = 0; c < 24; c++) if (!cellOwner(g, c)) r.push(c); return r; }
 
   var mod = {
-    seats: 4, seatOptions: [2, 3, 4, 5, 6], seatDefault: 4, botSeats: [1, 5], botDelay: 1100, ver: 1, fitZoom: false,
+    seats: 4, seatOptions: [2, 3, 4, 5, 6], seatDefault: 4, botSeats: [1, 5], botDelay: 2300, ver: 1, fitZoom: false,
     reasons: REASONS, holdLeft: holdLeft, onResume: function (g, d) { if (g.dl) g.dl += d; if (g.hold) g.hold += d; },
     levelDesc: ['亂翻', '只記得最近翻過的 2 張', '記得最近翻過的 4 張', '幾乎全部都記得'],
     seatName: function (i) { return CN[i] || ('第 ' + (i + 1) + ' 位'); },
@@ -122,7 +122,7 @@
       o = o || {}; n = Math.max(2, Math.min(6, n || 4));
       var ver = o.ver === '2' ? 2 : 1, aid = String(o.aid || 'none'), ak = aid.charAt(0), an = +aid.slice(1) || 0;
       var bots = o._bots || [];
-      var g = { np: n, ver: ver, ring: makeRing(), nest: shuffle([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]), pos: [], poop: [], f: [], steps: [], off: [], used: [], multi: [], out: [], pl: [], flips: [], last: null, fate: null,
+      var g = { np: n, ver: ver, ring: makeRing(), nest: shuffle([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]), pos: [], poop: [], f: [], steps: [], off: [], used: [], multi: [], out: [], pl: [], flips: [], logs: [], last: null, fate: null,
         need: Math.min(n, 5), handi: o.handi === 'yes', aid: { k: ak === 'r' || ak === 'm' ? ak : 'none', n: an }, turn: 0, first: 0, rd: 1, rs: 0, turns: 0, cnt: 0, started: false, res: null, hold: 0, ev: null,
         limit: (+o.limit === 0 ? 0 : (+o.limit || 15)) * 60000, dl: null, lastTurns: null };
       for (var s = 0; s < n; s++) { g.f.push(1); g.steps.push(0); g.off.push(0); g.used.push(0); g.multi.push(ak === 'm' && !bots[s] ? an : 1); }
@@ -137,7 +137,7 @@
     view: function (g, seat) {
       var tg = g.res ? null : nextTarget(g, g.turn);
       return { np: g.np, ver: g.ver, ring: g.ring, pos: g.pos, poop: g.poop, f: g.f, steps: g.steps, need: g.need, turn: g.turn, first: g.first, out: g.out, tgt: tg ? tg.c : -1, tpic: tg ? g.ring[tg.c] : -1, jn: tg ? tg.jumped.length : 0,
-        last: g.last, rec: g.aid.k === 'r' ? g.flips.slice(-g.aid.n) : null, aid: g.aid, pl: g.pl.length ? g.pl[0] : -1, fate: g.fate ? { s: g.fate.s, lit: g.fate.lit } : null, rs: g.rs, rd: g.rd,
+        last: g.last, logs: g.logs.slice(-5), rec: g.aid.k === 'r' ? g.flips.slice(-g.aid.n) : null, aid: g.aid, pl: g.pl.length ? g.pl[0] : -1, fate: g.fate ? { s: g.fate.s, lit: g.fate.lit } : null, rs: g.rs, rd: g.rd,
         hold: holdLeft(g), ev: g.ev, cnt: g.cnt, tl: g.dl ? Math.max(0, g.dl - Date.now()) : null, limit: g.limit, ending: g.lastTurns != null, mf: seat >= 0 ? maxFlip(g, seat) : 1, handi: g.handi, off: g.off };
     },
     act: function (g, seat, d, notify) {
@@ -153,7 +153,7 @@
       if (d.t === 'fate') {
         if (!g.fate || g.fate.s !== seat || g.fate.lit.indexOf(d.pos | 0) < 0) return false;
         startClock(g); var pos = d.pos | 0, lucky = pos === g.fate.lucky;
-        g.used[seat]++; g.last = { s: seat, ps: [pos], fate: 1, lucky: lucky }; g.fate = null; g.cnt++; g.started = true;
+        g.used[seat]++; g.last = { s: seat, ps: [pos], fate: 1, lucky: lucky }; g.fate = null; g.cnt++; g.started = true; g.logs.push({ s: seat, fate: 1, lucky: lucky, c: g.cnt }); if (g.logs.length > 8) g.logs.shift();
         addEv(g, { k: 'fate', s: seat, lucky: lucky });
         if (lucky) move(g, seat, nextTarget(g, seat));
         return true;
@@ -167,7 +167,7 @@
       ps.forEach(function (p) { var pic = g.nest[p], ok = pic === want; pics.push(pic); oks.push(ok); g.flips.push({ s: seat, p: p, pic: pic, ok: ok }); if (ok && hit < 0) hit = p; });
       if (g.flips.length > 300) g.flips = g.flips.slice(-150);
       g.last = { s: seat, ps: ps, pics: pics, oks: oks, hit: hit };
-      g.cnt++;
+      g.cnt++; g.logs.push({ s: seat, pics: pics, hit: hit >= 0, c: g.cnt }); if (g.logs.length > 8) g.logs.shift();
       if (hit >= 0) { move(g, seat, tg); return true; }
       if (g.ver === 2 && tg.poops.length) {
         var o = tg.poops[0], took = 0;
@@ -284,14 +284,14 @@
   };
 
   /* ---------- 學生端 ---------- */
-  var L = { holdUntil: 0, sel: [], sent: -1, round: -1, evn: -1 };
+  var L = { holdUntil: 0, sel: [], selCnt: -1, sent: -1, round: -1, evn: -1, show: null, anim: {} };
   function short(tb, i) { var s = tb.seats[i]; return s.bot ? '電腦' + CN[i] : s.name.replace(/（.*）/, ''); }
   function who(tb, i) { return i === tb.seat ? '你' : short(tb, i); }
   function rc(i) { if (i <= 6) return [0, i]; if (i <= 12) return [i - 6, 6]; if (i <= 18) return [6, 18 - i]; return [24 - i, 0]; }
   function fmtT(ms) { var s = Math.ceil(ms / 1000); return Math.floor(s / 60) + ':' + (s % 60 < 10 ? '0' : '') + (s % 60); }
   function evHtml(tb, it) {
     if (it.k === 'jump') {
-      var names = it.took.map(function (t) { return who(tb, t.s) + (t.n ? '（被拔走 1 根 🪶）' : '（沒有羽毛可拔）'); }).join('、');
+      var names = it.took.map(function (t) { return who(tb, t.s) + (t.n ? '（被拔走 ' + t.n + ' 根 🪶）' : '（沒有羽毛可拔）'); }).join('、');
       return { icon: '🪶', title: who(tb, it.s) + ' 超越了別隻雞！', html: '超越了：' + names + (tb.view.ver === 2 ? '<br>被超越的雞，要重新安放自己的便便 💩' : '') };
     }
     if (it.k === 'poop') return { icon: '💩', title: who(tb, it.s) + ' 踩到便便了！', html: '前面有 ' + who(tb, it.o) + ' 的便便，' + (it.took ? who(tb, it.s) + ' 被扣 1 根羽毛給 ' + who(tb, it.o) + '。' : who(tb, it.s) + ' 沒有羽毛可以扣。') + '這坨便便被清掉了。' };
@@ -303,7 +303,20 @@
   mod.onUpdate = function (prev, tb, fx) {
     var v = tb.view;
     if (L.round !== tb.round) { L.round = tb.round; L.sel = []; L.sent = -1; L.evn = v.ev ? v.ev.n : -1; }
-    if (prev && prev.view.cnt !== v.cnt && v.last) {
+    var nowT = Date.now(), flipped = false;
+    if (prev && prev.view.cnt !== v.cnt && v.last && JSON.stringify(prev.view.last) !== JSON.stringify(v.last)) {
+      flipped = true; L.show = { cnt: v.cnt, until: nowT + 1500, noteAt: nowT + 450 };
+    }
+    if (prev && prev.view.cnt !== v.cnt) {
+      for (var s0 = 0; s0 < v.np; s0++) {
+        var a0 = prev.view.pos[s0], b0 = v.pos[s0];
+        if (a0 >= 0 && b0 >= 0 && a0 !== b0 && prev.view.poop.join() !== undefined) {
+          var ra = rc(a0), rb = rc(b0);
+          L.anim[s0] = { dx: ra[1] - rb[1], dy: ra[0] - rb[0], t0: nowT + (flipped ? 1000 : 0) };
+        }
+      }
+    }
+    if (flipped && v.last) {
       var ok = v.last.fate ? v.last.lucky : v.last.hit >= 0;
       fx.snd(ok ? 'move' : 'pop');
       if (v.turn === tb.seat && !tb.res && v.last.s !== tb.seat) setTimeout(function () { fx.snd('turn'); }, 450);
@@ -311,7 +324,7 @@
     L.holdUntil = v.hold > 0 ? Date.now() + v.hold : 0;
     if (v.ev && v.ev.n !== L.evn && v.hold > 0 && !tb.res) {
       var parts = v.ev.items.map(function (it) { return evHtml(tb, it); }).filter(Boolean);
-      if (parts.length) BG.fxOverlay({ icon: parts[0].icon, title: parts[0].title, html: parts.map(function (p, i) { return (i ? '<hr><b>' + p.title + '</b><br>' : '') + p.html; }).join(''), ms: v.hold });
+      if (parts.length) { var dly = flipped ? 1900 : 0, ov = { icon: parts[0].icon, title: parts[0].title, html: parts.map(function (p, i) { return (i ? '<hr><b>' + p.title + '</b><br>' : '') + p.html; }).join(''), ms: Math.max(1500, v.hold - dly) }; if (dly) setTimeout(function () { BG.fxOverlay(ov); }, dly); else BG.fxOverlay(ov); }
       if (v.ev.items.some(function (it) { return it.k === 'jump' || it.k === 'poop'; })) fx.snd('cap');
     }
     if (v.ev) L.evn = v.ev.n;
@@ -320,11 +333,22 @@
   mod.render = function (box, ctx) {
     var tb = ctx.tb, v = tb.view, seat = tb.seat, out = v.out.indexOf(seat) >= 0, held = Date.now() < L.holdUntil;
     if (held && !tb.res) { clearTimeout(L.ht); L.ht = setTimeout(function () { ctx.rerender(); }, L.holdUntil - Date.now() + 80); }
-    var live = !tb.res && !out && !held && L.sent !== v.cnt;
+    var nowR = Date.now(), busyEnd = L.show && L.show.cnt === v.cnt ? L.show.until : 0;
+    Object.keys(L.anim).forEach(function (k) { var a = L.anim[k]; if (a.t0 + 800 > nowR) busyEnd = Math.max(busyEnd, a.t0 + 800); });
+    var busy = nowR < busyEnd;
+    if (busy) { clearTimeout(L.bt); L.bt = setTimeout(function () { ctx.rerender(); }, busyEnd - nowR + 60); }
+    if (L.show && L.show.cnt === v.cnt && nowR < L.show.noteAt) { clearTimeout(L.nt); L.nt = setTimeout(function () { ctx.rerender(); }, L.show.noteAt - nowR + 30); }
+    if (L.selCnt !== v.cnt) { L.selCnt = v.cnt; L.sel = []; }
+    var live = !tb.res && !out && !held && !busy && L.sent !== v.cnt;
     var placing = live && v.pl === seat, myTurn = live && v.pl < 0 && v.turn === seat;
     var fate = v.fate && v.fate.s === v.turn ? v.fate : null, mf = v.mf || 1;
     function send(t, d) { d = d || {}; d.n = v.cnt; L.sent = v.cnt; L.sel = []; ctx.send(t, d); ctx.rerender(); }
     var wrap = el('div', 'fe-table fe-v' + v.ver);
+    (function () {
+      var vw = document.documentElement.clientWidth, vh = window.innerHeight, land = vw / vh > 1.2 && vw >= 640;
+      var b = land ? Math.min(vh - 100, (vw - 60) * .62) : Math.min(vw - 28, vh - 440);
+      b = Math.max(260, Math.floor(b)); wrap.style.setProperty('--b', b + 'px');
+    })();
     var main = el('div', 'fe-main'), side = el('div', 'fe-side'), top = el('div', 'fe-top');
     // 狀態列
     var st = el('div', 'fe-status');
@@ -333,8 +357,8 @@
     else if (held) { st.textContent = '⏸️ 請看畫面…'; st.className = 'fe-status hold'; }
     else if (v.pl >= 0) { st.textContent = v.pl === seat ? '💩 請把你的便便放在一個發光的空格' : who(tb, v.pl) + ' 正在安放便便…'; if (v.pl === seat) st.className = 'fe-status me'; }
     else if (fate) { st.textContent = v.turn === seat ? '🍀 命運三選一！點一張亮起來的雞窩牌' : who(tb, v.turn) + ' 正在選命運牌…'; if (v.turn === seat) st.className = 'fe-status me'; }
-    else if (myTurn) { st.textContent = mf > 1 ? '輪到你了！可以翻 1～' + mf + ' 張，有一張對就算對' : '輪到你了！翻一張雞窩牌'; st.className = 'fe-status me'; }
-    else st.textContent = '輪到 ' + who(tb, v.turn) + '…';
+    else if (myTurn) { st.textContent = L.sel.length ? '再點一次「同一張牌」就翻開！' : mf > 1 ? '輪到你了！可以選 1～' + mf + ' 張，再點同一張翻開' : '輪到你了！點一張雞窩牌，再點一次翻開'; st.className = 'fe-status me'; }
+    else st.textContent = busy && !tb.res ? '👀 看清楚喔…' : '輪到 ' + who(tb, v.turn) + '…';
     top.appendChild(st);
     // 棋盤
     var bd = el('div', 'fe-ring'), h = '';
@@ -345,7 +369,7 @@
     for (var i = 0; i < 24; i++) {
       var rr = rc(i), cls = 'fe-cell' + (i === v.tgt && !tb.res ? ' tgt' : '') + (row[i] ? ' row' : '') + (freeSet[i] ? ' free' : ''), inner = '<img class="egg" src="' + IMG('t' + pad(v.ring[i] + 1)) + '" alt="' + NAMES[v.ring[i]] + '" draggable="false">';
       for (var s = 0; s < v.np; s++) {
-        if (v.pos[s] === i) inner += '<img class="chk' + (s === v.turn && !tb.res ? ' act' : '') + '" src="' + IMG('c' + (s + 1)) + '" alt="' + CN[s] + '" draggable="false">' + (s === seat ? '<em class="me">我</em>' : '') + '<b class="ft" style="background:' + SEATC[s] + '">🪶' + v.f[s] + '</b>';
+        if (v.pos[s] === i) { var an = L.anim[s], hopSt = ''; if (an && an.t0 + 800 > nowR) hopSt = ' hop" style="--dx:' + an.dx + ';--dy:' + an.dy + ';--dl:' + (an.t0 - nowR) + 'ms'; inner += '<div class="pcw' + (s === v.turn && !tb.res ? ' act' : '') + hopSt + '"><img class="chk" src="' + IMG('c' + (s + 1)) + '" alt="' + CN[s] + '" draggable="false">' + (s === seat ? '<em class="me">我</em>' : '') + '</div><b class="ft" style="background:' + SEATC[s] + '">🪶' + v.f[s] + '</b>'; }
         if (v.poop[s] === i) inner += '<img class="poo" src="' + IMG('poop') + '" alt="便便" draggable="false"><i class="pdot" style="background:' + SEATC[s] + '"></i>';
       }
       h += '<div class="' + cls + '" style="grid-row:' + (rr[0] + 1) + ';grid-column:' + (rr[1] + 1) + '" data-c="' + i + '">' + inner + '</div>';
@@ -356,7 +380,7 @@
     var ctr = el('div', 'fe-center'), tgt = el('div', 'fe-target');
     if (!tb.res && v.tpic >= 0 && v.pl < 0) tgt.innerHTML = '<span>' + (v.turn === seat ? '你' : short(tb, v.turn)) + ' 要找</span><img src="' + IMG('n' + pad(v.tpic + 1)) + '" alt=""><b>' + NAMES[v.tpic] + '</b>' + (v.jn ? '<em>超越 ' + v.jn + ' 隻</em>' : '');
     ctr.appendChild(tgt);
-    var nest = el('div', 'fe-nest'), lastPs = v.last && !(fate && !v.last.fate) ? v.last.ps : [];
+    var nest = el('div', 'fe-nest'), showing = L.show && L.show.cnt === v.cnt && nowR < L.show.until, lastPs = showing && v.last ? v.last.ps : [];
     for (var p = 0; p < 12; p++) {
       var up = lastPs.indexOf(p) >= 0, li = up ? lastPs.indexOf(p) : -1, lit = fate && fate.lit.indexOf(p) >= 0;
       var t = el('button', 'fe-tile' + (up ? ' up' : '') + (up && !v.last.fate ? (v.last.oks[li] ? ' ok' : ' bad') : '') + (lit ? ' lit' : '') + (L.sel.indexOf(p) >= 0 ? ' sel' : '') + (fate && !lit ? ' off' : '')); t.type = 'button'; t.setAttribute('data-h', 'n' + p);
@@ -367,20 +391,19 @@
       t.innerHTML = body + '<u>' + (p + 1) + '</u>';
       if (myTurn && !up && (!fate || lit)) t.addEventListener('click', (function (p) { return function () {
         ctx.snd('tap');
-        if (fate) return send('fate', { pos: p });
-        if (mf <= 1) return send('flip', { ps: [p] });
-        var ix = L.sel.indexOf(p); if (ix >= 0) L.sel.splice(ix, 1); else L.sel.push(p);
-        if (L.sel.length >= mf) send('flip', { ps: L.sel.slice() }); else ctx.rerender();
+        if (L.sel.indexOf(p) >= 0) return fate ? send('fate', { pos: p }) : send('flip', { ps: L.sel.slice() });
+        if (fate || mf <= 1) L.sel = [p]; else { if (L.sel.length >= mf) L.sel.shift(); L.sel.push(p); }
+        ctx.rerender();
       }; })(p));
       else if (!myTurn || up) t.disabled = true;
       nest.appendChild(t);
     }
     ctr.appendChild(nest);
     var note = el('div', 'fe-note');
-    if (v.last && !tb.res) {
+    if (v.last && !tb.res && !(L.show && L.show.cnt === v.cnt && nowR < L.show.noteAt)) {
       var lw = who(tb, v.last.s);
       note.textContent = v.last.fate ? lw + ' 選了命運牌：' + (v.last.lucky ? '🍀 前進一步！' : '💨 空的…') : lw + ' 翻到「' + v.last.pics.map(function (x) { return NAMES[x]; }).join('、') + '」' + (v.last.hit >= 0 ? ' ✅ 對了！' : ' ❌ 錯了');
-    } else note.textContent = '雞窩牌上的數字是位置，位置不會變，記起來！';
+    } else note.textContent = v.last && !tb.res ? '翻牌中…' : '雞窩牌上的數字是位置，位置不會變，記起來！';
     ctr.appendChild(note);
     bd.appendChild(ctr);
     main.appendChild(bd);
@@ -398,15 +421,24 @@
     if (v.rs === 2) inf.appendChild(el('span', 'fe-pill warn', '🔀 這一輪結束後洗牌'));
     inf.appendChild(el('span', 'fe-pill', '第 ' + v.rd + ' 輪'));
     side.appendChild(inf);
-    if (v.rec) {
+    if (v.rec && v.turn === seat && v.pl < 0 && !tb.res) {
       var rec = el('div', 'fe-rec'); rec.appendChild(el('b', '', '最近翻牌：'));
       if (!v.rec.length) rec.appendChild(el('span', '', '（還沒有）'));
       v.rec.slice().reverse().forEach(function (x) { var s = el('span', 'fe-r ' + (x.ok ? 'ok' : 'bad')); s.innerHTML = '<i style="background:' + SEATC[x.s] + '"></i><u>' + (x.p + 1) + '</u><img src="' + IMG('n' + pad(x.pic + 1)) + '" alt="">' + NAMES[x.pic]; rec.appendChild(s); });
       side.appendChild(rec);
     }
+    var lg = el('div', 'fe-log'); lg.appendChild(el('b', '', '最近 5 次翻牌'));
+    var lgs = (v.logs || []).filter(function (x) { return !(L.show && L.show.cnt === x.c && nowR < L.show.noteAt); }).slice().reverse();
+    if (!lgs.length) lg.appendChild(el('div', 'li', '還沒有人翻牌'));
+    lgs.forEach(function (x, i) {
+      var li = el('div', 'li' + (i === 0 ? ' new' : '') + (x.fate ? '' : x.hit ? ' ok' : ' bad')), d = el('i'); d.style.background = SEATC[x.s]; li.appendChild(d);
+      li.appendChild(document.createTextNode(who(tb, x.s) + (x.fate ? ' 選命運牌：' + (x.lucky ? '🍀 前進一步' : '💨 空的') : ' 翻到「' + x.pics.map(function (q) { return NAMES[q]; }).join('、') + '」' + (x.hit ? ' ✅' : ' ❌'))));
+      lg.appendChild(li);
+    });
+    side.appendChild(lg);
     if (!tb.res && !out) {
       var tools = el('div', 'fe-tools');
-      if (myTurn && mf > 1 && L.sel.length) tools.appendChild(ctx.button('fe-btn go', '翻開選的 ' + L.sel.length + ' 張', function () { send('flip', { ps: L.sel.slice() }); }));
+      if (myTurn && L.sel.length) tools.appendChild(ctx.button('fe-btn', '取消選擇', function () { L.sel = []; ctx.rerender(); }));
       tools.appendChild(ctx.button('fe-btn', '🏳️', function () { if (confirm('確定要認輸嗎？')) ctx.send('resign', {}); }));
       tools.appendChild(ctx.emoteButton('fe-btn'));
       side.appendChild(tools);
