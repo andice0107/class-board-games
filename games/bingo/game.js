@@ -273,7 +273,7 @@
     }
     var call = el('div', 'bg-call' + (live ? ' live' : ''));
     if (tb.res) call.innerHTML = '<small>對局結束</small>';
-    else if (v.cur != null) call.innerHTML = '<small>' + who(tb, v.caller) + ' 喊：' + (SYM ? '（' + ZNAME[zcat(v.cur)] + '）' : '') + '</small><b' + (SYM ? ' style="color:' + ZCOL[zcat(v.cur)] + '"' : '') + '>' + lab(v.cur) + '</b><small>' + (mine ? '你已經圈起來了，等其他人…' : '找到後，點一下圈起來') + '</small>';
+    else if (v.cur != null) call.innerHTML = '<small>' + who(tb, v.caller) + ' 喊：' + (SYM ? '（' + ZNAME[zcat(v.cur)] + '）' : '') + '</small><b' + (SYM ? ' style="color:' + ZCOL[zcat(v.cur)] + '"' : '') + '>' + lab(v.cur) + '</b><small>' + (mine ? (v.board.indexOf(v.cur) < 0 ? '你的盤子上沒有這個符號，自動跳過，等其他人…' : '你已經圈起來了，等其他人…') : '找到後，點一下圈起來') + '</small>';
     else call.innerHTML = '<small>' + (myCall ? '輪到你喊' + (SYM ? '符號' : '數字') + '！' : '等 ' + who(tb, v.caller) + ' 喊數字…') + '</small>';
     wrap.appendChild(call);
     var res = drawBoard(tb, v, ctx, { cur: v.cur, live: live, clue: clue, selNum: myCall && +L.typed >= 1 ? +L.typed : 0 });
