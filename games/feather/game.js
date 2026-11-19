@@ -419,7 +419,7 @@
     var chips = el('div', 'fe-chips n' + v.np);
     for (var o = 0; o < v.np; o++) {
       var ch = el('div', 'fe-chip' + (o === seat ? ' me' : '') + (o === v.turn && !tb.res ? ' turn' : '') + (v.out.indexOf(o) >= 0 ? ' out' : ''));
-      ch.innerHTML = '<img src="' + IMG('c' + (o + 1)) + '" alt=""><span>' + (o === seat ? '我' : short(tb, o)) + '</span><b style="background:' + SEATC[o] + '">🪶' + v.f[o] + '/' + v.need + '</b>' + (v.ver === 2 && v.poop[o] >= 0 ? '<i>💩</i>' : '');
+      ch.innerHTML = '<img src="' + IMG('c' + (o + 1)) + '" alt=""><span>' + (o === seat ? '我' : tb.seats[o].bot ? CN[o] : short(tb, o)) + '</span><b style="background:' + SEATC[o] + '">🪶' + v.f[o] + '/' + v.need + '</b>' + (v.ver === 2 && v.poop[o] >= 0 ? '<i>💩</i>' : '');
       chips.appendChild(ch);
     }
     side.appendChild(chips);
