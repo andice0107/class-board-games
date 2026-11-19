@@ -136,6 +136,11 @@
         for (var s = 0; s < g.np; s++) if (!g.ready[s]) { g.boards[s] = shuffle(seq(g.tot)); g.ready[s] = true; }
         startGame(g); return true;
       }
+      if (d.t === 'draw' && g.phase === 'play' && g.cur == null) {
+        var u = uncalled(g); if (!u.length) return false;
+        var x = u[Math.floor(Math.random() * u.length)];
+        g.called.push(x); g.hist.push({ s: g.caller, x: x, d: 1 }); g.cur = x; g.cnt++; autoGone(g); return true;
+      }
       if (d.t === 'circleAll' && g.cur != null) {
         for (var q = 0; q < g.np; q++) g.circ[q][g.cur] = 1;
         g.cnt++; finishRound(g); return true;
@@ -180,6 +185,7 @@
     var g = T.g, box = el('div', 'bg-ht');
     function btn(text, fn) { var b = el('button', 'btn small', text); b.type = 'button'; b.addEventListener('click', fn); box.appendChild(b); }
     if (g.phase === 'fill' && !g.res) btn('⏩ 直接開始（沒填完的自動隨機填滿）', function () { API.act(T, { t: 'force' }); API.render(); });
+    if (g.phase === 'play' && g.cur == null && !g.res) btn('🎲 幫輪到喊的同學隨機抽一個還沒被圈起來的號碼', function () { API.act(T, { t: 'draw' }); API.render(); });
     if (g.phase === 'play' && g.cur != null && !g.res) btn('✔ 幫所有人圈起目前的數字（' + g.cur + '）', function () { API.act(T, { t: 'circleAll' }); API.render(); });
     return box;
   };
