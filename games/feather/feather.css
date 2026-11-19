@@ -77,9 +77,10 @@
 .fe-btn { background: #fffdf2; color: #4e342e; border: 2px solid #8d6e63; border-radius: 999px; padding: 6px 14px; font-size: calc(clamp(14px, calc(var(--vh, 1dvh) * 1.9), 19px) * var(--sc, 1)); cursor: pointer; font-family: inherit; }
 .fe-btn.go { background: #ffd54f; font-weight: 800; }
 @media (min-aspect-ratio: 6/5) and (min-width: 640px) {
-  .fe-table { --b: min(calc(var(--vh, 1dvh) * 100 - 100px), calc((var(--vw, 1vw) * 100 - 60px) * .62)); grid-template-columns: var(--b) minmax(230px, 520px); grid-template-rows: auto 1fr; align-content: stretch; gap: 8px 14px; align-content: center; }
+  .fe-table { --b: min(calc(var(--vh, 1dvh) * 100 - 78px), calc((var(--vw, 1vw) * 100 - 60px) * .62)); grid-template-columns: var(--b) minmax(230px, 1fr); grid-template-rows: auto 1fr; align-content: stretch; gap: 8px 14px; align-content: center; }
   .fe-main { grid-row: 1 / 3; grid-column: 1; }
   .fe-top, .fe-side { width: auto; grid-column: 2; }
+  .fe-side { align-self: start; }
   .fe-chips, .fe-chips.n2, .fe-chips.n3, .fe-chips.n4 { grid-template-columns: repeat(2, 1fr); }
 }
 /* 老師端 */

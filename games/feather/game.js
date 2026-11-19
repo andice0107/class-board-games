@@ -354,7 +354,7 @@
     var wrap = el('div', 'fe-table fe-v' + v.ver);
     (function () {
       var vw = document.documentElement.clientWidth, vh = window.innerHeight, land = vw / vh > 1.2 && vw >= 640;
-      var b = land ? Math.min(vh - 100, (vw - 60) * .62) : Math.min(vw - 28, vh - (120 + Math.max(300, vh * 0.3)));
+      var b = land ? Math.min(vh - 78, (vw - 60) * .62) : Math.min(vw - 28, vh - (120 + Math.max(300, vh * 0.3)));
       b = Math.max(260, Math.floor(b)); wrap.style.setProperty('--b', b + 'px');
     })();
     var main = el('div', 'fe-main'), side = el('div', 'fe-side'), top = el('div', 'fe-top');
@@ -458,22 +458,32 @@
     wrap.appendChild(top); wrap.appendChild(main); wrap.appendChild(side);
     box.appendChild(wrap);
     // 直式：棋盤放到剛好填滿畫面；放不滿（受寬度限制）時，多出來的高度分給玩家區
-    setTimeout(function () {
+    var fitAll = function () {
       if (!wrap.isConnected) return;
+      var c0 = side.querySelector('.fe-chips'), l0 = side.querySelector('.fe-log'); if (c0) c0.style.minHeight = ''; if (l0) l0.style.minHeight = ''; wrap.style.setProperty('--sc', 1);
       var vw2 = document.documentElement.clientWidth, vh2 = window.innerHeight;
-      if (vw2 / vh2 > 1.2 && vw2 >= 640) return;
+      var land = vw2 / vh2 > 1.2 && vw2 >= 640;
       var cur = parseFloat(wrap.style.getPropertyValue('--b')) || 300, avail = vh2 - (wrap.getBoundingClientRect().top + window.scrollY);
-      var other = top.offsetHeight + side.offsetHeight + 24, want = Math.max(240, Math.floor(Math.min(vw2 - 28, avail - other - 4)));
-      if (Math.abs(want - cur) > 2) wrap.style.setProperty('--b', want + 'px');
+      if (!land) {
+        var other = top.offsetHeight + side.offsetHeight + 24, want = Math.max(240, Math.floor(Math.min(vw2 - 28, avail - other - 4)));
+        if (Math.abs(want - cur) > 2) wrap.style.setProperty('--b', want + 'px');
+      }
       var sc = 1;
       for (var pass = 0; pass < 4; pass++) {
         wrap.style.setProperty('--sc', sc);
-        var slack = avail - (top.offsetHeight + side.offsetHeight + main.offsetHeight + 24) - 4;
+        var slack = land ? avail - (top.offsetHeight + side.offsetHeight + 8) - 30 : avail - (top.offsetHeight + side.offsetHeight + main.offsetHeight + 24) - 4;
         if (Math.abs(slack) < 6) break;
-        var ns = Math.max(1, Math.min(2.4, sc * (1 + slack / Math.max(120, side.offsetHeight) * 0.85)));
+        var ns = Math.max(1, Math.min(2.4, Math.max(1, side.offsetWidth / 330), sc * (1 + slack / Math.max(120, side.offsetHeight) * 0.85)));
         if (Math.abs(ns - sc) < .01) break; sc = ns;
       }
-    }, 80);
+      var rest = land ? avail - (top.offsetHeight + side.offsetHeight + 8) - 30 : avail - (top.offsetHeight + side.offsetHeight + main.offsetHeight + 24) - 4;
+      if (rest > 10) {
+        var ch2 = side.querySelector('.fe-chips'), lg2 = side.querySelector('.fe-log');
+        if (ch2) ch2.style.minHeight = (ch2.offsetHeight + rest * .5) + 'px';
+        if (lg2) lg2.style.minHeight = (lg2.offsetHeight + rest * .5) + 'px';
+      }
+    };
+    setTimeout(fitAll, 80); setTimeout(fitAll, 600);
   };
 
   function tileFigs() { var h = '<div class="g-figs">'; for (var i = 0; i < 12; i++) h += '<figure class="g-fig"><img src="' + IMG('t' + pad(i + 1)) + '" alt="" style="max-width:70px"><figcaption>' + NAMES[i] + '</figcaption></figure>'; return h + '</div>'; }
