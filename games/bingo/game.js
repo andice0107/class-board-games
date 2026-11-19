@@ -207,14 +207,29 @@
   function who(tb, i) { return i === tb.seat ? '你' : short(tb, i); }
   mod.onUpdate = function (prev, tb, fx) {
     var v = tb.view;
-    if (L.round !== tb.round) { L.round = tb.round; L.draft = null; L.sel = -1; L.curKey = ''; L.sent = ''; L.typed = ''; }
+    if (L.round !== tb.round) { L.round = tb.round; L.lines = null; L.draft = null; L.sel = -1; L.curKey = ''; L.sent = ''; L.typed = ''; }
     var k = v.phase + ':' + v.nCalled + ':' + (v.cur == null ? 'c' : 'r');
     if (prev && L.key && L.key !== k && v.cur != null) { fx.snd('turn'); }
     if (prev && L.key && L.key !== k && v.cur == null && v.phase === 'play' && v.caller === tb.seat) { fx.snd('turn'); L.typed = ''; }
     L.key = k;
+    if (!L.lines || L.lines.length !== v.lines.length || (prev && prev.round !== tb.round)) L.lines = v.lines.slice();
+    else {
+      for (var q = 0; q < v.lines.length; q++) {
+        if (v.lines[q] > L.lines[q]) {
+          if (q === tb.seat) { fx.snd('win'); banner('🎉 連線！', '你連成 ' + v.lines[q] + ' 條線了' + (v.lines[q] >= v.need ? '，達標啦！' : '，還差 ' + (v.need - v.lines[q]) + ' 條')); }
+          else { fx.snd('check'); fx.toast('🎯 ' + short(tb, q) + ' 連成 ' + v.lines[q] + ' 條線了！'); }
+        }
+      }
+      L.lines = v.lines.slice();
+    }
     if (prev === null || (prev && prev.round !== tb.round)) fx.toast((tb.round > 1 ? '第 ' + tb.round + ' 局開始！' : '開始囉！') + '賓果盤 ' + v.n + '×' + v.n + '，要連成 ' + v.need + ' 條線');
   };
   mod.onReject = function () { L.sent = ''; };
+  function banner(t, sub) {
+    var old = document.getElementById('bg-banner'); if (old) old.remove();
+    var d = document.createElement('div'); d.id = 'bg-banner'; d.className = 'bg-banner'; d.innerHTML = '<b>' + t + '</b><span>' + sub + '</span>';
+    document.body.appendChild(d); setTimeout(function () { if (d.parentNode) d.remove(); }, 2400);
+  }
   function drawBoard(tb, v, ctx, opt) {
     var n = v.n, mk = {}, cs = {}, i;
     var circSet = {}; v.circ.forEach(function (x) { circSet[x] = 1; });
