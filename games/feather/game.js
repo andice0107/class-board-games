@@ -330,8 +330,9 @@
     setTimeout(function () { clearInterval(tick); ov.classList.add('out'); setTimeout(function () { ov.remove(); }, 400); }, endT);
     ov.addEventListener('click', function () { if (slots.every(function (x) { return x.done; })) { clearInterval(tick); ov.remove(); } });
   }
+  function normView(v) { if (v && !v.chr) { v.chr = []; for (var i = 0; i < v.np; i++) v.chr.push(i); } if (v && !v.logs) v.logs = []; return v; }
   mod.onUpdate = function (prev, tb, fx) {
-    var v = tb.view;
+    var v = normView(tb.view); if (prev) normView(prev.view);
     if (L.round !== tb.round) { L.round = tb.round; L.sel = []; L.sent = -1; L.evn = v.ev ? v.ev.n : -1; }
     var nowT = Date.now(), flipped = false;
     if (prev && prev.view.cnt !== v.cnt && v.last && JSON.stringify(prev.view.last) !== JSON.stringify(v.last)) {
@@ -362,7 +363,7 @@
     if (prev === null || (prev && prev.round !== tb.round)) fx.toast((tb.round > 1 ? '第 ' + tb.round + ' 局開始！' : '開始囉！') + '集滿 ' + v.need + ' 根羽毛就贏了 🪶');
   };
   mod.render = function (box, ctx) {
-    var tb = ctx.tb, v = tb.view, seat = tb.seat, out = v.out.indexOf(seat) >= 0, held = Date.now() < L.holdUntil;
+    var tb = ctx.tb, v = normView(tb.view), seat = tb.seat, out = v.out.indexOf(seat) >= 0, held = Date.now() < L.holdUntil;
     if (held && !tb.res) { clearTimeout(L.ht); L.ht = setTimeout(function () { ctx.rerender(); }, L.holdUntil - Date.now() + 80); }
     var nowR = Date.now(), busyEnd = L.show && L.show.cnt === v.cnt ? L.show.until : 0;
     Object.keys(L.anim).forEach(function (k) { var a = L.anim[k]; if (a.t0 + 800 > nowR) busyEnd = Math.max(busyEnd, a.t0 + 800); });
