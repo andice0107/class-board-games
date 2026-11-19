@@ -1,0 +1,333 @@
+/* 賓果：自己把數字填進格子，輪流喊數字，大家找到並圈起來，先連成指定條數的線就贏 */
+(function () {
+  'use strict';
+  var REASONS = { bingo: '先連成指定條數的線', resign: '認輸', left: '其他人都離開了', teacher: '老師結束這局' };
+  var SEATC = ['#e8590c', '#1c7ed6', '#2f9e44', '#ae3ec9', '#e03131', '#f08c00'];
+  function el(t, c, x) { var e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; }
+  function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  function seq(n) { var a = []; for (var i = 1; i <= n; i++) a.push(i); return a; }
+  function lineList(n) {
+    var L = [], i, j, a;
+    for (i = 0; i < n; i++) { a = []; for (j = 0; j < n; j++) a.push(i * n + j); L.push(a); }
+    for (j = 0; j < n; j++) { a = []; for (i = 0; i < n; i++) a.push(i * n + j); L.push(a); }
+    a = []; for (i = 0; i < n; i++) a.push(i * n + i); L.push(a);
+    a = []; for (i = 0; i < n; i++) a.push(i * n + (n - 1 - i)); L.push(a);
+    return L;
+  }
+  /* 回傳已完成的線（陣列的陣列）。mark：以格子編號為 key 的圈選表 */
+  function doneLines(n, mark) { return lineList(n).filter(function (l) { return l.every(function (i) { return mark[i]; }); }); }
+  function marks(g, s) { var m = {}, b = g.boards[s]; for (var i = 0; i < b.length; i++) if (g.circ[s][b[i]]) m[i] = 1; return m; }
+  function lineCount(g, s) { return doneLines(g.n, marks(g, s)).length; }
+  function startGame(g) {
+    g.phase = 'play'; g.caller = Math.floor(Math.random() * g.np); g.cur = null; g.cnt++;
+  }
+  function finishRound(g) {   // 所有人都圈完目前的數字：判斷有沒有人達標，沒有就換下一位喊
+    var ws = [];
+    for (var s = 0; s < g.np; s++) if (!g.gone[s] && lineCount(g, s) >= g.need) ws.push(s);
+    if (ws.length) g.res = ws.length === 1 ? { w: ws[0], why: 'bingo' } : { ws: ws, why: 'bingo' };
+    else {
+      nextCaller(g); g.cur = null;
+      if (g.hist.length >= g.tot) g.res = { w: -1, why: 'bingo' };
+    }
+  }
+  function nextCaller(g) { for (var k = 0; k < g.np; k++) { g.caller = (g.caller + 1) % g.np; if (!g.gone[g.caller]) return; } }
+  function autoGone(g) { for (var s = 0; s < g.np; s++) if (g.gone[s] && g.cur != null) g.circ[s][g.cur] = 1; }
+  function greedyPick(g, s, noise) {
+    var b = g.boards[s], m = marks(g, s), lines = lineList(g.n), best = [], bv = -1;
+    for (var i = 0; i < b.length; i++) {
+      var x = b[i]; if (g.circ[s][x]) continue;
+      var v = 0; lines.forEach(function (l) { if (l.indexOf(i) < 0) return; var c = 0; l.forEach(function (k) { if (m[k]) c++; }); v += c * c + 1; });
+      v += Math.random() * noise;
+      if (v > bv) { bv = v; best = [x]; }
+    }
+    return best.length ? best[0] : null;
+  }
+  function uncalled(g) { return seq(g.tot).filter(function (x) { return g.called.indexOf(x) < 0; }); }
+
+  var mod = {
+    seats: 4, seatOptions: [2, 3, 4, 5, 6], seatDefault: 4, botSeats: [1, 5], botDelay: 900, ver: 1,
+    reasons: REASONS,
+    levelDesc: ['隨便喊數字', '有時候會挑對自己有利的數字', '會挑讓自己快連線的數字', '很會算，專挑自己最快連線的數字'],
+    seatName: function (i) { return '第 ' + (i + 1) + ' 位'; },
+    seatColor: function (i) { return SEATC[i]; },
+    opts: [
+      { k: 'size', label: '賓果盤大小：', list: [['5', '5×5（1～25）'], ['3', '3×3（1～9）'], ['4', '4×4（1～16）'], ['6', '6×6（1～36）'], ['7', '7×7（1～49）'], ['8', '8×8（1～64）'], ['9', '9×9（1～81）'], ['10', '10×10（1～100）']], note: '數字是 1 到格子總數，每個數字只會出現一次' },
+      { k: 'lines', label: '連線幾條就贏：', list: [['auto', '標準（邊長，例如 5×5 要 5 條）'], ['1', '1 條'], ['2', '2 條'], ['3', '3 條'], ['4', '4 條'], ['5', '5 條'], ['6', '6 條'], ['7', '7 條'], ['8', '8 條'], ['9', '9 條'], ['10', '10 條']], note: '橫、直、斜都算一條（斜線最多 2 條）。超過這張盤子能連的最多條數時，會自動改成最多' },
+      { k: 'fill', label: '數字怎麼填：', list: [['manual', '同學自己填'], ['auto', '系統隨機填好']], note: '同學自己填：每個人把數字填進自己選的格子（也有隨機填滿按鈕）。系統隨機填好：不用填，直接開始' },
+      { k: 'hintsec', label: '找不到數字的提示：', list: [['8', '8 秒後亮出所在的橫排'], ['5', '5 秒後'], ['12', '12 秒後'], ['0', '不提示']], note: '喊出數字後，同學要自己在盤上找到並點一下圈起來。超過這個時間還沒找到，會亮出數字所在的那一橫排，再過一樣的時間會亮出那一直排' }
+    ],
+    init: function (n, o) {
+      o = o || {};
+      n = Math.max(2, Math.min(6, n || 4));
+      var sz = Math.max(3, Math.min(10, +o.size || 5)), tot = sz * sz, maxL = 2 * sz + 2;
+      var need = o.lines === 'auto' || !o.lines ? sz : Math.max(1, Math.min(maxL, +o.lines || sz));
+      var g = { np: n, n: sz, tot: tot, need: need, fill: o.fill === 'auto' ? 'auto' : 'manual', hintsec: o.hintsec == null ? 8 : Math.max(0, +o.hintsec || 0),
+        phase: 'fill', boards: [], ready: [], circ: [], called: [], hist: [], caller: 0, cur: null, cnt: 0, res: null, bots: o._bots || [], gone: [] };
+      for (var s = 0; s < n; s++) { g.boards.push(shuffle(seq(tot))); g.ready.push(g.fill === 'auto' || !!g.bots[s]); g.circ.push({}); }
+      if (g.ready.every(function (r) { return r; })) startGame(g);
+      return g;
+    },
+    turnSeat: function (g) { return g.caller; },
+    acting: function (g) {
+      if (g.res) return [];
+      var r = [], s;
+      if (g.phase === 'fill') { for (s = 0; s < g.np; s++) if (!g.ready[s] && !g.gone[s]) r.push(s); return r; }
+      if (g.cur == null) return [g.caller];
+      for (s = 0; s < g.np; s++) if (!g.circ[s][g.cur] && !g.gone[s]) r.push(s);
+      return r;
+    },
+    turnKey: function (g) { return g.phase + ':' + g.hist.length + ':' + (g.cur == null ? 'c' : 'r'); },
+    forfeit: function (g, seat) {
+      if (g.res || g.gone[seat]) return;
+      g.gone[seat] = true;
+      var alive = []; for (var s = 0; s < g.np; s++) if (!g.gone[s]) alive.push(s);
+      if (alive.length <= 1) { g.res = alive.length ? { w: alive[0], why: 'left' } : { w: -1, why: 'left' }; return; }
+      if (g.phase === 'fill') { g.boards[seat] = shuffle(seq(g.tot)); g.ready[seat] = true; g.cnt++; if (g.ready.every(function (r) { return r; })) startGame(g); return; }
+      if (g.caller === seat && g.cur == null) nextCaller(g);
+      autoGone(g); g.cnt++;
+      if (g.cur != null && g.circ.every(function (c) { return c[g.cur]; })) finishRound(g);
+    },
+    teacherDraw: function (g) { g.res = { w: -1, why: 'teacher' }; },
+    autoPlay: function (g, seat) {
+      if (g.res) return null;
+      if (g.phase === 'fill') return { t: 'ready', b: shuffle(seq(g.tot)) };
+      if (g.cur == null) { var u = uncalled(g); return g.caller === seat && u.length ? { t: 'call', x: u[Math.floor(Math.random() * u.length)], n: g.cnt } : null; }
+      return g.circ[seat][g.cur] ? null : { t: 'circle', x: g.cur };
+    },
+    view: function (g, seat) {
+      var me = seat >= 0 && seat < g.np ? seat : 0, lines = [];
+      for (var s = 0; s < g.np; s++) lines.push(g.phase === 'play' || g.res ? lineCount(g, s) : 0);
+      return { np: g.np, n: g.n, tot: g.tot, need: g.need, fill: g.fill, hintsec: g.hintsec, phase: g.phase, board: g.boards[me], ready: g.ready, circ: Object.keys(g.circ[me]).map(Number),
+        cur: g.cur, caller: g.caller, hist: g.hist.slice(-10), nCalled: g.called.length, lines: lines, cnt: g.cnt, circled: g.circ.map(function (c) { return g.cur != null && !!c[g.cur]; }) };
+    },
+    act: function (g, seat, d, notify) {
+      if (g.res || seat < 0 || seat >= g.np) return false;
+      var i;
+      if (d.t === 'resign') { g.res = g.np === 2 ? { w: 1 - seat, why: 'resign' } : g.res; return g.np === 2; }
+      if (g.phase === 'fill') {
+        if (d.t === 'unready') { if (!g.ready[seat] || g.fill === 'auto' || g.bots[seat]) return false; g.ready[seat] = false; g.cnt++; return true; }
+        if (d.t !== 'ready' || g.ready[seat] || !Array.isArray(d.b) || d.b.length !== g.tot) return false;
+        var seen = {}; for (i = 0; i < d.b.length; i++) { var x = d.b[i]; if (!(x >= 1 && x <= g.tot) || x !== Math.floor(x) || seen[x]) { notify(seat, '每個數字都要填一次，而且不能重複喔'); return false; } seen[x] = 1; }
+        g.boards[seat] = d.b.slice(); g.ready[seat] = true; g.cnt++;
+        if (g.ready.every(function (r) { return r; })) startGame(g);
+        return true;
+      }
+      if (d.t === 'call') {
+        if (g.caller !== seat || g.cur != null || d.n !== g.cnt) return false;
+        var v = +d.x;
+        if (!(v >= 1 && v <= g.tot) || v !== Math.floor(v)) { notify(seat, '要喊 1 到 ' + g.tot + ' 的數字喔'); return false; }
+        if (g.called.indexOf(v) >= 0) { notify(seat, v + ' 已經被圈起來了，請換一個數字'); return false; }
+        g.called.push(v); g.hist.push({ s: seat, x: v }); g.cur = v; g.cnt++;
+        autoGone(g);
+        return true;
+      }
+      if (d.t === 'circle') {
+        if (g.cur == null || g.circ[seat][g.cur]) return false;
+        if (+d.x !== g.cur) { notify(seat, '現在要圈的是 ' + g.cur + ' 喔'); return false; }
+        g.circ[seat][g.cur] = 1; g.cnt++;
+        if (g.circ.every(function (c) { return c[g.cur]; })) finishRound(g);
+        return true;
+      }
+      return false;
+    },
+    hostAct: function (g, d) {
+      if (g.res) return false;
+      if (d.t === 'force' && g.phase === 'fill') {
+        for (var s = 0; s < g.np; s++) if (!g.ready[s]) { g.boards[s] = shuffle(seq(g.tot)); g.ready[s] = true; }
+        startGame(g); return true;
+      }
+      if (d.t === 'circleAll' && g.cur != null) {
+        for (var q = 0; q < g.np; q++) g.circ[q][g.cur] = 1;
+        g.cnt++; finishRound(g); return true;
+      }
+      return false;
+    },
+    botTurn: function (g, seat, lv) {
+      if (g.res || g.phase !== 'play') return null;
+      if (g.cur != null) return g.circ[seat][g.cur] ? null : { t: 'circle', x: g.cur };
+      if (g.caller !== seat) return null;
+      var u = uncalled(g); if (!u.length) return null;
+      var x = lv <= 1 || (lv === 2 && Math.random() < .5) ? null : greedyPick(g, seat, lv === 4 ? .5 : 3);
+      if (x == null || g.called.indexOf(x) >= 0) x = u[Math.floor(Math.random() * u.length)];
+      return { t: 'call', x: x, n: g.cnt };
+    },
+    hintDesc: '喊出數字後，亮出那個數字在你賓果盤上的位置。',
+    tipDesc: '發呆太久時，提醒你現在該做什麼（填數字、喊數字，或找數字圈起來）。',
+    hint: function (g, seat) {
+      if (g.res || g.phase !== 'play') return null;
+      if (g.cur != null && !g.circ[seat][g.cur]) { var i = g.boards[seat].indexOf(g.cur); return { msg: '要圈的是 ' + g.cur + '，亮黃框的格子就是！自己點一下把它圈起來。', hl: ['c' + i] }; }
+      if (g.cur == null && g.caller === seat) { var x = greedyPick(g, seat, 0); var hl = x != null ? ['c' + g.boards[seat].indexOf(x)] : []; return { msg: '輪到你喊數字。喊「' + x + '」會讓你更接近連線，亮黃框是它在你盤子上的位置。', hl: hl }; }
+      return null;
+    },
+    nudge: function (g, seat) {
+      if (g.res) return null;
+      if (g.phase === 'fill') return g.ready[seat] ? null : '請把數字填進格子：點一格，打上數字按 Enter；填滿後按「我填好了」。不想填可以按「隨機填滿」。';
+      if (g.cur == null) return g.caller === seat ? '輪到你喊數字：在輸入框打一個還沒有被圈起來的數字，再按「喊！」。' : null;
+      return g.circ[seat][g.cur] ? null : '現在要圈的數字是 ' + g.cur + '，請在你的賓果盤上找到它，點一下圈起來。';
+    },
+    hostView: function (g) {
+      var h = '<div class="bg-host">';
+      for (var s = 0; s < g.np; s++) { var c = g.phase === 'play' || g.res ? lineCount(g, s) : 0; h += '<div class="bg-hrow"><i style="background:' + SEATC[s] + '"></i><b>' + (s + 1) + '</b><span>' + (g.phase === 'fill' ? (g.ready[s] ? '✔ 填好了' : '填數字中…') : c + ' / ' + g.need + ' 條') + '</span></div>'; }
+      return h + '<div class="bg-hcur">' + (g.cur != null ? '剛喊：<b>' + g.cur + '</b>' : '') + '</div></div>';
+    },
+    hostStatus: function (g) {
+      if (g.phase === 'fill') return { t: '填數字中（' + g.ready.filter(Boolean).length + '/' + g.np + ' 人完成）', c: '' };
+      var ws = g.cur != null ? '・剛喊 ' + g.cur : '';
+      return { t: g.n + '×' + g.n + '・已喊 ' + g.called.length + ' 個' + ws, c: '' };
+    }
+  };
+  mod.hostTable = function (T, API) {
+    var g = T.g, box = el('div', 'bg-ht');
+    function btn(text, fn) { var b = el('button', 'btn small', text); b.type = 'button'; b.addEventListener('click', fn); box.appendChild(b); }
+    if (g.phase === 'fill' && !g.res) btn('⏩ 直接開始（沒填完的自動隨機填滿）', function () { API.act(T, { t: 'force' }); API.render(); });
+    if (g.phase === 'play' && g.cur != null && !g.res) btn('✔ 幫所有人圈起目前的數字（' + g.cur + '）', function () { API.act(T, { t: 'circleAll' }); API.render(); });
+    return box;
+  };
+
+  /* ---------- 學生端 ---------- */
+  var L = { round: -1, draft: null, sel: -1, key: '', at: 0, curKey: '', curAt: 0, sent: '', typed: '', msg: '' };
+  function short(tb, i) { var s = tb.seats[i]; return s.bot ? '電腦 ' + (i + 1) : s.name.replace(/（.*）/, ''); }
+  function who(tb, i) { return i === tb.seat ? '你' : short(tb, i); }
+  mod.onUpdate = function (prev, tb, fx) {
+    var v = tb.view;
+    if (L.round !== tb.round) { L.round = tb.round; L.draft = null; L.sel = -1; L.curKey = ''; L.sent = ''; L.typed = ''; }
+    var k = v.phase + ':' + v.nCalled + ':' + (v.cur == null ? 'c' : 'r');
+    if (prev && L.key && L.key !== k && v.cur != null) { fx.snd('turn'); }
+    if (prev && L.key && L.key !== k && v.cur == null && v.phase === 'play' && v.caller === tb.seat) { fx.snd('turn'); L.typed = ''; }
+    L.key = k;
+    if (prev === null || (prev && prev.round !== tb.round)) fx.toast((tb.round > 1 ? '第 ' + tb.round + ' 局開始！' : '開始囉！') + '賓果盤 ' + v.n + '×' + v.n + '，要連成 ' + v.need + ' 條線');
+  };
+  mod.onReject = function () { L.sent = ''; };
+  function drawBoard(tb, v, ctx, opt) {
+    var n = v.n, mk = {}, cs = {}, i;
+    var circSet = {}; v.circ.forEach(function (x) { circSet[x] = 1; });
+    var hint = opt.clue || {};
+    for (i = 0; i < v.board.length; i++) if (circSet[v.board[i]]) mk[i] = 1;
+    var dl = doneLines(n, mk); dl.forEach(function (l) { l.forEach(function (c) { cs[c] = 1; }); });
+    var bd = el('div', 'bg-bd'); bd.style.setProperty('--n', n);
+    var h = '';
+    for (i = 0; i < n * n; i++) {
+      var x = v.board[i], cls = 'bg-cell' + (mk[i] ? ' on' : '') + (cs[i] ? ' line' : '') + (L.sel === i && opt.fill ? ' sel' : '') + (hint.row === Math.floor(i / n) ? ' crow' : '') + (hint.col === i % n ? ' ccol' : '') + (opt.cur != null && x === opt.cur && !mk[i] && opt.live ? ' tgt' : '');
+      h += '<div class="' + cls + '" data-i="' + i + '" data-h="c' + i + '">' + (x ? '<span class="num">' + x + '</span>' : '') + (mk[i] ? '<i class="ring"></i>' : '') + '</div>';
+    }
+    bd.innerHTML = h;
+    return { bd: bd, lines: dl.length };
+  }
+  mod.render = function (box, ctx) {
+    var tb = ctx.tb, v = tb.view, seat = tb.seat, n = v.n, now = Date.now();
+    var wrap = el('div', 'bg-table');
+    var bar = el('div', 'bg-bar');
+    for (var s = 0; s < v.np; s++) {
+      var chip = el('span', 'bg-chip' + (s === seat ? ' me' : '') + (v.phase === 'play' && s === v.caller && !tb.res ? ' turn' : ''));
+      var dot = el('i'); dot.style.background = SEATC[s]; chip.appendChild(dot);
+      chip.appendChild(el('span', '', s === seat ? '我' : short(tb, s)));
+      chip.appendChild(el('b', '', v.phase === 'fill' ? (v.ready[s] ? '✔' : '…') : v.lines[s] + '/' + v.need));
+      bar.appendChild(chip);
+    }
+    wrap.appendChild(bar);
+    if (v.phase === 'fill') { wrap.classList.add('fill'); return renderFill(box, wrap, ctx); }
+
+    /* ----- 遊戲中 ----- */
+    var myCall = !tb.res && v.cur == null && v.caller === seat, mine = v.cur != null && v.circ.indexOf(v.cur) >= 0;
+    var live = !tb.res && v.cur != null && !mine; if (myCall) wrap.classList.add('call');
+    var ck = tb.round + ':' + v.nCalled; if (v.cur != null && L.curKey !== ck) { L.curKey = ck; L.curAt = now; }
+    var waited = v.cur != null ? now - L.curAt : 0, hs = v.hintsec * 1000, clue = {};
+    if (live && hs > 0) {
+      var idx = v.board.indexOf(v.cur);
+      if (waited >= hs) clue.row = Math.floor(idx / n);
+      if (waited >= hs * 2) clue.col = idx % n;
+      var nxt = waited < hs ? hs - waited : waited < hs * 2 ? hs * 2 - waited : 0;
+      if (nxt > 0) setTimeout(function () { ctx.rerender(); }, nxt + 50);
+    }
+    var call = el('div', 'bg-call' + (live ? ' live' : ''));
+    if (tb.res) call.innerHTML = '<small>對局結束</small>';
+    else if (v.cur != null) call.innerHTML = '<small>' + who(tb, v.caller) + ' 喊：</small><b>' + v.cur + '</b><small>' + (mine ? '你已經圈起來了，等其他人…' : '找到後，點一下圈起來') + '</small>';
+    else call.innerHTML = '<small>' + (myCall ? '輪到你喊數字！' : '等 ' + who(tb, v.caller) + ' 喊數字…') + '</small>';
+    wrap.appendChild(call);
+    var res = drawBoard(tb, v, ctx, { cur: v.cur, live: live, clue: clue });
+    var bx = el('div', 'bn-board'); bx.appendChild(BG.zoom('bingo', res.bd)); wrap.appendChild(bx);
+    bx.addEventListener('click', function (e) {
+      var c = e.target.closest && e.target.closest('[data-i]'); if (!c || tb.res) return;
+      var i = +c.getAttribute('data-i'), x = v.board[i];
+      if (v.cur == null) return;
+      if (mine || v.circ.indexOf(x) >= 0) return;
+      if (x !== v.cur) { ctx.snd('error'); ctx.toast('現在要圈的是 ' + v.cur + ' 喔'); return; }
+      if (L.sent === ck) return;
+      L.sent = ck; ctx.snd('tap'); ctx.send('circle', { x: x }); ctx.rerender();
+    });
+    var info = el('div', 'bg-info');
+    info.appendChild(el('span', '', '我已連成 ' + res.lines + ' 條，要 ' + v.need + ' 條'));
+    if (v.hist.length) { var hs2 = el('span', 'bg-hist'); hs2.textContent = '剛喊過：' + v.hist.slice().reverse().slice(0, 6).map(function (h) { return h.x; }).join('、'); info.appendChild(hs2); }
+    wrap.appendChild(info);
+    if (myCall) {
+      var row = el('div', 'bg-in'), inp = document.createElement('input');
+      inp.type = 'number'; inp.inputMode = 'numeric'; inp.min = 1; inp.max = v.tot; inp.placeholder = '1～' + v.tot; inp.value = L.typed;
+      inp.addEventListener('input', function () { L.typed = inp.value; });
+      var go = ctx.button('bg-btn go', '喊！', function () { var x = +inp.value; if (!inp.value || !(x >= 1 && x <= v.tot)) { ctx.toast('請打 1 到 ' + v.tot + ' 的數字'); return; } ctx.send('call', { x: x, n: v.cnt }); });
+      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') go.click(); });
+      row.appendChild(inp); row.appendChild(go); wrap.appendChild(row);
+      wrap.appendChild(el('p', 'bg-note', '打一個還沒被圈起來的數字。如果那個數字已經被圈起來了，只有你會收到通知，換一個就好。'));
+    }
+    if (!tb.res) { var tools = el('div', 'bg-tools'); tools.appendChild(ctx.emoteButton('bg-btn')); wrap.appendChild(tools); }
+    box.appendChild(wrap);
+    if (myCall) setTimeout(function () { var i = wrap.querySelector('.bg-in input'); if (i && document.activeElement !== i && !L.typed) { try { i.focus({ preventScroll: true }); } catch (e) {} } }, 150);
+  };
+
+  function renderFill(box, wrap, ctx) {
+    var tb = ctx.tb, v = tb.view, seat = tb.seat, n = v.n, tot = v.tot;
+    if (!L.draft || L.draft.length !== tot) { L.draft = v.ready[seat] ? v.board.slice() : new Array(tot).fill(0); L.sel = v.ready[seat] ? -1 : 0; }
+    var d = L.draft, done = v.ready[seat];
+    var placed = {}; d.forEach(function (x) { if (x) placed[x] = 1; });
+    var left = tot - Object.keys(placed).length;
+    var call = el('div', 'bg-call');
+    call.innerHTML = done ? '<small>你填好了，等其他同學…</small>' : '<small>把 1～' + tot + ' 填進格子（每個數字一次）</small>';
+    wrap.appendChild(call);
+    var mkView = { n: n, board: d, circ: [] };
+    var res = drawBoard(tb, mkView, ctx, { fill: !done });
+    var bx = el('div', 'bn-board'); bx.appendChild(BG.zoom('bingo', res.bd)); wrap.appendChild(bx);
+    function nextEmpty(from) { for (var k = 1; k <= tot; k++) { var j = (from + k) % tot; if (!d[j]) return j; } return -1; }
+    function put(x) {
+      if (done) return;
+      if (!(x >= 1 && x <= tot) || x !== Math.floor(x)) { ctx.toast('請打 1 到 ' + tot + ' 的數字'); return; }
+      if (L.sel < 0) { ctx.toast('先點一個格子'); return; }
+      var old = d.indexOf(x); if (old >= 0) d[old] = 0;
+      d[L.sel] = x; ctx.snd('tap');
+      var nx = nextEmpty(L.sel); L.sel = nx >= 0 ? nx : L.sel; L.typed = ''; ctx.rerender();
+    }
+    bx.addEventListener('click', function (e) {
+      var c = e.target.closest && e.target.closest('[data-i]'); if (!c || done) return;
+      L.sel = +c.getAttribute('data-i'); ctx.snd('tap'); ctx.rerender();
+    });
+    if (!done) {
+      var row = el('div', 'bg-in'), inp = document.createElement('input');
+      inp.type = 'number'; inp.inputMode = 'numeric'; inp.min = 1; inp.max = tot; inp.placeholder = '打數字'; inp.value = L.typed;
+      inp.addEventListener('input', function () { L.typed = inp.value; });
+      var ok = ctx.button('bg-btn go', '填入', function () { if (inp.value) put(+inp.value); });
+      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') ok.click(); });
+      row.appendChild(inp); row.appendChild(ok);
+      row.appendChild(ctx.button('bg-btn', '清除這格', function () { if (L.sel >= 0 && d[L.sel]) { d[L.sel] = 0; ctx.rerender(); } }));
+      wrap.appendChild(row);
+      var pool = el('div', 'bg-pool');
+      for (var x = 1; x <= tot; x++) {
+        if (placed[x]) continue;
+        var b = el('button', 'bg-chipn', String(x)); b.type = 'button'; b.setAttribute('data-x', x); pool.appendChild(b);
+      }
+      pool.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('[data-x]'); if (b) put(+b.getAttribute('data-x')); });
+      wrap.appendChild(el('div', 'bg-note', left ? '還沒填：' + left + ' 個（點下面的數字，會填進亮起來的格子）' : '全部填好了！確認沒問題就按「我填好了」'));
+      wrap.appendChild(pool);
+      var tools = el('div', 'bg-tools');
+      tools.appendChild(ctx.button('bg-btn', '🎲 隨機填滿剩下的', function () {
+        var rest = shuffle(seq(tot).filter(function (x) { return !placed[x]; }));
+        for (var i = 0; i < tot; i++) if (!d[i]) d[i] = rest.pop();
+        L.sel = -1; ctx.snd('pop'); ctx.rerender();
+      }));
+      tools.appendChild(ctx.button('bg-btn', '🔀 全部重新亂排', function () { L.draft = shuffle(seq(tot)); L.sel = -1; ctx.snd('pop'); ctx.rerender(); }));
+      var rd = ctx.button('bg-btn go', '✔ 我填好了', function () { ctx.send('ready', { b: d.slice() }); }); rd.disabled = left > 0; tools.appendChild(rd);
+      wrap.appendChild(tools);
+    } else {
+      var tl = el('div', 'bg-tools'); tl.appendChild(ctx.button('bg-btn', '↩️ 我還想改', function () { ctx.send('unready'); L.draft = null; })); tl.appendChild(ctx.emoteButton('bg-btn')); wrap.appendChild(tl);
+    }
+    box.appendChild(wrap);
+  }
+  BG.register('bingo', mod);
+})();

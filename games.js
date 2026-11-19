@@ -1,6 +1,6 @@
 /* 遊戲清單：每個遊戲是 games/<id>/ 裡獨立的模組，用 BG.register 加進來 */
 window.BG = window.BG || {};
-BG.VER = '202611191656';
+BG.VER = '202611191735';
 BG.games = BG.games || {};
 BG.register = function (id, mod) { mod.id = id; BG.games[id] = mod; };
 BG.catalog = [
@@ -28,6 +28,7 @@ BG.catalog = [
   { id: 'spot-zhuyin', cat: '牌類', files: ['games/spot/spot.css', 'games/spot/game.js'], title: '眼明手快（注音）', icon: 'ㄅ', color: '#6a3cbc', players: '2–6 人', desc: '找出一樣的注音符號，練習分辨ㄅㄆ、ㄓㄗ等長得像的符號', ready: true },
   { id: 'spot-hanzi', cat: '牌類', files: ['games/spot/spot.css', 'games/spot/game.js'], title: '眼明手快（國字）', icon: '田', color: '#5b2a86', players: '2–6 人', desc: '找出一樣的國字，練習分辨大太天夫、日目白自等形近字', ready: true },
   { id: 'seven-eat-nine', cat: '牌類', files: ['games/seven/seven.css', 'games/seven/game.js'], title: '7吃9', icon: '7', color: '#d35400', players: '2–6 人', desc: '沒有輪流的加減法搶牌：中間的數字加減後，最快出牌的人贏', ready: true },
+  { id: 'bingo', cat: '益智', files: ['games/bingo/bingo.css', 'games/bingo/game.js', 'games/bingo/guide.js'], title: '賓果', icon: '🎯', color: '#e8590c', players: '2–6 人', desc: '自己把數字填進賓果盤，輪流喊數字圈起來，先連成指定條數的線就贏（3×3～10×10）', ready: true },
   { id: 'mudpig', cat: '牌類', files: ['games/mudpig/mudpig.css', 'games/mudpig/game.js'], title: '泥巴豬農場', icon: '🐷', color: '#8d6e63', players: '2–6 人', desc: '讓自己的小豬全部滾進泥巴！蓋豬舍防下雨，用農夫和閃電搗蛋', ready: true },
   { id: 'feather-race', cat: '益智', files: ['games/feather/feather.css', 'games/feather/game.js'], title: '就我的毛最多', icon: '🐔', color: '#f08a24', players: '2–6 人', desc: '靠記憶翻對雞窩牌，往前跳、超越別的雞，把羽毛一根根拔過來！', ready: true },
   { id: 'guess', cat: '益智', files: ['games/guess/guess.css', 'games/guess/game.js'], title: '終極密碼', icon: '?', color: '#0f766e', players: '2–6 人', desc: '猜 1～100 之間的祕密數字，範圍越縮越小，猜中的人爆炸（也可以設成猜中的人贏）', ready: true },
