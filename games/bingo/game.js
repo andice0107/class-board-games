@@ -213,7 +213,7 @@
     var bd = el('div', 'bg-bd'); bd.style.setProperty('--n', n);
     var h = '';
     for (i = 0; i < n * n; i++) {
-      var x = v.board[i], cls = 'bg-cell' + (mk[i] ? ' on' : '') + (cs[i] ? ' line' : '') + (L.sel === i && opt.fill ? ' sel' : '') + (hint.row === Math.floor(i / n) ? ' crow' : '') + (hint.col === i % n ? ' ccol' : '') + (opt.cur != null && x === opt.cur && !mk[i] && opt.live ? ' tgt' : '');
+      var x = v.board[i], cls = 'bg-cell' + (mk[i] ? ' on' : '') + (cs[i] ? ' line' : '') + (opt.selNum && x === opt.selNum ? ' sel' : '') + (hint.row === Math.floor(i / n) ? ' crow' : '') + (hint.col === i % n ? ' ccol' : '') + (opt.cur != null && x === opt.cur && !mk[i] && opt.live ? ' tgt' : '');
       h += '<div class="' + cls + '" data-i="' + i + '" data-h="c' + i + '">' + (x ? '<span class="num">' + x + '</span>' : '') + (mk[i] ? '<i class="ring"></i>' : '') + '</div>';
     }
     bd.innerHTML = h;
@@ -250,12 +250,17 @@
     else if (v.cur != null) call.innerHTML = '<small>' + who(tb, v.caller) + ' 喊：</small><b>' + v.cur + '</b><small>' + (mine ? '你已經圈起來了，等其他人…' : '找到後，點一下圈起來') + '</small>';
     else call.innerHTML = '<small>' + (myCall ? '輪到你喊數字！' : '等 ' + who(tb, v.caller) + ' 喊數字…') + '</small>';
     wrap.appendChild(call);
-    var res = drawBoard(tb, v, ctx, { cur: v.cur, live: live, clue: clue });
+    var res = drawBoard(tb, v, ctx, { cur: v.cur, live: live, clue: clue, selNum: myCall && +L.typed >= 1 ? +L.typed : 0 });
     var bx = el('div', 'bn-board'); bx.appendChild(BG.zoom('bingo', res.bd)); wrap.appendChild(bx);
     bx.addEventListener('click', function (e) {
       var c = e.target.closest && e.target.closest('[data-i]'); if (!c || tb.res) return;
       var i = +c.getAttribute('data-i'), x = v.board[i];
-      if (v.cur == null) return;
+      if (v.cur == null) {
+        if (!myCall) return;
+        if (v.circ.indexOf(x) >= 0) { ctx.snd('error'); ctx.toast(x + ' 已經被圈起來了，請換一個數字'); return; }
+        if (+L.typed === x) { ctx.send('call', { x: x, n: v.cnt }); return; }
+        L.typed = String(x); ctx.snd('tap'); ctx.rerender(); return;
+      }
       if (mine || v.circ.indexOf(x) >= 0) return;
       if (x !== v.cur) { ctx.snd('error'); ctx.toast('現在要圈的是 ' + v.cur + ' 喔'); return; }
       if (L.sent === ck) return;
@@ -272,7 +277,7 @@
       var go = ctx.button('bg-btn go', '喊！', function () { var x = +inp.value; if (!inp.value || !(x >= 1 && x <= v.tot)) { ctx.toast('請打 1 到 ' + v.tot + ' 的數字'); return; } ctx.send('call', { x: x, n: v.cnt }); });
       inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') go.click(); });
       row.appendChild(inp); row.appendChild(go); wrap.appendChild(row);
-      wrap.appendChild(el('p', 'bg-note', '打一個還沒被圈起來的數字。如果那個數字已經被圈起來了，只有你會收到通知，換一個就好。'));
+      wrap.appendChild(el('p', 'bg-note', '打一個還沒被圈起來的數字，或直接點盤子上還沒圈起來的數字（點一下選起來，再點一下或按「喊！」就喊出去）。如果那個數字已經被圈起來了，只有你會收到通知，換一個就好。'));
     }
     if (!tb.res) { var tools = el('div', 'bg-tools'); tools.appendChild(ctx.emoteButton('bg-btn')); wrap.appendChild(tools); }
     box.appendChild(wrap);
