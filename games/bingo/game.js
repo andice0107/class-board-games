@@ -223,6 +223,7 @@
     if (prev && L.key && L.key !== k && v.cur != null) { fx.snd('turn'); }
     if (prev && L.key && L.key !== k && v.cur == null && v.phase === 'play' && v.caller === tb.seat) { fx.snd('turn'); L.typed = ''; }
     L.key = k;
+    if (v.miss && L.missKey !== tb.round + ':' + v.nCalled) { L.missKey = tb.round + ':' + v.nCalled; fx.snd('check'); setTimeout(function () { fx.snd('error'); }, 450); }
     if (!L.lines || L.lines.length !== v.lines.length || (prev && prev.round !== tb.round)) L.lines = v.lines.slice();
     else {
       for (var q = 0; q < v.lines.length; q++) {
