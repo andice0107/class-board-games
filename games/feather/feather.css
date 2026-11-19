@@ -105,3 +105,19 @@
 .fe-log .li.ok { color: #2e7d32; } .fe-log .li.bad { color: #b71c1c; }
 .fe-log i { flex: none; width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 .fe-tools { margin-top: auto; }
+
+/* 抽角色 */
+.fe-draw { position: fixed; inset: 0; z-index: 9999; background: #12203dee; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 16px; color: #fff; transition: opacity .35s; }
+.fe-draw.out { opacity: 0; }
+.fe-draw h2 { margin: 0; font-size: clamp(26px, 5vw, 44px); }
+.fe-dslots { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; max-width: 900px; }
+.fe-ds { width: clamp(96px, 24vw, 150px); background: #ffffff22; border: 3px solid #ffffff55; border-radius: 16px; padding: 8px 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.fe-ds.me { border-color: #ffd54f; background: #ffd54f33; }
+.fe-ds small { font-size: 15px; opacity: .9; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.fe-ds img { height: clamp(80px, 20vw, 130px); width: auto; filter: blur(1.5px); }
+.fe-ds b { font-size: 20px; min-height: 1.3em; }
+.fe-ds.done img { filter: none; animation: feDone .5s ease-out; }
+.fe-ds.done { border-color: #76ff03; }
+.fe-ds.me.done { border-color: #ffd54f; box-shadow: 0 0 18px #ffd54f; }
+@keyframes feDone { 0% { transform: scale(.6) rotate(-8deg); } 60% { transform: scale(1.2); } 100% { transform: none; } }
+.fe-dmsg { font-size: clamp(20px, 4vw, 30px); font-weight: 800; min-height: 1.4em; }

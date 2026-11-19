@@ -110,7 +110,7 @@
     seats: 4, seatOptions: [2, 3, 4, 5, 6], seatDefault: 4, botSeats: [1, 5], botDelay: 2300, ver: 1, fitZoom: false,
     reasons: REASONS, holdLeft: holdLeft, onResume: function (g, d) { if (g.dl) g.dl += d; if (g.hold) g.hold += d; },
     levelDesc: ['亂翻', '只記得最近翻過的 2 張', '記得最近翻過的 4 張', '幾乎全部都記得'],
-    seatName: function (i) { return CN[i] || ('第 ' + (i + 1) + ' 位'); },
+    seatName: function (i) { return '第 ' + (i + 1) + ' 位'; },
     seatColor: function (i) { return SEATC[i]; },
     opts: [
       { k: 'ver', label: '玩法：', list: [['1', '版本 1 基本版（沒有便便）'], ['2', '版本 2 便便版（豪邁版）']], note: '版本 1 最多 6 人（第 5、6 位是小鴨）；版本 2 加上便便規則，最多 6 人' },
@@ -127,6 +127,8 @@
         need: Math.min(n, 5), handi: o.handi === 'yes', aid: { k: ak === 'r' || ak === 'm' ? ak : 'none', n: an }, aidsec: Math.max(2, Math.min(5, +o.aidsec || 3)), turn: 0, first: 0, rd: 1, rs: 0, turns: 0, cnt: 0, started: false, res: null, hold: 0, ev: null,
         limit: (+o.limit === 0 ? 0 : (+o.limit || 15)) * 60000, dl: null, lastTurns: null };
       for (var s = 0; s < n; s++) { g.f.push(1); g.steps.push(0); g.off.push(0); g.used.push(0); g.multi.push(ak === 'm' && !bots[s] ? an : 1); }
+      var pool = shuffle([0, 1, 2, 3, 4, 5].slice(0, Math.max(n, 4))); g.chr = pool.slice(0, n);
+      g.hold = Date.now() + 2800 + n * 700; g.draw = 1;
       g.turn = g.first = Math.floor(Math.random() * n);
       layout(g); startTurn(g);
       return g;
@@ -137,7 +139,7 @@
     teacherDraw: function (g) { g.res = { w: -1, why: 'teacher' }; },
     view: function (g, seat) {
       var tg = g.res ? null : nextTarget(g, g.turn);
-      return { np: g.np, ver: g.ver, ring: g.ring, pos: g.pos, poop: g.poop, f: g.f, steps: g.steps, need: g.need, turn: g.turn, first: g.first, out: g.out, tgt: tg ? tg.c : -1, tpic: tg ? g.ring[tg.c] : -1, jn: tg ? tg.jumped.length : 0,
+      return { np: g.np, ver: g.ver, chr: g.chr, ring: g.ring, pos: g.pos, poop: g.poop, f: g.f, steps: g.steps, need: g.need, turn: g.turn, first: g.first, out: g.out, tgt: tg ? tg.c : -1, tpic: tg ? g.ring[tg.c] : -1, jn: tg ? tg.jumped.length : 0,
         last: g.last, logs: g.logs.slice(-5), rec: g.aid.k === 'r' && seat === g.turn ? g.flips.slice(-g.aid.n) : null, aid: { k: g.aid.k, n: g.aid.n }, aidsec: g.aidsec, pl: g.pl.length ? g.pl[0] : -1, fate: g.fate ? { s: g.fate.s, lit: g.fate.lit } : null, rs: g.rs, rd: g.rd,
         hold: holdLeft(g), ev: g.ev, cnt: g.cnt, tl: g.dl ? Math.max(0, g.dl - Date.now()) : null, limit: g.limit, ending: g.lastTurns != null, mf: seat >= 0 ? maxFlip(g, seat) : 1, handi: g.handi, off: g.off };
     },
@@ -234,12 +236,12 @@
       for (var i = 0; i < 24; i++) { var a = i / 24 * Math.PI * 2 - Math.PI / 2; svg += '<circle cx="' + (R * Math.cos(a)).toFixed(1) + '" cy="' + (R * Math.sin(a)).toFixed(1) + '" r="2.2" fill="#ccc"/>'; }
       for (var s = 0; s < g.np; s++) {
         if (g.out.indexOf(s) >= 0) continue;
-        var a2 = g.pos[s] / 24 * Math.PI * 2 - Math.PI / 2; svg += '<circle cx="' + (R * Math.cos(a2)).toFixed(1) + '" cy="' + (R * Math.sin(a2)).toFixed(1) + '" r="7" fill="' + SEATC[s] + '" stroke="#fff" stroke-width="1.5"/>';
+        var a2 = g.pos[s] / 24 * Math.PI * 2 - Math.PI / 2; svg += '<circle cx="' + (R * Math.cos(a2)).toFixed(1) + '" cy="' + (R * Math.sin(a2)).toFixed(1) + '" r="7" fill="' + SEATC[g.chr[s]] + '" stroke="#fff" stroke-width="1.5"/>';
         if (g.poop[s] >= 0) { var a3 = g.poop[s] / 24 * Math.PI * 2 - Math.PI / 2; svg += '<circle cx="' + (R * Math.cos(a3)).toFixed(1) + '" cy="' + (R * Math.sin(a3)).toFixed(1) + '" r="3.5" fill="#6d4c41"/>'; }
       }
       svg += '<text x="0" y="5" text-anchor="middle" font-size="14" fill="#555">第' + g.rd + '輪</text></svg>';
       var h = '<div class="fe-host">' + svg + '<div class="fe-hrows">';
-      for (s = 0; s < g.np; s++) h += '<div class="' + (g.out.indexOf(s) >= 0 ? 'out' : (s === g.turn ? 'turn' : '')) + '"><i style="background:' + SEATC[s] + '"></i>' + CN[s] + ' 🪶' + g.f[s] + '</div>';
+      for (s = 0; s < g.np; s++) h += '<div class="' + (g.out.indexOf(s) >= 0 ? 'out' : (s === g.turn ? 'turn' : '')) + '"><i style="background:' + SEATC[g.chr[s]] + '"></i>' + CN[g.chr[s]] + ' 🪶' + g.f[s] + '</div>';
       return h + '</div></div>';
     }
   };
@@ -260,7 +262,7 @@
       var r3 = row('🎁 讓分（先多走幾格）：'); if (g.started) r3.appendChild(el('small', '', '已經開始翻牌，不能再改'));
       for (var s = 0; s < g.np; s++) {
         (function (s) {
-          var w = el('label', 'fe-sel'); w.appendChild(document.createTextNode(CN[s] + ' '));
+          var w = el('label', 'fe-sel'); w.appendChild(document.createTextNode(CN[g.chr[s]] + ' '));
           var sel = document.createElement('select'); sel.disabled = g.started || API.isBot(T, s);
           for (var v = 0; v <= 6; v++) { var o = document.createElement('option'); o.value = v; o.textContent = v ? '+' + v + ' 格' : '0'; if (g.off[s] === v) o.selected = true; sel.appendChild(o); }
           sel.addEventListener('change', function () { API.act(T, { t: 'handi', s: s, v: +this.value }); API.render(); });
@@ -286,7 +288,7 @@
 
   /* ---------- 學生端 ---------- */
   var L = { holdUntil: 0, sel: [], selCnt: -1, sent: -1, round: -1, evn: -1, show: null, anim: {} };
-  function short(tb, i) { var s = tb.seats[i]; return s.bot ? '電腦' + CN[i] : s.name.replace(/（.*）/, ''); }
+  function short(tb, i) { var s = tb.seats[i]; return s.bot ? '電腦' + CN[tb.view.chr[i]] : s.name.replace(/（.*）/, ''); }
   function who(tb, i) { return i === tb.seat ? '你' : short(tb, i); }
   function rc(i) { if (i <= 6) return [0, i]; if (i <= 12) return [i - 6, 6]; if (i <= 18) return [6, 18 - i]; return [24 - i, 0]; }
   function fmtT(ms) { var s = Math.ceil(ms / 1000); return Math.floor(s / 60) + ':' + (s % 60 < 10 ? '0' : '') + (s % 60); }
@@ -300,6 +302,33 @@
     if (it.k === 'rs1') return { icon: '🔀', title: '老師預告：本輪結束後要重新洗牌！', html: '這一輪還是用原來的位置，翻完這一輪，所有雞窩牌會重新洗牌，位置要重新記囉。' };
     if (it.k === 'rs2') return { icon: '🔀', title: '雞窩牌重新洗牌了！', html: '所有雞窩牌的位置都換過了，之前記的位置不算數，大家重新來。' };
     return null;
+  }
+  /* 開局抽角色：每個位置的圖像快速跳動，依序停在分配到的角色上 */
+  function drawRoles(tb, fx, ms) {
+    var v = tb.view, np = v.np, pool = Math.max(np, 4), old = document.getElementById('fe-draw'); if (old) old.remove();
+    var ov = el('div', 'fe-draw'); ov.id = 'fe-draw';
+    ov.appendChild(el('h2', '', '🎲 抽角色囉！'));
+    var row = el('div', 'fe-dslots'), slots = [], order = [];
+    for (var i = 0; i < np; i++) if (i !== tb.seat) order.push(i);
+    order.push(tb.seat);
+    for (i = 0; i < np; i++) {
+      var c = el('div', 'fe-ds' + (i === tb.seat ? ' me' : '')), im = el('img'); im.src = IMG('c' + (Math.floor(Math.random() * pool) + 1)); im.draggable = false;
+      c.appendChild(el('small', '', i === tb.seat ? '你' : tb.seats[i].bot ? '電腦' : short(tb, i))); c.appendChild(im);
+      var cap = el('b', '', '？'); c.appendChild(cap); row.appendChild(c); slots.push({ c: c, im: im, cap: cap, done: false });
+    }
+    ov.appendChild(row);
+    var msg = el('div', 'fe-dmsg', '角色是系統隨機分配的…'); ov.appendChild(msg);
+    document.body.appendChild(ov);
+    var tick = setInterval(function () { slots.forEach(function (sl) { if (!sl.done) sl.im.src = IMG('c' + (Math.floor(Math.random() * pool) + 1)); }); }, 90);
+    order.forEach(function (seatIdx, k) {
+      setTimeout(function () {
+        var sl = slots[seatIdx]; sl.done = true; sl.im.src = IMG('c' + (v.chr[seatIdx] + 1)); sl.cap.textContent = CN[v.chr[seatIdx]]; sl.c.classList.add('done'); fx.snd(seatIdx === tb.seat ? 'turn' : 'tap');
+        if (seatIdx === tb.seat) msg.textContent = '你是「' + CN[v.chr[seatIdx]] + '」！';
+      }, 1200 + k * 700);
+    });
+    var endT = Math.max(2500, ms - 300);
+    setTimeout(function () { clearInterval(tick); ov.classList.add('out'); setTimeout(function () { ov.remove(); }, 400); }, endT);
+    ov.addEventListener('click', function () { if (slots.every(function (x) { return x.done; })) { clearInterval(tick); ov.remove(); } });
   }
   mod.onUpdate = function (prev, tb, fx) {
     var v = tb.view;
@@ -323,6 +352,7 @@
       if (v.turn === tb.seat && !tb.res && v.last.s !== tb.seat) setTimeout(function () { fx.snd('turn'); }, 450);
     }
     L.holdUntil = v.hold > 0 ? Date.now() + v.hold : 0;
+    if (v.cnt === 0 && v.hold > 800 && !tb.res && L.drawKey !== tb.round + ':' + tb.seat) { L.drawKey = tb.round + ':' + tb.seat; drawRoles(tb, fx, v.hold); }
     if (v.ev && v.ev.n !== L.evn && v.hold > 0 && !tb.res) {
       var parts = v.ev.items.map(function (it) { return evHtml(tb, it); }).filter(Boolean);
       if (parts.length) { var dly = flipped ? 1900 : 0, ov = { icon: parts[0].icon, title: parts[0].title, html: parts.map(function (p, i) { return (i ? '<hr><b>' + p.title + '</b><br>' : '') + p.html; }).join(''), ms: Math.max(1500, v.hold - dly) }; if (dly) setTimeout(function () { BG.fxOverlay(ov); }, dly); else BG.fxOverlay(ov); }
@@ -377,8 +407,8 @@
     for (var i = 0; i < 24; i++) {
       var rr = rc(i), cls = 'fe-cell' + (i === v.tgt && !tb.res ? ' tgt' : '') + (row[i] ? ' row' : '') + (freeSet[i] ? ' free' : ''), inner = '<img class="egg" src="' + IMG('t' + pad(v.ring[i] + 1)) + '" alt="' + NAMES[v.ring[i]] + '" draggable="false">';
       for (var s = 0; s < v.np; s++) {
-        if (v.pos[s] === i) { var an = L.anim[s], hopSt = ''; if (an && an.t0 + 800 > nowR) hopSt = ' hop" style="--dx:' + an.dx + ';--dy:' + an.dy + ';--dl:' + (an.t0 - nowR) + 'ms'; inner += '<div class="pcw' + (s === v.turn && !tb.res ? ' act' : '') + hopSt + '"><img class="chk" src="' + IMG('c' + (s + 1)) + '" alt="' + CN[s] + '" draggable="false">' + (s === seat ? '<em class="me">我</em>' : '') + '</div><b class="ft" style="background:' + SEATC[s] + '">🪶' + v.f[s] + '</b>'; }
-        if (v.poop[s] === i) inner += '<img class="poo" src="' + IMG('poop') + '" alt="便便" draggable="false"><i class="pdot" style="background:' + SEATC[s] + '"></i>';
+        if (v.pos[s] === i) { var an = L.anim[s], hopSt = ''; if (an && an.t0 + 800 > nowR) hopSt = ' hop" style="--dx:' + an.dx + ';--dy:' + an.dy + ';--dl:' + (an.t0 - nowR) + 'ms'; inner += '<div class="pcw' + (s === v.turn && !tb.res ? ' act' : '') + hopSt + '"><img class="chk" src="' + IMG('c' + (v.chr[s] + 1)) + '" alt="' + CN[v.chr[s]] + '" draggable="false">' + (s === seat ? '<em class="me">我</em>' : '') + '</div><b class="ft" style="background:' + SEATC[v.chr[s]] + '">🪶' + v.f[s] + '</b>'; }
+        if (v.poop[s] === i) inner += '<img class="poo" src="' + IMG('poop') + '" alt="便便" draggable="false"><i class="pdot" style="background:' + SEATC[v.chr[s]] + '"></i>';
       }
       h += '<div class="' + cls + '" style="grid-row:' + (rr[0] + 1) + ';grid-column:' + (rr[1] + 1) + '" data-c="' + i + '">' + inner + '</div>';
     }
@@ -419,7 +449,7 @@
     var chips = el('div', 'fe-chips n' + v.np);
     for (var o = 0; o < v.np; o++) {
       var ch = el('div', 'fe-chip' + (o === seat ? ' me' : '') + (o === v.turn && !tb.res ? ' turn' : '') + (v.out.indexOf(o) >= 0 ? ' out' : ''));
-      ch.innerHTML = '<img src="' + IMG('c' + (o + 1)) + '" alt=""><span>' + (o === seat ? '我' : tb.seats[o].bot ? CN[o] : short(tb, o)) + '</span><b style="background:' + SEATC[o] + '">🪶' + v.f[o] + '/' + v.need + '</b>' + (v.ver === 2 && v.poop[o] >= 0 ? '<i>💩</i>' : '');
+      ch.innerHTML = '<img src="' + IMG('c' + (v.chr[o] + 1)) + '" alt=""><span>' + (o === seat ? '我' : tb.seats[o].bot ? CN[v.chr[o]] : short(tb, o)) + '</span><b style="background:' + SEATC[v.chr[o]] + '">🪶' + v.f[o] + '/' + v.need + '</b>' + (v.ver === 2 && v.poop[o] >= 0 ? '<i>💩</i>' : '');
       chips.appendChild(ch);
     }
     side.appendChild(chips);
@@ -436,14 +466,14 @@
       if (rleft > 0) { clearTimeout(L.rt); L.rt = setTimeout(function () { ctx.rerender(); }, Math.min(rleft + 30, 500)); }
       rec.appendChild(el('b', '', rleft > 0 ? '🧠 輔助（' + Math.ceil(rleft / 1000) + ' 秒後蓋住）：' : '🧠 輔助紀錄已蓋住'));
       if (rleft > 0 && !v.rec.length) rec.appendChild(el('span', '', '（還沒有）'));
-      (rleft > 0 ? v.rec : []).slice().reverse().forEach(function (x) { var s = el('span', 'fe-r ' + (x.ok ? 'ok' : 'bad')); s.innerHTML = '<i style="background:' + SEATC[x.s] + '"></i><u>' + (x.p + 1) + '</u><img src="' + IMG('n' + pad(x.pic + 1)) + '" alt="">' + NAMES[x.pic]; rec.appendChild(s); });
+      (rleft > 0 ? v.rec : []).slice().reverse().forEach(function (x) { var s = el('span', 'fe-r ' + (x.ok ? 'ok' : 'bad')); s.innerHTML = '<i style="background:' + SEATC[v.chr[x.s]] + '"></i><u>' + (x.p + 1) + '</u><img src="' + IMG('n' + pad(x.pic + 1)) + '" alt="">' + NAMES[x.pic]; rec.appendChild(s); });
       side.appendChild(rec);
     }
     var lg = el('div', 'fe-log'); lg.appendChild(el('b', '', '最近 5 次翻牌'));
     var lgs = (v.logs || []).filter(function (x) { return !(L.show && L.show.cnt === x.c && nowR < L.show.noteAt); }).slice().reverse();
     if (!lgs.length) lg.appendChild(el('div', 'li', '還沒有人翻牌'));
     lgs.forEach(function (x, i) {
-      var li = el('div', 'li' + (i === 0 ? ' new' : '') + (x.fate ? '' : x.hit ? ' ok' : ' bad')), d = el('i'); d.style.background = SEATC[x.s]; li.appendChild(d);
+      var li = el('div', 'li' + (i === 0 ? ' new' : '') + (x.fate ? '' : x.hit ? ' ok' : ' bad')), d = el('i'); d.style.background = SEATC[v.chr[x.s]]; li.appendChild(d);
       li.appendChild(document.createTextNode(who(tb, x.s) + (x.fate ? ' 選命運牌：' + (x.lucky ? '🍀 前進一步' : '💨 空的') : ' 翻到「' + x.pics.map(function (q) { return NAMES[q]; }).join('、') + '」' + (x.hit ? ' ✅' : ' ❌'))));
       lg.appendChild(li);
     });
@@ -490,7 +520,7 @@
   mod.guide = {
     student: [
       { h: '遊戲目標', html: '<p>每隻雞一開始都有 <b>1 根羽毛 🪶</b>。靠「記憶力」翻對雞窩牌，往前跳、超越別的雞，把別人的羽毛拔過來！<b>第一個集滿羽毛的人獲勝</b>（2～4 人要集滿全部、5 人集滿 5 根、6 人先集到 5 根就贏）。</p>' },
-      { h: '畫面怎麼看', html: '<ul><li><b>外圈的蛋形跑道</b>有 24 格，上面有 12 種圖案，每種出現 2 次。雞只會<b>順時針</b>往前走。</li><li><b>中間 12 張蓋著的八角形雞窩牌</b>，每種圖案剛好有 1 張，<b>位置固定不會變</b>（上面的數字是位置，除非老師說要重新洗牌）。</li>' + '<li>金色發光的那一格，就是你這回合<b>要找的目標格</b>，中間會顯示要找哪種圖案。</li></ul>' + tileFigs() },
+      { h: '畫面怎麼看', html: '<p>一開局系統會<b>隨機抽角色</b>（每個人抽到哪隻雞或鴨都是運氣），畫面會顯示抽籤動畫，最後告訴你「你是誰」。你的雞身上有黃色「我」字。</p><ul><li><b>外圈的蛋形跑道</b>有 24 格，上面有 12 種圖案，每種出現 2 次。雞只會<b>順時針</b>往前走。</li><li><b>中間 12 張蓋著的八角形雞窩牌</b>，每種圖案剛好有 1 張，<b>位置固定不會變</b>（上面的數字是位置，除非老師說要重新洗牌）。</li>' + '<li>金色發光的那一格，就是你這回合<b>要找的目標格</b>，中間會顯示要找哪種圖案。</li></ul>' + tileFigs() },
       { h: '輪到你怎麼玩（版本 1 基本版）', html: '<ol><li>看目標格是什麼圖案（例如🥕紅蘿蔔）。</li><li>在中間<b>點一張雞窩牌翻開</b>。</li><li><b>翻對了</b>（圖案一樣）：你的雞跳到目標格！中間如果有別的雞擋著，你<b>跳過牠們</b>，每隻被超越的雞要被你<b>拔走 1 根羽毛</b>。然後你<b>繼續翻下一張</b>。</li><li><b>翻錯了</b>：這回合結束，換下一位。翻開的牌會蓋回去，要記得它在哪裡！</li><li>集滿羽毛就立刻獲勝。</li></ol><p>小提醒：大家都看得到你翻的牌，所以別人翻過的牌也要幫忙記！</p>' },
       { h: '版本 2 便便版（豪邁版）— 特別清楚的說明', html: '<p>版本 2 就是基本版再加上<b>便便 💩</b>。每隻雞身後一開始都有自己的一坨便便。請照下面三點看：</p><ol><li><b>便便會擋路，也會「絆人」。</b>便便佔一格，和雞一樣可以被跳過去。如果你<b>翻錯了</b>，而你前面那一排（緊貼在你前面的連續格子）裡有<b>別人的便便</b>，你就踩到了：<b>最靠近你的那坨便便的主人，從你身上拿走 1 根羽毛</b>（你沒有羽毛就不用給）。那坨被踩到的便便會被清掉。</li><li><b>被超越的雞要重新放便便。</b>有人跳過你的雞時，你要馬上把自己的便便<b>放到任何一個空格</b>（畫面上發光的格子，點一下就放好）。這時候其他人要等你放好。可以放在對手前面一格，等他翻錯就賺到羽毛！</li><li>其他規則和基本版一模一樣：翻對了可以繼續翻、翻錯換人、集滿羽毛獲勝。</li></ol><p>第一次玩的話，先照基本版玩一下，看懂了再加便便，也很好！</p>' },
       { h: '翻轉命運', html: '<p>如果你是<b>最後一名，而且已經落後第一名整整一圈（24 格）</b>，輪到你時系統會給你一次「<b>命運三選一</b>」：3 張雞窩牌會亮起來，只有亮的可以翻。其中 <b>1 張</b>會讓你<b>前進一步</b>（🍀），另外 2 張是空的（💨）。翻開後只會看到結果，不會看到圖案。全憑運氣！之後你再繼續翻牌。每多落後一圈，可以再得到一次。</p>' },
