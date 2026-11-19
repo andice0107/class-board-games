@@ -121,3 +121,8 @@
 .fe-ds.me.done { border-color: #ffd54f; box-shadow: 0 0 18px #ffd54f; }
 @keyframes feDone { 0% { transform: scale(.6) rotate(-8deg); } 60% { transform: scale(1.2); } 100% { transform: none; } }
 .fe-dmsg { font-size: clamp(20px, 4vw, 30px); font-weight: 800; min-height: 1.4em; }
+.fe-cell.hp .egg { filter: drop-shadow(0 0 5px #00e5ff) drop-shadow(0 0 9px #00b8d4); }
+.fe-cell.hp::after { content: attr(data-n); position: absolute; left: 50%; top: 2%; transform: translateX(-50%); z-index: 9; background: #00b8d4; color: #fff; font-weight: 900; font-size: calc(var(--cell) * .3); line-height: 1; border-radius: 999px; padding: 1px 6px; border: 2px solid #fff; }
+.fe-tile em.hn { position: absolute; inset: auto auto 2% 50%; transform: translateX(-50%); z-index: 3; background: #00b8d4; color: #fff; font-style: normal; font-weight: 900; font-size: calc(var(--cell) * .3); border-radius: 999px; padding: 1px 8px; border: 2px solid #fff; display: block; }
+.fe-tile.hasn img { filter: drop-shadow(0 0 7px #00e5ff); }
+.fe-note.hi { background: #b2ebf2; font-weight: 800; }

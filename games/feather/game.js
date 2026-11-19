@@ -119,7 +119,6 @@
     seatColor: function (i) { return SEATC[i]; },
     opts: [
       { k: 'ver', label: '玩法：', list: [['1', '版本 1 基本版（沒有便便）'], ['2', '版本 2 便便版（豪邁版）']], note: '版本 1 最多 6 人（第 5、6 位是小鴨）；版本 2 加上便便規則，最多 6 人' },
-      { k: 'handi', label: '讓分：', list: [['no', '不讓分'], ['yes', '讓分（老師替每位設定先走幾格）']], note: '選讓分後，開桌後、還沒開始翻牌前，在「桌面管理」替比較弱的同學多走幾格' },
       { k: 'limit', label: '限時：', list: [['15', '⏱️ 15 分鐘'], ['10', '⏱️ 10 分鐘'], ['20', '⏱️ 20 分鐘'], ['0', '不限時']], note: '時間到，這一輪打完就結算，羽毛最多的人贏（一樣多就一起贏）；沒到時間就是先集滿羽毛的人贏' },
       { k: 'aidsec', label: '輔助顯示時間：', list: [['3', '3 秒'], ['2', '2 秒'], ['4', '4 秒'], ['5', '5 秒']], note: '有選記憶輔助時：翻牌紀錄只會顯示這麼久就蓋住；一次翻多張時，選了牌超過這個時間沒翻，選的牌會蓋回去' },
       { k: 'peek', label: '落後偷看：', list: [['no', '不開啟'], ['yes', '開啟（落後一圈可偷看）']], note: '這是獨立的功能（和記憶輔助可以同時開）：落後整整一圈的最後一名，輪到時可按「偷看全部牌」，限時看清楚所有雞窩牌，時間到就蓋回去，只有他自己的畫面看得到；每多落後一圈可再用一次' },
@@ -131,7 +130,7 @@
       var ver = o.ver === '2' ? 2 : 1, aid = String(o.aid || 'none'), ak = aid.charAt(0), an = +aid.slice(1) || 0;
       var bots = o._bots || [];
       var g = { np: n, ver: ver, ring: makeRing(), nest: shuffle([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]), pos: [], poop: [], f: [], steps: [], off: [], used: [], multi: [], out: [], pl: [], flips: [], logs: [], last: null, fate: null,
-        need: Math.min(n, 5), handi: o.handi === 'yes', aid: { k: ak === 'r' || ak === 'm' ? ak : 'none', n: an }, peekOn: o.peek === 'yes', peeksec: Math.max(2, Math.min(15, +o.peeksec || 5)), usedP: [], peek: null, peekUntil: 0, aidsec: Math.max(2, Math.min(5, +o.aidsec || 3)), turn: 0, first: 0, rd: 1, rs: 0, turns: 0, cnt: 0, started: false, res: null, hold: 0, ev: null,
+        need: Math.min(n, 5), handi: o.handi === 'yes', aid: { k: ak === 'r' || ak === 'm' ? ak : 'none', n: an }, peekOn: o.peek === 'yes', peeksec: Math.max(2, Math.min(15, +o.peeksec || 5)), usedP: [], peek: null, peekUntil: 0, help: null, helpId: 0, aidsec: Math.max(2, Math.min(5, +o.aidsec || 3)), turn: 0, first: 0, rd: 1, rs: 0, turns: 0, cnt: 0, started: false, res: null, hold: 0, ev: null,
         limit: (+o.limit === 0 ? 0 : (+o.limit || 15)) * 60000, dl: null, lastTurns: null };
       for (var s = 0; s < n; s++) { g.f.push(1); g.steps.push(0); g.off.push(0); g.used.push(0); g.multi.push(ak === 'm' && !bots[s] ? an : 1); }
       var pool = shuffle([0, 1, 2, 3, 4, 5].slice(0, Math.max(n, 4))); g.chr = pool.slice(0, n);
@@ -147,7 +146,7 @@
     view: function (g, seat) {
       var tg = g.res ? null : nextTarget(g, g.turn);
       return { np: g.np, ver: g.ver, chr: g.chr, ring: g.ring, pos: g.pos, poop: g.poop, f: g.f, steps: g.steps, need: g.need, turn: g.turn, first: g.first, out: g.out, tgt: tg ? tg.c : -1, tpic: tg ? g.ring[tg.c] : -1, jn: tg ? tg.jumped.length : 0,
-        last: g.last, logs: g.logs.slice(-5), rec: g.aid.k === 'r' && seat === g.turn ? g.flips.slice(-g.aid.n) : null, aid: { k: g.aid.k, n: g.aid.n }, aidsec: g.aidsec, peeksec: g.peeksec, peekOn: g.peekOn, peekReady: !!(g.peek && g.peek.s === seat && !g.fate), all: g.peekUntil && Date.now() < g.peekUntil && seat === g.turn ? g.nest : null, pl: g.pl.length ? g.pl[0] : -1, fate: g.fate ? { s: g.fate.s, lit: g.fate.lit } : null, rs: g.rs, rd: g.rd,
+        last: g.last, logs: g.logs.slice(-5), rec: g.aid.k === 'r' && seat === g.turn ? g.flips.slice(-g.aid.n) : null, aid: { k: g.aid.k, n: g.aid.n }, aidsec: g.aidsec, peeksec: g.peeksec, peekOn: g.peekOn, help: g.help && seat === g.help.s && Date.now() < g.help.until ? { id: g.help.id, cells: g.help.cells, tiles: g.help.tiles, sec: g.help.sec } : null, peekReady: !!(g.peek && g.peek.s === seat && !g.fate), all: g.peekUntil && Date.now() < g.peekUntil && seat === g.turn ? g.nest : null, pl: g.pl.length ? g.pl[0] : -1, fate: g.fate ? { s: g.fate.s, lit: g.fate.lit } : null, rs: g.rs, rd: g.rd,
         hold: holdLeft(g), ev: g.ev, cnt: g.cnt, tl: g.dl ? Math.max(0, g.dl - Date.now()) : null, limit: g.limit, ending: g.lastTurns != null, mf: seat >= 0 ? maxFlip(g, seat) : 1, handi: g.handi, off: g.off };
     },
     act: function (g, seat, d, notify) {
@@ -239,6 +238,15 @@
     hostAct: function (g, d) {
       if (g.res) return false;
       if (d.t === 'rs') { g.rs = g.rs ? 0 : 1; return true; }
+      if (d.t === 'help') {
+        if (d.s < 0 || d.s >= g.np || g.out.indexOf(d.s) >= 0) return false;
+        var cells = [], cur = (g.pos[d.s] + 1) % 24, it = 0;
+        while (cells.length < 3 && it++ < 24) { if (!cellOwner(g, cur)) cells.push(cur); cur = (cur + 1) % 24; }
+        var tiles = [], seen = {};
+        cells.forEach(function (c, i) { var pic = g.ring[c], pp = g.nest.indexOf(pic); if (!seen[pp]) { seen[pp] = 1; tiles.push({ p: pp, pic: pic, n: [i + 1] }); } else tiles.forEach(function (t) { if (t.p === pp) t.n.push(i + 1); }); });
+        var sec = Math.max(2, Math.min(15, d.sec | 0 || 5));
+        g.help = { id: ++g.helpId, s: d.s, cells: cells, tiles: tiles, sec: sec, until: Date.now() + sec * 1000 }; return true;
+      }
       if (d.t === 'handi') { if (g.started || d.s < 0 || d.s >= g.np) return false; g.off[d.s] = Math.max(0, Math.min(6, d.v | 0)); layout(g); startTurn(g); return true; }
       if (d.t === 'multi') { if (g.aid.k !== 'm' || d.s < 0 || d.s >= g.np) return false; g.multi[d.s] = Math.max(1, Math.min(3, d.v | 0)); return true; }
       return false;
@@ -270,17 +278,16 @@
     var r2 = row('👁 偷看雞窩牌：');
     btn(r2, PEEK[T.id] ? '收起來' : '看雞窩牌位置（學生看不到）', function () { PEEK[T.id] = !PEEK[T.id]; API.render(); });
     if (PEEK[T.id]) { var pk = el('div', 'fe-peek'); for (var p = 0; p < 12; p++) { var c = el('div', 'fe-pk'); c.innerHTML = '<img src="' + IMG('n' + pad(g.nest[p] + 1)) + '" alt=""><b>' + (p + 1) + '</b><small>' + NAMES[g.nest[p]] + '</small>'; pk.appendChild(c); } box.appendChild(pk); }
-    if (g.handi) {
-      var r3 = row('🎁 讓分（先多走幾格）：'); if (g.started) r3.appendChild(el('small', '', '已經開始翻牌，不能再改'));
-      for (var s = 0; s < g.np; s++) {
-        (function (s) {
-          var w = el('label', 'fe-sel'); w.appendChild(document.createTextNode(CN[g.chr[s]] + ' '));
-          var sel = document.createElement('select'); sel.disabled = g.started || API.isBot(T, s);
-          for (var v = 0; v <= 6; v++) { var o = document.createElement('option'); o.value = v; o.textContent = v ? '+' + v + ' 格' : '0'; if (g.off[s] === v) o.selected = true; sel.appendChild(o); }
-          sel.addEventListener('change', function () { API.act(T, { t: 'handi', s: s, v: +this.value }); API.render(); });
-          w.appendChild(sel); r3.appendChild(w);
-        })(s);
-      }
+    var r3 = row('🎁 讓分（隨時可用）：'); r3.appendChild(el('small', '', '選一位同學，他的畫面會翻出「前面三格」對應的雞窩牌位置，限時後蓋回去'));
+    var r3b = row('　看幾秒：'), selSec = document.createElement('select');
+    [3, 5, 8, 10, 15].forEach(function (v) { var o = document.createElement('option'); o.value = v; o.textContent = v + ' 秒'; if (v === (PEEK['sec'] || 5)) o.selected = true; selSec.appendChild(o); });
+    selSec.addEventListener('change', function () { PEEK['sec'] = +this.value; }); r3b.appendChild(selSec);
+    var r3c = row('　給誰看：');
+    for (var s = 0; s < g.np; s++) {
+      (function (s) {
+        if (API.isBot(T, s) || g.out.indexOf(s) >= 0) return;
+        btn(r3c, '👀 ' + API.name(T, s).replace(/（.*）/, '') + '（' + CN[g.chr[s]] + '）', function () { API.act(T, { t: 'help', s: s, sec: +selSec.value }); API.render(); });
+      })(s);
     }
     if (g.aid.k === 'm') {
       var r4 = row('🧠 一次翻幾張牌：');
@@ -299,7 +306,7 @@
   };
 
   /* ---------- 學生端 ---------- */
-  var L = { peekKey: -1, peekAt: 0, holdUntil: 0, sel: [], selCnt: -1, sent: -1, round: -1, evn: -1, show: null, anim: {} };
+  var L = { helpKey: '', helpAt: 0, peekKey: -1, peekAt: 0, holdUntil: 0, sel: [], selCnt: -1, sent: -1, round: -1, evn: -1, show: null, anim: {} };
   function short(tb, i) { var s = tb.seats[i]; return s.bot ? '電腦' + CN[tb.view.chr[i]] : s.name.replace(/（.*）/, ''); }
   function who(tb, i) { return i === tb.seat ? '你' : short(tb, i); }
   function rc(i) { if (i <= 6) return [0, i]; if (i <= 12) return [i - 6, 6]; if (i <= 18) return [6, 18 - i]; return [24 - i, 0]; }
@@ -386,6 +393,9 @@
     if (v.all && L.peekKey !== tb.round + ':' + v.cnt) { L.peekKey = tb.round + ':' + v.cnt; L.peekAt = nowR; }
     var peekLeft = v.all ? (v.peeksec || 5) * 1000 - (nowR - L.peekAt) : 0;
     if (peekLeft > 0) { clearTimeout(L.pt); L.pt = setTimeout(function () { ctx.rerender(); }, Math.min(peekLeft + 30, 400)); }
+    var hp = v.help; if (hp && L.helpKey !== tb.round + ':' + hp.id) { L.helpKey = tb.round + ':' + hp.id; L.helpAt = nowR; }
+    var helpLeft = hp ? hp.sec * 1000 - (nowR - L.helpAt) : 0, hpCell = {}, hpTile = {};
+    if (helpLeft > 0) { clearTimeout(L.ht2); L.ht2 = setTimeout(function () { ctx.rerender(); }, Math.min(helpLeft + 30, 400)); hp.cells.forEach(function (c, i) { hpCell[c] = i + 1; }); hp.tiles.forEach(function (t) { hpTile[t.p] = t; }); }
     var live = !tb.res && !out && !held && !busy && L.sent !== v.cnt && !(peekLeft > 0);
     var placing = live && v.pl === seat, myTurn = live && v.pl < 0 && v.turn === seat;
     var asMs = (v.aidsec || 3) * 1000;
@@ -422,12 +432,12 @@
     var freeSet = {};
     if (placing) for (var c1 = 0; c1 < 24; c1++) { var occ = false; for (var q = 0; q < v.np; q++) if (v.pos[q] === c1 || v.poop[q] === c1) occ = true; if (!occ) freeSet[c1] = 1; }
     for (var i = 0; i < 24; i++) {
-      var rr = rc(i), cls = 'fe-cell' + (i === v.tgt && !tb.res ? ' tgt' : '') + (row[i] ? ' row' : '') + (freeSet[i] ? ' free' : ''), inner = '<img class="egg" src="' + IMG('t' + pad(v.ring[i] + 1)) + '" alt="' + NAMES[v.ring[i]] + '" draggable="false">';
+      var rr = rc(i), cls = 'fe-cell' + (i === v.tgt && !tb.res ? ' tgt' : '') + (row[i] ? ' row' : '') + (freeSet[i] ? ' free' : '') + (hpCell[i] ? ' hp' : ''), inner = '<img class="egg" src="' + IMG('t' + pad(v.ring[i] + 1)) + '" alt="' + NAMES[v.ring[i]] + '" draggable="false">';
       for (var s = 0; s < v.np; s++) {
         if (v.pos[s] === i) { var an = L.anim[s], hopSt = ''; if (an && an.t0 + 800 > nowR) hopSt = ' hop" style="--dx:' + an.dx + ';--dy:' + an.dy + ';--dl:' + (an.t0 - nowR) + 'ms'; inner += '<div class="pcw' + (s === v.turn && !tb.res ? ' act' : '') + hopSt + '"><img class="chk" src="' + IMG('c' + (v.chr[s] + 1)) + '" alt="' + CN[v.chr[s]] + '" draggable="false">' + (s === seat ? '<em class="me">我</em>' : '') + '</div><b class="ft" style="background:' + SEATC[v.chr[s]] + '">🪶' + v.f[s] + '</b>'; }
         if (v.poop[s] === i) inner += '<img class="poo" src="' + IMG('poop') + '" alt="便便" draggable="false"><i class="pdot" style="background:' + SEATC[v.chr[s]] + '"></i>';
       }
-      h += '<div class="' + cls + '" style="grid-row:' + (rr[0] + 1) + ';grid-column:' + (rr[1] + 1) + '" data-c="' + i + '">' + inner + '</div>';
+      h += '<div class="' + cls + '"' + (hpCell[i] ? ' data-n="' + '①②③'.charAt(hpCell[i] - 1) + '"' : '') + ' style="grid-row:' + (rr[0] + 1) + ';grid-column:' + (rr[1] + 1) + '" data-c="' + i + '">' + inner + '</div>';
     }
     bd.innerHTML = h;
     [].forEach.call(bd.querySelectorAll('.fe-cell.free'), function (e) { e.addEventListener('click', function () { ctx.snd('tap'); send('place', { c: +e.getAttribute('data-c') }); }); });
@@ -442,6 +452,7 @@
       var face = lit && !up ? 'fate' : 'nestback', body;
       if (up && v.last.fate) body = '<img src="' + IMG('fate') + '" alt=""><em>' + (v.last.lucky ? '🍀' : '💨') + '</em>';
       else if (up) body = '<img src="' + IMG('n' + pad(v.last.pics[li] + 1)) + '" alt="' + NAMES[v.last.pics[li]] + '">';
+      else if (helpLeft > 0 && hpTile[p]) body = '<img src="' + IMG('n' + pad(hpTile[p].pic + 1)) + '" alt=""><em class="hn">' + hpTile[p].n.map(function (x) { return '①②③'.charAt(x - 1); }).join('') + '</em>';
       else if (peekLeft > 0 && v.all) body = '<img src="' + IMG('n' + pad(v.all[p] + 1)) + '" alt="' + NAMES[v.all[p]] + '">';
       else body = '<img src="' + IMG(face) + '" alt="">';
       t.innerHTML = body + '<u>' + (p + 1) + '</u>';
@@ -456,10 +467,12 @@
     }
     ctr.appendChild(nest);
     var note = el('div', 'fe-note');
+    if (helpLeft > 0) { note.textContent = '👀 老師讓你看前面三格的牌！記住 ①②③ 在哪裡（' + Math.ceil(helpLeft / 1000) + ' 秒）'; note.className = 'fe-note hi'; } else {
     if (v.last && !tb.res && !(L.show && L.show.cnt === v.cnt && nowR < L.show.noteAt)) {
       var lw = who(tb, v.last.s);
       note.textContent = v.last.fate ? lw + ' 選了命運牌：' + (v.last.lucky ? '🍀 前進一步！' : '💨 空的…') : lw + ' 翻到「' + v.last.pics.map(function (x) { return NAMES[x]; }).join('、') + '」' + (v.last.hit >= 0 ? ' ✅ 對了！' : ' ❌ 錯了');
     } else note.textContent = v.last && !tb.res ? '翻牌中…' : '雞窩牌上的數字是位置，位置不會變，記起來！';
+    }
     ctr.appendChild(note);
     bd.appendChild(ctr);
     main.appendChild(bd);
@@ -548,8 +561,8 @@
       { h: '計分', html: '<table class="g-tbl"><tr><th>結果</th><th>得分</th></tr><tr><td>🏆 先集滿羽毛（或時間到時羽毛最多）</td><td>3 分</td></tr><tr><td>🤝 平手</td><td>各 1 分</td></tr><tr><td>💪 其他</td><td>0 分</td></tr></table><p>有時間限制時，時間到會把這一輪打完，羽毛最多的人獲勝（一樣多就一起贏）。和電腦玩的不列入總分。</p>' }
     ],
     teacher: [
-      { h: '主持流程', html: '<ol><li>首頁「益智」→「就我的毛最多」，每桌 2～6 人（4 人最剛好，一局約 10～15 分鐘）。</li><li>開桌前可選：<b>玩法</b>（版本 1 基本版／版本 2 便便版）、<b>讓分</b>、<b>限時</b>、<b>記憶輔助</b>。</li><li>點某一桌打開「桌面管理」：可<b>預約重新洗牌</b>、<b>偷看雞窩牌位置</b>、<b>設定讓分</b>、<b>設定誰一次翻幾張</b>。</li><li>暫停公告的秒數（2～8 秒）可在老師面板調整。</li></ol>' },
-      { h: '各功能怎麼用', html: '<ul><li><b>重新洗牌：</b>按下後<b>不會馬上洗</b>。遊戲繼續到下一輪開始前，系統會暫停並公告「這一輪結束後會洗牌」，那一輪結束後，雞窩牌才全部重新洗過。適合大家都背熟了、想增加難度的時候。</li><li><b>讓分：</b>開桌時選「讓分」，在還沒開始翻牌前，替比較弱的同學設定先多走 0～6 格。</li><li><b>落後偷看（獨立功能，可和記憶輔助同時開）：</b>開啟後，「最後一名而且落後第一名整整一圈」的同學，輪到時會出現「偷看全部牌」按鈕，所有雞窩牌會翻開給他看限時的幾秒，只有他自己的畫面看得到；每多落後一圈可再用一次。</li><li><b>偷看時間（3～10 秒）：</b>可另外設定偷看全部牌的秒數。</li><li><b>輔助顯示時間（2～5 秒）：</b>輔助只有輪到的同學自己的畫面才看得到，而且只顯示這麼久就蓋住；一次翻多張時，選了牌超過時間沒翻，牌也會蓋回去。</li><li><b>記憶輔助（二選一）：</b>① 顯示最近 2～6 次的翻牌紀錄（含位置與圖案）；② 讓真人同學一次翻 2～3 張，只要其中一張對就算對（可針對個別同學開關）。</li><li><b>翻轉命運：</b>落後第一名整整一圈的最後一名，會自動得到「命運三選一」，增加逆轉的機會，也讓程度弱的孩子不會一直挫折。</li><li><b>時間到：</b>預設 15 分鐘，時間到那一輪打完，羽毛最多的人贏，一樣多就一起贏。</li></ul>' },
+      { h: '主持流程', html: '<ol><li>首頁「益智」→「就我的毛最多」，每桌 2～6 人（4 人最剛好，一局約 10～15 分鐘）。</li><li>開桌前可選：<b>玩法</b>（版本 1 基本版／版本 2 便便版）、<b>限時</b>、<b>記憶輔助</b>。</li><li>點某一桌打開「桌面管理」：可<b>預約重新洗牌</b>、<b>偷看雞窩牌位置</b>、<b>讓分（給同學看前三格牌的位置）</b>、<b>設定誰一次翻幾張</b>。</li><li>暫停公告的秒數（2～8 秒）可在老師面板調整。</li></ol>' },
+      { h: '各功能怎麼用', html: '<ul><li><b>重新洗牌：</b>按下後<b>不會馬上洗</b>。遊戲繼續到下一輪開始前，系統會暫停並公告「這一輪結束後會洗牌」，那一輪結束後，雞窩牌才全部重新洗過。適合大家都背熟了、想增加難度的時候。</li><li><b>讓分：</b>遊戲中隨時可用。在「桌面管理」選一位同學（不一定是最落後的，可依羽毛最少、落後第一名最遠來判斷）和秒數，他的畫面會把「他前面三格」對應的雞窩牌翻開給他看（標 ①②③），時間到就蓋回去，其他人看不到。</li><li><b>落後偷看（獨立功能，可和記憶輔助同時開）：</b>開啟後，「最後一名而且落後第一名整整一圈」的同學，輪到時會出現「偷看全部牌」按鈕，所有雞窩牌會翻開給他看限時的幾秒，只有他自己的畫面看得到；每多落後一圈可再用一次。</li><li><b>偷看時間（3～10 秒）：</b>可另外設定偷看全部牌的秒數。</li><li><b>輔助顯示時間（2～5 秒）：</b>輔助只有輪到的同學自己的畫面才看得到，而且只顯示這麼久就蓋住；一次翻多張時，選了牌超過時間沒翻，牌也會蓋回去。</li><li><b>記憶輔助（二選一）：</b>① 顯示最近 2～6 次的翻牌紀錄（含位置與圖案）；② 讓真人同學一次翻 2～3 張，只要其中一張對就算對（可針對個別同學開關）。</li><li><b>翻轉命運：</b>落後第一名整整一圈的最後一名，會自動得到「命運三選一」，增加逆轉的機會，也讓程度弱的孩子不會一直挫折。</li><li><b>時間到：</b>預設 15 分鐘，時間到那一輪打完，羽毛最多的人贏，一樣多就一起贏。</li></ul>' },
       { h: '教學重點', html: '<ul><li>訓練<b>工作記憶、視覺記憶與位置記憶</b>，也練習專注看別人翻的牌。</li><li>12 種農場圖案可以延伸做「詞語」「類別」討論（蔬菜、動物、農具…）。</li><li>便便版有一點「搗蛋」，可以討論：被超越時的心情怎麼調整？輸了怎麼說「下次加油」？</li><li>角色與圖案為原創插畫，玩法參考市售「拔毛運動會」類記憶遊戲。</li></ul>' }
     ]
   };
