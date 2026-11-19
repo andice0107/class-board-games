@@ -2,6 +2,9 @@
 (function () {
   'use strict';
   var REASONS = { bingo: '先連成指定條數的線', resign: '認輸', left: '其他人都離開了', teacher: '老師結束這局' };
+  var ZY = ['ㄅ', 'ㄆ', 'ㄇ', 'ㄈ', 'ㄉ', 'ㄊ', 'ㄋ', 'ㄌ', 'ㄍ', 'ㄎ', 'ㄏ', 'ㄐ', 'ㄑ', 'ㄒ', 'ㄓ', 'ㄔ', 'ㄕ', 'ㄖ', 'ㄗ', 'ㄘ', 'ㄙ', 'ㄧ', 'ㄨ', 'ㄩ', 'ㄚ', 'ㄛ', 'ㄜ', 'ㄝ', 'ㄞ', 'ㄟ', 'ㄠ', 'ㄡ', 'ㄢ', 'ㄣ', 'ㄤ', 'ㄥ', 'ㄦ'];
+  function zcat(x) { return x <= 21 ? 0 : x <= 24 ? 1 : 2; }
+  var ZCOL = ['#c2410c', '#15803d', '#1d4ed8'], ZNAME = ['聲符', '介音', '韻符'];
   var SEATC = ['#e8590c', '#1c7ed6', '#2f9e44', '#ae3ec9', '#e03131', '#f08c00'];
   function el(t, c, x) { var e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; }
   function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
@@ -31,6 +34,7 @@
     }
   }
   function nextCaller(g) { for (var k = 0; k < g.np; k++) { g.caller = (g.caller + 1) % g.np; if (!g.gone[g.caller]) return; } }
+  function autoAck(g) { if (!g.sym || g.cur == null) return; for (var s = 0; s < g.np; s++) if (g.boards[s].indexOf(g.cur) < 0) g.circ[s][g.cur] = 1; if (g.circ.every(function (c) { return c[g.cur]; })) finishRound(g); }
   function autoGone(g) { for (var s = 0; s < g.np; s++) if (g.gone[s] && g.cur != null) g.circ[s][g.cur] = 1; }
   function greedyPick(g, s, noise) {
     var b = g.boards[s], m = marks(g, s), lines = lineList(g.n), best = [], bv = -1;
@@ -44,13 +48,20 @@
   }
   function uncalled(g) { return seq(g.tot).filter(function (x) { return g.called.indexOf(x) < 0; }); }
 
+  function build(ID, SYM) {
+  var PL = SYM ? SYM.length : 0;
+  function lab(x) { return SYM ? SYM[x - 1] : String(x); }
   var mod = {
     seats: 4, seatOptions: [2, 3, 4, 5, 6], seatDefault: 4, botSeats: [1, 5], botDelay: 900, ver: 1,
     reasons: REASONS,
     levelDesc: ['隨便喊數字', '有時候會挑對自己有利的數字', '會挑讓自己快連線的數字', '很會算，專挑自己最快連線的數字'],
     seatName: function (i) { return '第 ' + (i + 1) + ' 位'; },
     seatColor: function (i) { return SEATC[i]; },
-    opts: [
+    opts: SYM ? [
+      { k: 'size', label: '賓果盤大小：', list: [['5', '5×5（25 個符號）'], ['3', '3×3（9 個符號）'], ['4', '4×4（16 個符號）'], ['6', '6×6（36 個符號）']], note: '注音符號共 37 個（聲符 21、介音 3、韻符 13）。每個人的盤子由系統從中隨機挑符號、隨機填好，每個符號在同一張盤子只出現一次' },
+      { k: 'lines', label: '連線幾條就贏：', list: [['auto', '標準（邊長，例如 5×5 要 5 條）'], ['1', '1 條'], ['2', '2 條'], ['3', '3 條'], ['4', '4 條'], ['5', '5 條'], ['6', '6 條'], ['7', '7 條'], ['8', '8 條']], note: '橫、直、斜都算一條（斜線最多 2 條）。超過這張盤子能連的最多條數時，會自動改成最多' },
+      { k: 'hintsec', label: '找不到符號的提示：', list: [['8', '8 秒後亮出所在的橫排'], ['5', '5 秒後'], ['12', '12 秒後'], ['0', '不提示']], note: '喊出符號後，同學要自己在盤上找到並點一下圈起來。超過這個時間還沒找到，會亮出符號所在的那一橫排，再過一樣的時間會亮出那一直排' }
+    ] : [
       { k: 'size', label: '賓果盤大小：', list: [['5', '5×5（1～25）'], ['3', '3×3（1～9）'], ['4', '4×4（1～16）'], ['6', '6×6（1～36）'], ['7', '7×7（1～49）'], ['8', '8×8（1～64）'], ['9', '9×9（1～81）'], ['10', '10×10（1～100）']], note: '數字是 1 到格子總數，每個數字只會出現一次' },
       { k: 'lines', label: '連線幾條就贏：', list: [['auto', '標準（邊長，例如 5×5 要 5 條）'], ['1', '1 條'], ['2', '2 條'], ['3', '3 條'], ['4', '4 條'], ['5', '5 條'], ['6', '6 條'], ['7', '7 條'], ['8', '8 條'], ['9', '9 條'], ['10', '10 條']], note: '橫、直、斜都算一條（斜線最多 2 條）。超過這張盤子能連的最多條數時，會自動改成最多' },
       { k: 'fill', label: '數字怎麼填：', list: [['manual', '同學自己填'], ['auto', '系統隨機填好']], note: '同學自己填：每個人把數字填進自己選的格子（也有隨機填滿按鈕）。系統隨機填好：不用填，直接開始' },
@@ -59,11 +70,11 @@
     init: function (n, o) {
       o = o || {};
       n = Math.max(2, Math.min(6, n || 4));
-      var sz = Math.max(3, Math.min(10, +o.size || 5)), tot = sz * sz, maxL = 2 * sz + 2;
+      var sz = Math.max(3, Math.min(SYM ? 6 : 10, +o.size || 5)), cells = sz * sz, tot = SYM ? PL : cells, maxL = 2 * sz + 2;
       var need = o.lines === 'auto' || !o.lines ? sz : Math.max(1, Math.min(maxL, +o.lines || sz));
-      var g = { np: n, n: sz, tot: tot, need: need, fill: o.fill === 'auto' ? 'auto' : 'manual', hintsec: o.hintsec == null ? 8 : Math.max(0, +o.hintsec || 0),
+      var g = { np: n, n: sz, tot: tot, need: need, fill: SYM || o.fill === 'auto' ? 'auto' : 'manual', cells: cells, sym: !!SYM, hintsec: o.hintsec == null ? 8 : Math.max(0, +o.hintsec || 0),
         phase: 'fill', boards: [], ready: [], circ: [], called: [], hist: [], caller: 0, cur: null, cnt: 0, res: null, bots: o._bots || [], gone: [] };
-      for (var s = 0; s < n; s++) { g.boards.push(shuffle(seq(tot))); g.ready.push(g.fill === 'auto' || !!g.bots[s]); g.circ.push({}); }
+      for (var s = 0; s < n; s++) { g.boards.push(SYM ? shuffle(seq(tot)).slice(0, cells) : shuffle(seq(tot))); g.ready.push(g.fill === 'auto' || !!g.bots[s]); g.circ.push({}); }
       if (g.ready.every(function (r) { return r; })) startGame(g);
       return g;
     },
@@ -98,7 +109,7 @@
       var me = seat >= 0 && seat < g.np ? seat : 0, lines = [];
       for (var s = 0; s < g.np; s++) lines.push(g.phase === 'play' || g.res ? lineCount(g, s) : 0);
       return { np: g.np, n: g.n, tot: g.tot, need: g.need, fill: g.fill, hintsec: g.hintsec, phase: g.phase, board: g.boards[me], ready: g.ready, circ: Object.keys(g.circ[me]).map(Number),
-        cur: g.cur, caller: g.caller, hist: g.hist.slice(-10), nCalled: g.called.length, lines: lines, cnt: g.cnt, circled: g.circ.map(function (c) { return g.cur != null && !!c[g.cur]; }) };
+        cur: g.cur, caller: g.caller, hist: g.hist.slice(-10), called: g.called.slice(), nCalled: g.called.length, lines: lines, cnt: g.cnt, circled: g.circ.map(function (c) { return g.cur != null && !!c[g.cur]; }) };
     },
     act: function (g, seat, d, notify) {
       if (g.res || seat < 0 || seat >= g.np) return false;
@@ -115,15 +126,15 @@
       if (d.t === 'call') {
         if (g.caller !== seat || g.cur != null || d.n !== g.cnt) return false;
         var v = +d.x;
-        if (!(v >= 1 && v <= g.tot) || v !== Math.floor(v)) { notify(seat, '要喊 1 到 ' + g.tot + ' 的數字喔'); return false; }
-        if (g.called.indexOf(v) >= 0) { notify(seat, v + ' 已經被圈起來了，請換一個數字'); return false; }
+        if (!(v >= 1 && v <= g.tot) || v !== Math.floor(v)) { notify(seat, SYM ? '請選一個注音符號' : '要喊 1 到 ' + g.tot + ' 的數字喔'); return false; }
+        if (g.called.indexOf(v) >= 0) { notify(seat, lab(v) + ' 已經被圈起來了，請換一個' + (SYM ? '符號' : '數字')); return false; }
         g.called.push(v); g.hist.push({ s: seat, x: v }); g.cur = v; g.cnt++;
-        autoGone(g);
+        autoGone(g); autoAck(g);
         return true;
       }
       if (d.t === 'circle') {
         if (g.cur == null || g.circ[seat][g.cur]) return false;
-        if (+d.x !== g.cur) { notify(seat, '現在要圈的是 ' + g.cur + ' 喔'); return false; }
+        if (+d.x !== g.cur) { notify(seat, '現在要圈的是 ' + lab(g.cur) + ' 喔'); return false; }
         g.circ[seat][g.cur] = 1; g.cnt++;
         if (g.circ.every(function (c) { return c[g.cur]; })) finishRound(g);
         return true;
@@ -139,7 +150,7 @@
       if (d.t === 'draw' && g.phase === 'play' && g.cur == null) {
         var u = uncalled(g); if (!u.length) return false;
         var x = u[Math.floor(Math.random() * u.length)];
-        g.called.push(x); g.hist.push({ s: g.caller, x: x, d: 1 }); g.cur = x; g.cnt++; autoGone(g); return true;
+        g.called.push(x); g.hist.push({ s: g.caller, x: x, d: 1 }); g.cur = x; g.cnt++; autoGone(g); autoAck(g); return true;
       }
       if (d.t === 'circleAll' && g.cur != null) {
         for (var q = 0; q < g.np; q++) g.circ[q][g.cur] = 1;
@@ -160,24 +171,24 @@
     tipDesc: '發呆太久時，提醒你現在該做什麼（填數字、喊數字，或找數字圈起來）。',
     hint: function (g, seat) {
       if (g.res || g.phase !== 'play') return null;
-      if (g.cur != null && !g.circ[seat][g.cur]) { var i = g.boards[seat].indexOf(g.cur); return { msg: '要圈的是 ' + g.cur + '，亮黃框的格子就是！自己點一下把它圈起來。', hl: ['c' + i] }; }
-      if (g.cur == null && g.caller === seat) { var x = greedyPick(g, seat, 0); var hl = x != null ? ['c' + g.boards[seat].indexOf(x)] : []; return { msg: '輪到你喊數字。喊「' + x + '」會讓你更接近連線，亮黃框是它在你盤子上的位置。', hl: hl }; }
+      if (g.cur != null && !g.circ[seat][g.cur]) { var i = g.boards[seat].indexOf(g.cur); return { msg: '要圈的是「' + lab(g.cur) + '」，亮黃框的格子就是！自己點一下把它圈起來。', hl: ['c' + i] }; }
+      if (g.cur == null && g.caller === seat) { var x = greedyPick(g, seat, 0); var hl = x != null ? ['c' + g.boards[seat].indexOf(x)] : []; return { msg: '輪到你喊' + (SYM ? '符號' : '數字') + '。喊「' + lab(x) + '」會讓你更接近連線，亮黃框是它在你盤子上的位置。', hl: hl }; }
       return null;
     },
     nudge: function (g, seat) {
       if (g.res) return null;
       if (g.phase === 'fill') return g.ready[seat] ? null : '請把數字填進格子：點一格，打上數字按 Enter；填滿後按「我填好了」。不想填可以按「隨機填滿」。';
-      if (g.cur == null) return g.caller === seat ? '輪到你喊數字：在輸入框打一個還沒有被圈起來的數字，再按「喊！」。' : null;
-      return g.circ[seat][g.cur] ? null : '現在要圈的數字是 ' + g.cur + '，請在你的賓果盤上找到它，點一下圈起來。';
+      if (g.cur == null) return g.caller === seat ? (SYM ? '輪到你喊符號：點下面或盤子上一個還沒有被圈起來的符號，再按「喊！」。' : '輪到你喊數字：在輸入框打一個還沒有被圈起來的數字，再按「喊！」。') : null;
+      return g.circ[seat][g.cur] ? null : '現在要圈的是「' + lab(g.cur) + '」，請在你的賓果盤上找到它，點一下圈起來。';
     },
     hostView: function (g) {
       var h = '<div class="bg-host">';
       for (var s = 0; s < g.np; s++) { var c = g.phase === 'play' || g.res ? lineCount(g, s) : 0; h += '<div class="bg-hrow"><i style="background:' + SEATC[s] + '"></i><b>' + (s + 1) + '</b><span>' + (g.phase === 'fill' ? (g.ready[s] ? '✔ 填好了' : '填數字中…') : c + ' / ' + g.need + ' 條') + '</span></div>'; }
-      return h + '<div class="bg-hcur">' + (g.cur != null ? '剛喊：<b>' + g.cur + '</b>' : '') + '</div></div>';
+      return h + '<div class="bg-hcur">' + (g.cur != null ? '剛喊：<b>' + lab(g.cur) + '</b>' : '') + '</div></div>';
     },
     hostStatus: function (g) {
       if (g.phase === 'fill') return { t: '填數字中（' + g.ready.filter(Boolean).length + '/' + g.np + ' 人完成）', c: '' };
-      var ws = g.cur != null ? '・剛喊 ' + g.cur : '';
+      var ws = g.cur != null ? '・剛喊 ' + lab(g.cur) : '';
       return { t: g.n + '×' + g.n + '・已喊 ' + g.called.length + ' 個' + ws, c: '' };
     }
   };
@@ -210,11 +221,11 @@
     var hint = opt.clue || {};
     for (i = 0; i < v.board.length; i++) if (circSet[v.board[i]]) mk[i] = 1;
     var dl = doneLines(n, mk); dl.forEach(function (l) { l.forEach(function (c) { cs[c] = 1; }); });
-    var bd = el('div', 'bg-bd'); bd.style.setProperty('--n', n);
+    var bd = el('div', 'bg-bd' + (SYM ? ' sym' : '')); bd.style.setProperty('--n', n);
     var h = '';
     for (i = 0; i < n * n; i++) {
       var x = v.board[i], cls = 'bg-cell' + (mk[i] ? ' on' : '') + (cs[i] ? ' line' : '') + (opt.selNum && x === opt.selNum ? ' sel' : '') + (hint.row === Math.floor(i / n) ? ' crow' : '') + (hint.col === i % n ? ' ccol' : '') + (opt.cur != null && x === opt.cur && !mk[i] && opt.live ? ' tgt' : '');
-      h += '<div class="' + cls + '" data-i="' + i + '" data-h="c' + i + '">' + (x ? '<span class="num">' + x + '</span>' : '') + (mk[i] ? '<i class="ring"></i>' : '') + '</div>';
+      h += '<div class="' + cls + '" data-i="' + i + '" data-h="c' + i + '">' + (x ? '<span class="num"' + (SYM ? ' style="color:' + ZCOL[zcat(x)] + '"' : '') + '>' + lab(x) + '</span>' : '') + (mk[i] ? '<i class="ring"></i>' : '') + '</div>';
     }
     bd.innerHTML = h;
     return { bd: bd, lines: dl.length };
@@ -235,7 +246,7 @@
 
     /* ----- 遊戲中 ----- */
     var myCall = !tb.res && v.cur == null && v.caller === seat, mine = v.cur != null && v.circ.indexOf(v.cur) >= 0;
-    var live = !tb.res && v.cur != null && !mine; if (myCall) wrap.classList.add('call');
+    var live = !tb.res && v.cur != null && !mine; if (myCall) wrap.classList.add('call'); if (myCall && SYM) wrap.classList.add('symc');
     var ck = tb.round + ':' + v.nCalled; if (v.cur != null && L.curKey !== ck) { L.curKey = ck; L.curAt = now; }
     var waited = v.cur != null ? now - L.curAt : 0, hs = v.hintsec * 1000, clue = {};
     if (live && hs > 0) {
@@ -247,8 +258,8 @@
     }
     var call = el('div', 'bg-call' + (live ? ' live' : ''));
     if (tb.res) call.innerHTML = '<small>對局結束</small>';
-    else if (v.cur != null) call.innerHTML = '<small>' + who(tb, v.caller) + ' 喊：</small><b>' + v.cur + '</b><small>' + (mine ? '你已經圈起來了，等其他人…' : '找到後，點一下圈起來') + '</small>';
-    else call.innerHTML = '<small>' + (myCall ? '輪到你喊數字！' : '等 ' + who(tb, v.caller) + ' 喊數字…') + '</small>';
+    else if (v.cur != null) call.innerHTML = '<small>' + who(tb, v.caller) + ' 喊：' + (SYM ? '（' + ZNAME[zcat(v.cur)] + '）' : '') + '</small><b' + (SYM ? ' style="color:' + ZCOL[zcat(v.cur)] + '"' : '') + '>' + lab(v.cur) + '</b><small>' + (mine ? '你已經圈起來了，等其他人…' : '找到後，點一下圈起來') + '</small>';
+    else call.innerHTML = '<small>' + (myCall ? '輪到你喊' + (SYM ? '符號' : '數字') + '！' : '等 ' + who(tb, v.caller) + ' 喊數字…') + '</small>';
     wrap.appendChild(call);
     var res = drawBoard(tb, v, ctx, { cur: v.cur, live: live, clue: clue, selNum: myCall && +L.typed >= 1 ? +L.typed : 0 });
     var bx = el('div', 'bn-board'); bx.appendChild(BG.zoom('bingo', res.bd)); wrap.appendChild(bx);
@@ -257,20 +268,32 @@
       var i = +c.getAttribute('data-i'), x = v.board[i];
       if (v.cur == null) {
         if (!myCall) return;
-        if (v.circ.indexOf(x) >= 0) { ctx.snd('error'); ctx.toast(x + ' 已經被圈起來了，請換一個數字'); return; }
+        if (v.circ.indexOf(x) >= 0) { ctx.snd('error'); ctx.toast(lab(x) + ' 已經被圈起來了，請換一個'); return; }
         if (+L.typed === x) { ctx.send('call', { x: x, n: v.cnt }); return; }
         L.typed = String(x); ctx.snd('tap'); ctx.rerender(); return;
       }
       if (mine || v.circ.indexOf(x) >= 0) return;
-      if (x !== v.cur) { ctx.snd('error'); ctx.toast('現在要圈的是 ' + v.cur + ' 喔'); return; }
+      if (x !== v.cur) { ctx.snd('error'); ctx.toast('現在要圈的是 ' + lab(v.cur) + ' 喔'); return; }
       if (L.sent === ck) return;
       L.sent = ck; ctx.snd('tap'); ctx.send('circle', { x: x }); ctx.rerender();
     });
     var info = el('div', 'bg-info');
     info.appendChild(el('span', '', '我已連成 ' + res.lines + ' 條，要 ' + v.need + ' 條'));
-    if (v.hist.length) { var hs2 = el('span', 'bg-hist'); hs2.textContent = '剛喊過：' + v.hist.slice().reverse().slice(0, 6).map(function (h) { return h.x; }).join('、'); info.appendChild(hs2); }
+    if (v.hist.length) { var hs2 = el('span', 'bg-hist'); hs2.textContent = '剛喊過：' + v.hist.slice().reverse().slice(0, 6).map(function (h) { return lab(h.x); }).join('、'); info.appendChild(hs2); }
     wrap.appendChild(info);
-    if (myCall) {
+    if (myCall && SYM) {
+      var pal = el('div', 'bg-pal'), called = {}; v.called.forEach(function (x) { called[x] = 1; });
+      for (var z = 1; z <= PL; z++) { var pb = el('button', 'bg-sym' + (called[z] ? ' used' : '') + (+L.typed === z ? ' sel' : ''), ZY[z - 1]); pb.type = 'button'; pb.setAttribute('data-z', z); pb.style.color = ZCOL[zcat(z)]; pal.appendChild(pb); }
+      pal.addEventListener('click', function (e) {
+        var b = e.target.closest && e.target.closest('[data-z]'); if (!b) return; var z = +b.getAttribute('data-z');
+        if (called[z]) { ctx.send('call', { x: z, n: v.cnt }); return; }
+        if (+L.typed === z) { ctx.send('call', { x: z, n: v.cnt }); return; }
+        L.typed = String(z); ctx.snd('tap'); ctx.rerender();
+      });
+      wrap.appendChild(pal);
+      var go2 = ctx.button('bg-btn go', L.typed ? '喊「' + lab(+L.typed) + '」！' : '先選一個符號', function () { if (L.typed) ctx.send('call', { x: +L.typed, n: v.cnt }); }); go2.disabled = !L.typed; var r2 = el('div', 'bg-in'); r2.appendChild(go2); wrap.appendChild(r2);
+      wrap.appendChild(el('p', 'bg-note', '點一個還沒被圈起來的符號（點一下選起來，再點一下或按「喊！」就喊出去）。點到已經圈起來的符號，只有你會收到通知。'));
+    } else if (myCall) {
       var row = el('div', 'bg-in'), inp = document.createElement('input');
       inp.type = 'number'; inp.inputMode = 'numeric'; inp.min = 1; inp.max = v.tot; inp.placeholder = '1～' + v.tot; inp.value = L.typed;
       inp.addEventListener('input', function () { L.typed = inp.value; });
@@ -320,5 +343,8 @@
     }
     box.appendChild(wrap);
   }
-  BG.register('bingo', mod);
+  BG.register(ID, mod);
+  }
+  build('bingo', null);
+  build('zhuyin-bingo', ZY);
 })();

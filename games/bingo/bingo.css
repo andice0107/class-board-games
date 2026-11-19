@@ -44,3 +44,12 @@
 
 .bg-table.fill .bn-board { width: min(100%, calc(var(--vh, 1dvh) * 100 - 400px)); }
 .bg-table.call .bn-board { width: min(100%, calc(var(--vh, 1dvh) * 100 - 470px)); }
+
+.bg-bd.sym .bg-cell { font-size: 26px; }
+@supports (font-size: 1cqw) { .bg-bd.sym .bg-cell { font-size: calc(100cqw / var(--n) * .62); } }
+.bg-pal { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 5px; width: 100%; }
+.bg-sym { padding: 6px 0; border-radius: 10px; background: #fff; font-weight: 900; font-size: 26px; box-shadow: 0 0 0 1.5px #8a5a1a, 0 2px 0 #8a5a1a; }
+.bg-sym.used { opacity: .3; text-decoration: line-through; }
+.bg-sym.sel { background: #d0ebff; box-shadow: 0 0 0 3px #1c7ed6; }
+
+.bg-table.symc .bn-board { width: min(100%, calc(var(--vh, 1dvh) * 100 - 600px)); }
